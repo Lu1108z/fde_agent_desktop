@@ -118,6 +118,7 @@ const validInvokeChannels = new Set([
   'license:import',
   'license:activate-online',
   'license:server-url',
+  'license:key-diagnostics',
   // AI 应用广场
   'ai-apps:list',
   'ai-apps:get',
@@ -383,6 +384,7 @@ contextBridge.exposeInMainWorld('api', {
     import() { return invoke('license:import'); },
     activateOnline(options) { return invoke('license:activate-online', options); },
     serverUrl() { return invoke('license:server-url'); },
+    keyDiagnostics() { return invoke('license:key-diagnostics'); },
   },
 
   // AI 应用广场

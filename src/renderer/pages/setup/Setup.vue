@@ -98,7 +98,12 @@
             <div v-if="licState" class="mb-4 p-3 rounded-xl text-[12px] flex items-start gap-2"
                  :class="licState.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-danger-soft text-danger-deep'">
               <i class="fa-solid mt-0.5" :class="licState.ok ? 'fa-circle-check' : 'fa-circle-exclamation'"></i>
-              <span>{{ licStatusText }}</span>
+              <span>
+                {{ licStatusText }}
+                <!-- TAMPERED 时把真实原因(密钥缺失/不匹配)一并显示:
+                     否则用户只看到笼统的「授权文件无效或已损坏」,无从下手。 -->
+                <span v-if="licState.message" class="block mt-1 font-mono text-[11px] opacity-80 break-all">{{ licState.message }}</span>
+              </span>
             </div>
 
             <div class="flex items-center justify-between mt-6">

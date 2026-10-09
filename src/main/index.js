@@ -29,6 +29,7 @@ const licenseVerifier = require('./license/verifier.js');
 const licenseStore = require('./license/store.js');
 const licenseFingerprint = require('./license/fingerprint.js');
 const licenseRemote = require('./license/remote.js');
+const licenseCrypto = require('./license/crypto.js');
 
 // 统一应用名（菜单栏、关于、macOS 顶栏、任务栏）。
 // 打包后来自 package.json 的 productName；开发态 app.name 默认是 "Electron"，这里显式覆盖。
@@ -2778,6 +2779,16 @@ ipcMain.handle('license:activate-online', async (_event, options) => {
 ipcMain.handle('license:server-url', () => {
   try {
     return { success: true, url: licenseRemote.defaultServerUrl() };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// 密钥自检:打包版排查「授权文件无效或已损坏」用 —— 返回实际生效的密钥目录、
+// 两个密钥文件是否存在/多大、公钥指纹。指纹与签发端不一致即密钥装错。
+ipcMain.handle('license:key-diagnostics', () => {
+  try {
+    return { success: true, ...licenseCrypto.keyDiagnostics() };
   } catch (err) {
     return { success: false, error: err.message };
   }
