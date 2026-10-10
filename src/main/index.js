@@ -30,6 +30,41 @@ const licenseStore = require('./license/store.js');
 const licenseFingerprint = require('./license/fingerprint.js');
 const licenseRemote = require('./license/remote.js');
 const licenseCrypto = require('./license/crypto.js');
+const { HeartbeatClient } = require('./license/heartbeat.js');
+const { UsageTracker } = require('./license/usage-tracker.js');
+
+// 功能使用统计（心跳捎带上报）：累计值持久化在 userData，跨重启累加。
+const usageTracker = new UsageTracker(
+  process.env.FDE_USAGE_STATS_PATH || path.join(app.getPath('userData'), 'usage-stats.json'),
+);
+
+// 心跳客户端:app.whenReady 后按 meta 里的 device_id 决定是否启动。
+// emit 走 mainWindow.webContents,渲染层收到 license:heartbeat-expired 后弹授权失效并踢回 /setup。
+const heartbeatClient = new HeartbeatClient({
+  getIdentity: () => licenseRemote.readHeartbeatIdentity(),
+  getServerUrl: () => {
+    // 本地联调：FDE_LICENSE_SERVER 环境变量优先（如 http://127.0.0.1:8180），
+    // 否则用激活时持久化的 server_url，最后回落默认生产地址。
+    if (process.env.FDE_LICENSE_SERVER) return process.env.FDE_LICENSE_SERVER;
+    const identity = licenseRemote.readHeartbeatIdentity();
+    return (identity && identity.server_url) || licenseRemote.defaultServerUrl();
+  },
+  clientVersion: app.getVersion(),
+  getUsage: () => usageTracker.snapshot(),
+  onUsageSent: () => {
+    // 只在心跳成功后清零窗口增量；累计值与 reset 后状态合并保留
+    const savedTotal = usageTracker.chatMessagesTotal;
+    const savedNames = usageTracker.recentProjectNames.slice();
+    const savedCount = usageTracker.projectCount;
+    usageTracker.reset();
+    usageTracker.chatMessagesTotal = savedTotal;
+    usageTracker.recentProjectNames = savedNames;
+    usageTracker.projectCount = savedCount;
+  },
+  emit: (event, payload) => {
+    try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(event, payload); } catch (e) { /* 窗口未就绪,忽略 */ }
+  },
+});
 
 // 统一应用名（菜单栏、关于、macOS 顶栏、任务栏）。
 // 打包后来自 package.json 的 productName；开发态 app.name 默认是 "Electron"，这里显式覆盖。
@@ -60,6 +95,9 @@ const pendingPermissions = new Map();
 const replayingSessions = new Set();
 // 正在跑 session/prompt 的会话：此时重进项目页不再 session/load，免得打乱进行中的这一轮
 const promptingSessions = new Set();
+// 正在跑的会话 → 本轮 AI 回复文本（agent_message_chunk 累积）。
+// 渲染层切走页面/组件卸载时会错过流式 chunk 导致回复丢失，主进程这里兜底落盘。
+const promptReplyCollectors = new Map();
 // 当前 Hermes 进程里已经 load/new 成功的代码会话。应用重启后集合为空，
 // 首次使用会先 session/load，避免拿磁盘里的旧 sessionId 直接 prompt 导致无响应。
 const loadedCodeSessions = new Set();
@@ -821,11 +859,21 @@ function resolveHermesAcpCommand() {
   // 2. Dev mode: look in monorepo hermes-agent/.venv
   if (!app.isPackaged) {
     const ext = process.platform === 'win32' ? 'Scripts' : 'bin';
-    const venvPath = path.resolve(__dirname, '..', '..', '..', 'hermes-agent', '.venv', ext, exe);
+    const repoRoot = path.resolve(__dirname, '..', '..', '..', 'hermes-agent');
+    // 常规布局：hermes-agent/.venv（macOS/Linux 是 bin/，Windows 是 Scripts/）
+    const venvPath = path.join(repoRoot, '.venv', ext, exe);
     if (fs.existsSync(venvPath)) return venvPath;
+    // zip 解压后的嵌套布局（hermes-agent/hermes-agent/）：外层是壳，仓库在内层。
+    // Windows 上补建的环境习惯命名 .venv-win，一并探测。
+    const nestedVenv = path.join(repoRoot, 'hermes-agent', '.venv-win', ext, exe);
+    if (fs.existsSync(nestedVenv)) return nestedVenv;
+    const nestedVenv2 = path.join(repoRoot, 'hermes-agent', '.venv', ext, exe);
+    if (fs.existsSync(nestedVenv2)) return nestedVenv2;
     // Also check PyInstaller dist output (for testing build locally)
     const distPath = path.resolve(__dirname, '..', '..', '..', 'hermes-agent', 'dist', 'hermes-acp', exe);
     if (fs.existsSync(distPath)) return distPath;
+    const nestedDist = path.join(repoRoot, 'hermes-agent', 'dist', 'hermes-acp', exe);
+    if (fs.existsSync(nestedDist)) return nestedDist;
   }
 
   // 3. Fallback: expect on PATH
@@ -906,6 +954,23 @@ function startHermes() {
       // session/load 会把整段历史当成 message chunk 重放一遍。放行会让前端把历史
       // 当成新回复追加进当前对话（重进项目页就「乱套」的根因），这里直接丢掉。
       if (sessionId && replayingSessions.has(sessionId)) return;
+
+      // 流式回复兜底收集：本轮 prompt 的 AI 文本 chunk 在主进程也累积一份，
+      // prompt 结束时若渲染层已卸载/切页导致丢消息，由主进程直接落盘。
+      const upd = params.update || params;
+      if (sessionId && upd && upd.type === 'agent_message_chunk' && promptReplyCollectors.has(sessionId)) {
+        const c = upd.content || upd.data;
+        let text = '';
+        if (Array.isArray(c)) text = c.map((b) => b && b.text || '').join('');
+        else if (typeof c === 'string') text = c;
+        else if (c && typeof c.text === 'string') text = c.text;
+        if (text && !String(text).startsWith('⟦系统通知⟧')) {
+          const collector = promptReplyCollectors.get(sessionId);
+          collector.text += text;
+          collector.dirty = true;
+        }
+      }
+
       const payload = {
         method: notification.method || '',
         sessionId,
@@ -2759,6 +2824,7 @@ ipcMain.handle('license:import', async () => {
 // 在线取证:企业授权码换 .lic,校验通过才落盘
 ipcMain.handle('license:activate-online', async (_event, options) => {
   try {
+    console.log('[license:activate] IPC invoked, secretKey len =', (options && options.secretKey || '').length, ', serverUrl =', (options && options.serverUrl) || '(default)');
     const { licenseBytes, info } = await licenseRemote.activateOnline({
       serverUrl: options && options.serverUrl,
       secretKey: options && options.secretKey,
@@ -2769,6 +2835,18 @@ ipcMain.handle('license:activate-online', async (_event, options) => {
       return { success: false, rejected: true, status: result.status, reason: result.reason, detail: result };
     }
     licenseStore.saveLicense(licenseBytes);
+    // 激活返回的 device_id 落进加密 meta,心跳模块靠它组报文;server_url 同时记住,
+    // 否则用户当时手填了内网地址、下次心跳又回到公网默认地址。
+    try {
+      licenseRemote.saveHeartbeatIdentity({
+        deviceId: info && info.device_id,
+        machineCode: result.sn,
+        serverUrl: (options && options.serverUrl) || '',
+      });
+      heartbeatClient.restart();
+    } catch (e) {
+      console.warn('[main] save heartbeat identity failed:', e.message);
+    }
     return { success: true, status: result.status, sn: result.sn, info };
   } catch (err) {
     return { success: false, error: err.message };
@@ -2791,6 +2869,38 @@ ipcMain.handle('license:key-diagnostics', () => {
     return { success: true, ...licenseCrypto.keyDiagnostics() };
   } catch (err) {
     return { success: false, error: err.message };
+  }
+});
+
+// 心跳:手动立即上报一次(设置页诊断用),并返回最近一次结果
+ipcMain.handle('license:heartbeat-now', async () => {
+  try {
+    const data = await heartbeatClient.send();
+    return { success: true, data };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('license:heartbeat-status', () => {
+  try {
+    return { success: true, ...heartbeatClient.status(), identity: licenseRemote.readHeartbeatIdentity() };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// 使用统计:渲染层埋点（当前仅项目详情打开需要；对话/列表在主进程汇聚点统计）
+ipcMain.handle('usage:track', (_event, payload) => {
+  try {
+    if (payload && payload.type === 'project_open') {
+      usageTracker.trackProjectDetailOpen(payload.name, payload.phase, payload.stage);
+    } else if (payload && payload.type === 'project_create') {
+      usageTracker.trackProjectCreate(payload.name, payload.projectType);
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
   }
 });
 
@@ -2818,6 +2928,11 @@ ipcMain.handle('hermes:list-projects', async (_event, options) => {
       }
     }
     projects.sort((a, b) => (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || ''));
+    usageTracker.trackProjectListOpen(projects.length);
+    // 画像快照：把当前各项目的 phase/stage 刷进 openedProjects（仅覆盖已记录条目）
+    for (const p of projects) {
+      usageTracker.refreshProjectPhase(p.name, p.phase, p.stage);
+    }
     return projects;
   } catch (err) {
     throw new Error(`Failed to list projects: ${err.message}`);
@@ -3203,6 +3318,15 @@ ipcMain.handle('code:cancel', async (_event, { id, conversationId } = {}) => {
 ipcMain.handle('code:prompt', async (_event, { id, conversationId, text, attachments } = {}) => {
   codeDebugLog(`code:prompt CALLED id=${id} conversationId=${conversationId} textLen=${(text||'').length}`);
   try {
+    // 使用统计：借 findCodeConversation 拿到工作区/会话名作为话题（只读，不影响原逻辑）
+    let usageTopic = '';
+    try {
+      const { workspace, conversation } = findCodeConversation(id, conversationId);
+      usageTopic = (conversation && conversation.title) || (workspace && workspace.name) || '';
+    } catch { /* 未找到也不影响 prompt */ }
+    usageTracker.trackChat(text, `code:${conversationId || id}`, usageTopic, 'code');
+  } catch { /* 统计失败无碍 */ }
+  try {
     if (!acp || !hermesReady) {
       codeDebugLog(`acp not ready (acp=${!!acp} hermesReady=${hermesReady}), calling ensureHermesReady`);
       if (!(await ensureHermesReady())) throw new Error('Hermes ACP not connected');
@@ -3412,6 +3536,7 @@ ipcMain.handle('hermes:create-project', async (_event, params) => {
     };
     writeProjectMeta(slug, meta);
 
+    usageTracker.trackProjectCreate(name, projectType);
     return { slug, ...meta };
   } catch (err) {
     throw new Error(`Failed to create project: ${err.message}`);
@@ -3814,7 +3939,9 @@ function buildPromptBlocks(text, attachments, uploadsDir) {
 
 ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments }) => {
   try {
-    let meta = readProjectMeta(slug);
+    const promptMeta = readProjectMeta(slug);
+    usageTracker.trackChat(text, `hermes:${slug}`, (promptMeta && promptMeta.name) || slug);
+    let meta = promptMeta;
     if (!meta) throw new Error(`Project "${slug}" not found`);
     if (!acp || !hermesReady) {
       if (!(await ensureHermesReady())) throw new Error('Hermes ACP not connected');
@@ -3850,6 +3977,9 @@ ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments }) => {
 
     const promptSid = meta.sessionId;
     promptingSessions.add(promptSid);
+    // 本轮回复兜底收集：渲染层正常走完流式时会 saveMessage；若渲染层中途
+    // 卸载（切页/关窗）丢了流式 chunk，prompt 返回后由主进程落盘补上。
+    promptReplyCollectors.set(promptSid, { slug, text: '', dirty: false });
     let result;
     try {
       result = await acp.request('session/prompt', {
@@ -3858,6 +3988,17 @@ ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments }) => {
       }, 3_600_000); // 60 min timeout
     } finally {
       promptingSessions.delete(promptSid);
+      const collector = promptReplyCollectors.get(promptSid);
+      promptReplyCollectors.delete(promptSid);
+      if (collector && collector.dirty && collector.text.trim()) {
+        try {
+          // 只在本轮磁盘上没有该内容时补写：避免与渲染层 saveMessage 重复落盘
+          const existing = readMessages(slug, 5).some((m) => m.role === 'assistant' && m.content === collector.text);
+          if (!existing) {
+            appendMessage(slug, { role: 'assistant', content: collector.text, tab: 'requirement', timestamp: new Date().toISOString() });
+          }
+        } catch (e) { /* 兜底落盘失败无碍 */ }
+      }
     }
 
 
@@ -5139,6 +5280,9 @@ app.whenReady().then(async () => {
   buildAppMenu();
   registerWindowControls();
   startPrototypeServer();
+
+  // 心跳:已在线激活过的设备启动即恢复上报;离线导入授权(无 device_id)不参与。
+  heartbeatClient.start();
 
   // Show splash
   createSplashWindow();

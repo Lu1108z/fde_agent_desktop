@@ -79,11 +79,13 @@ function osUsername() {
 async function activateOnline(opts = {}) {
   const base = String(opts.serverUrl || defaultServerUrl() || '').trim().replace(/\/+$/, '');
   if (!base) throw new Error('未配置授权服务地址');
+  console.log('[license:activate] begin, server =', base);
 
   const secretKey = String(opts.secretKey || '').trim();
   if (!secretKey) throw new Error('请填写企业授权码');
 
   const sn = computeSN();
+  console.log('[license:activate] sn =', sn, ', posting', base + ACTIVATE_PATH);
   const { status, body } = await postJson(base + ACTIVATE_PATH, {
     secret_key: secretKey,
     machine_code: sn,
@@ -105,4 +107,29 @@ async function activateOnline(opts = {}) {
   return { sn, licenseBytes: Buffer.from(data.license_b64, 'utf-8'), info: data };
 }
 
-module.exports = { activateOnline, defaultServerUrl };
+/**
+ * 激活成功后持久化心跳所需身份到 meta:
+ *   - device_id:心跳报文必填,服务端按它定位设备
+ *   - machine_code:必须与激活一致,服务端会校验
+ *   - server_url:授权页手填的自定义地址也要记住,否则下次心跳回不到同一环境
+ */
+function saveHeartbeatIdentity(opts = {}) {
+  const store = require('./store');
+  const meta = store.readMeta();
+  if (opts.deviceId) meta.device_id = opts.deviceId;
+  if (opts.machineCode) meta.machine_code = opts.machineCode;
+  if (opts.serverUrl) meta.server_url = String(opts.serverUrl).trim().replace(/\/+$/, '');
+  store.writeMeta(meta);
+}
+
+/** 读取心跳身份;任何字段缺失都视为不可心跳 */
+function readHeartbeatIdentity() {
+  const store = require('./store');
+  const meta = store.readMeta();
+  const deviceId = Number(meta.device_id || 0);
+  const machineCode = meta.machine_code || '';
+  if (!deviceId || !machineCode) return null;
+  return { device_id: deviceId, machine_code: machineCode, server_url: meta.server_url || defaultServerUrl() };
+}
+
+module.exports = { activateOnline, defaultServerUrl, saveHeartbeatIdentity, readHeartbeatIdentity };

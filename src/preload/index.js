@@ -119,6 +119,10 @@ const validInvokeChannels = new Set([
   'license:activate-online',
   'license:server-url',
   'license:key-diagnostics',
+  'license:heartbeat-now',
+  'license:heartbeat-status',
+  // 使用统计埋点
+  'usage:track',
   // AI 应用广场
   'ai-apps:list',
   'ai-apps:get',
@@ -156,6 +160,7 @@ const validOnChannels = new Set([
   'code:terminal-data',
   'code:terminal-exit',
   'skills:import-progress',
+  'license:heartbeat-expired',
 ]);
 
 function invoke(channel, payload) {
@@ -385,6 +390,12 @@ contextBridge.exposeInMainWorld('api', {
     activateOnline(options) { return invoke('license:activate-online', options); },
     serverUrl() { return invoke('license:server-url'); },
     keyDiagnostics() { return invoke('license:key-diagnostics'); },
+    heartbeatNow() { return invoke('license:heartbeat-now'); },
+    heartbeatStatus() { return invoke('license:heartbeat-status'); },
+    onHeartbeatExpired(handler) { return on('license:heartbeat-expired', handler); },
+  },
+  usage: {
+    track(payload) { return invoke('usage:track', payload); },
   },
 
   // AI 应用广场

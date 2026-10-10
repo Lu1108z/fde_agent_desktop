@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const keysDir = path.join(__dirname, '..', 'src', 'main', 'license', 'keys');
 const aesPath = path.join(keysDir, 'aes.key');
 const publicPath = path.join(keysDir, 'public_key.pem');
+const heartbeatPath = path.join(keysDir, 'heartbeat_public.pem');
 
 if (!fs.existsSync(aesPath)) {
   console.error(`[license-keys] 缺少 ${aesPath}`);
@@ -13,6 +14,10 @@ if (!fs.existsSync(aesPath)) {
 }
 if (!fs.existsSync(publicPath)) {
   console.error(`[license-keys] 缺少 ${publicPath}`);
+  process.exit(1);
+}
+if (!fs.existsSync(heartbeatPath)) {
+  console.error(`[license-keys] 缺少 ${heartbeatPath} (心跳信封加密公钥)`);
   process.exit(1);
 }
 const aesSize = fs.statSync(aesPath).size;

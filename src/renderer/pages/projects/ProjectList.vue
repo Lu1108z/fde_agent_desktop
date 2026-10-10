@@ -46,7 +46,7 @@
         v-for="project in projects"
         :key="project.slug"
         class="group relative glass-card rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200/50 transition-all cursor-pointer"
-        @click="openProject(project.slug)"
+        @click="openProject(project)"
       >
         <!-- Action buttons (visible on hover) -->
         <div class="absolute top-3 right-3 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
@@ -234,8 +234,9 @@ const loadProjects = async () => {
   }
 };
 
-const openProject = (slug) => {
-  router.push(`/projects/${slug}`);
+const openProject = (project) => {
+  try { window.api.usage?.track({ type: 'project_open', name: project?.name || project?.slug, phase: project?.phase, stage: project?.stage }); } catch { /* 统计失败无碍 */ }
+  router.push(`/projects/${project.slug}`);
 };
 
 const confirmDeleteProject = (project) => {
