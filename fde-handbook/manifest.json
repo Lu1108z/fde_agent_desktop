@@ -10,18 +10,22 @@
       "dir": "01",
       "items": [
         {
-          "file": "0-阶段一规范说明.md",
+          "file": "0-阶段一规范说明.Word.docx",
           "title": "阶段一规范说明",
-          "type": "md",
+          "type": "docx",
           "category": "spec",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "0-阶段一规范说明.Word.html",
+          "sourceMarkdown": "0-阶段一规范说明.md"
         },
         {
-          "file": "00-阶段一导读·按天推进大纲.md",
+          "file": "00-阶段一导读·按天推进大纲.Word.docx",
           "title": "阶段一导读·按天推进大纲",
-          "type": "md",
+          "type": "docx",
           "category": "spec",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "00-阶段一导读·按天推进大纲.Word.html",
+          "sourceMarkdown": "00-阶段一导读·按天推进大纲.md"
         },
         {
           "file": "1-备弹知识库【知识·调研】.docx",
@@ -33,28 +37,34 @@
           "previewHtml": "1-备弹知识库【知识·调研】.html"
         },
         {
-          "file": "10-医疗智能体产品矩阵【知识·产品】.md",
+          "file": "10-医疗智能体产品矩阵【知识·产品】.Word.docx",
           "title": "医疗智能体产品矩阵",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
           "previewable": true,
-          "knowledgeType": "产品"
+          "knowledgeType": "产品",
+          "previewHtml": "10-医疗智能体产品矩阵【知识·产品】.Word.html",
+          "sourceMarkdown": "10-医疗智能体产品矩阵【知识·产品】.md"
         },
         {
-          "file": "11-SQL技能【知识·技术】.md",
+          "file": "11-SQL技能【知识·技术】.Word.docx",
           "title": "SQL技能",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
           "previewable": true,
-          "knowledgeType": "技术"
+          "knowledgeType": "技术",
+          "previewHtml": "11-SQL技能【知识·技术】.Word.html",
+          "sourceMarkdown": "11-SQL技能【知识·技术】.md"
         },
         {
-          "file": "12-架构分层(业务·应用·技术·数据·微服务)【知识·技术】.md",
+          "file": "12-架构分层(业务·应用·技术·数据·微服务)【知识·技术】.Word.docx",
           "title": "架构分层(业务·应用·技术·数据·微服务)",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
           "previewable": true,
-          "knowledgeType": "技术"
+          "knowledgeType": "技术",
+          "previewHtml": "12-架构分层(业务·应用·技术·数据·微服务)【知识·技术】.Word.html",
+          "sourceMarkdown": "12-架构分层(业务·应用·技术·数据·微服务)【知识·技术】.md"
         },
         {
           "file": "2-调研框架SOP【知识·调研】.docx",
@@ -66,44 +76,63 @@
           "previewHtml": "2-调研框架SOP【知识·调研】.html"
         },
         {
-          "file": "3-调研话术卡【知识·调研】.md",
+          "file": "3-调研话术卡【知识·调研】.Word.docx",
           "title": "调研话术卡",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
           "previewable": true,
-          "knowledgeType": "调研"
+          "knowledgeType": "调研",
+          "previewHtml": "3-调研话术卡【知识·调研】.Word.html",
+          "sourceMarkdown": "3-调研话术卡【知识·调研】.md"
         },
         {
-          "file": "4-FDE技术基础【知识·技术】.md",
+          "file": "13-国家招投标项目调研【知识·调研】.Word.docx",
+          "title": "国家招投标项目调研",
+          "type": "docx",
+          "category": "knowledge",
+          "previewable": true,
+          "knowledgeType": "调研",
+          "previewHtml": "13-国家招投标项目调研【知识·调研】.Word.html"
+        },
+        {
+          "file": "4-FDE技术基础【知识·技术】.Word.docx",
           "title": "FDE技术基础",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
           "previewable": true,
-          "knowledgeType": "技术"
+          "knowledgeType": "技术",
+          "previewHtml": "4-FDE技术基础【知识·技术】.Word.html",
+          "sourceMarkdown": "4-FDE技术基础【知识·技术】.md"
         },
         {
-          "file": "5-SDR数据基座【知识·技术】.md",
+          "file": "5-SDR数据基座【知识·技术】.Word.docx",
           "title": "SDR数据基座",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
           "previewable": true,
-          "knowledgeType": "技术"
+          "knowledgeType": "技术",
+          "previewHtml": "5-SDR数据基座【知识·技术】.Word.html",
+          "sourceMarkdown": "5-SDR数据基座【知识·技术】.md"
         },
         {
-          "file": "6-大数据能力与医疗数据中台【知识·技术】.md",
+          "file": "6-大数据能力与医疗数据中台【知识·技术】.Word.docx",
           "title": "大数据能力与医疗数据中台",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
           "previewable": true,
-          "knowledgeType": "技术"
+          "knowledgeType": "技术",
+          "previewHtml": "6-大数据能力与医疗数据中台【知识·技术】.Word.html",
+          "sourceMarkdown": "6-大数据能力与医疗数据中台【知识·技术】.md"
         },
         {
-          "file": "7-纳米Work企业智能体平台【知识·产品】.md",
+          "file": "7-纳米Work企业智能体平台【知识·产品】.Word.docx",
           "title": "纳米Work企业智能体平台",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
           "previewable": true,
-          "knowledgeType": "产品"
+          "knowledgeType": "产品",
+          "previewHtml": "7-纳米Work企业智能体平台【知识·产品】.Word.html",
+          "sourceMarkdown": "7-纳米Work企业智能体平台【知识·产品】.md"
         },
         {
           "file": "8-SDR功能及相关工作规范【知识·技术】.docx",
@@ -115,16 +144,18 @@
           "previewHtml": "8-SDR功能及相关工作规范【知识·技术】.html"
         },
         {
-          "file": "9-医疗智能体一体化架构【知识·技术】.md",
+          "file": "9-医疗智能体一体化架构【知识·技术】.Word.docx",
           "title": "医疗智能体一体化架构",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
           "previewable": true,
-          "knowledgeType": "技术"
+          "knowledgeType": "技术",
+          "previewHtml": "9-医疗智能体一体化架构【知识·技术】.Word.html",
+          "sourceMarkdown": "9-医疗智能体一体化架构【知识·技术】.md"
         }
       ],
       "counts": {
-        "knowledge": 12,
+        "knowledge": 13,
         "deliverable": 0
       }
     },
@@ -136,11 +167,13 @@
       "dir": "02",
       "items": [
         {
-          "file": "0-阶段二规范说明.md",
+          "file": "0-阶段二规范说明.Word.docx",
           "title": "阶段二规范说明",
-          "type": "md",
+          "type": "docx",
           "category": "spec",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "0-阶段二规范说明.Word.html",
+          "sourceMarkdown": "0-阶段二规范说明.md"
         },
         {
           "file": "1-产品原型设计规范【知识】.docx",
@@ -159,11 +192,13 @@
           "previewHtml": "2-需求与数据对接确认表【交付】（含组织关系）.html"
         },
         {
-          "file": "3-产品原型Demo【交付】.md",
+          "file": "3-产品原型Demo【交付】.Word.docx",
           "title": "产品原型Demo",
-          "type": "md",
+          "type": "docx",
           "category": "deliverable",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "3-产品原型Demo【交付】.Word.html",
+          "sourceMarkdown": "3-产品原型Demo【交付】.md"
         },
         {
           "file": "3-AI需求能力清单【交付】.docx",
@@ -187,11 +222,13 @@
       "dir": "03",
       "items": [
         {
-          "file": "0-阶段三规范说明.md",
+          "file": "0-阶段三规范说明.Word.docx",
           "title": "阶段三规范说明",
-          "type": "md",
+          "type": "docx",
           "category": "spec",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "0-阶段三规范说明.Word.html",
+          "sourceMarkdown": "0-阶段三规范说明.md"
         },
         {
           "file": "1-智能体设计表【交付】.docx",
@@ -202,11 +239,13 @@
           "previewHtml": "1-智能体设计表【交付】.html"
         },
         {
-          "file": "1-智能体设计表【交付】.md",
+          "file": "1-智能体设计表【交付】.Word.docx",
           "title": "智能体设计表",
-          "type": "md",
+          "type": "docx",
           "category": "deliverable",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "1-智能体设计表【交付】.Word.html",
+          "sourceMarkdown": "1-智能体设计表【交付】.md"
         },
         {
           "file": "10-AB测试标准模板【知识】.docx",
@@ -217,11 +256,13 @@
           "previewHtml": "10-AB测试标准模板【知识】.html"
         },
         {
-          "file": "10-AB测试标准模板【知识】.md",
+          "file": "10-AB测试标准模板【知识】.Word.docx",
           "title": "AB测试标准模板",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "10-AB测试标准模板【知识】.Word.html",
+          "sourceMarkdown": "10-AB测试标准模板【知识】.md"
         },
         {
           "file": "11-知识库配置标准模板【知识】.docx",
@@ -240,11 +281,13 @@
           "previewHtml": "12-Eval评测标准模板【知识】.html"
         },
         {
-          "file": "12-Eval评测标准模板【知识】.md",
+          "file": "12-Eval评测标准模板【知识】.Word.docx",
           "title": "Eval评测标准模板",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "12-Eval评测标准模板【知识】.Word.html",
+          "sourceMarkdown": "12-Eval评测标准模板【知识】.md"
         },
         {
           "file": "2-需求最终确认表【交付】.docx",
@@ -255,11 +298,13 @@
           "previewHtml": "2-需求最终确认表【交付】.html"
         },
         {
-          "file": "3-产品实施计划表【交付】.md",
+          "file": "3-产品实施计划表【交付】.Word.docx",
           "title": "产品实施计划表",
-          "type": "md",
+          "type": "docx",
           "category": "deliverable",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "3-产品实施计划表【交付】.Word.html",
+          "sourceMarkdown": "3-产品实施计划表【交付】.md"
         },
         {
           "file": "4-业务数据口径模板【研发交付】.docx",
@@ -270,18 +315,22 @@
           "previewHtml": "4-业务数据口径模板【研发交付】.html"
         },
         {
-          "file": "4-业务数据口径模板【研发交付】.md",
+          "file": "4-业务数据口径模板【研发交付】.Word.docx",
           "title": "业务数据口径模板",
-          "type": "md",
+          "type": "docx",
           "category": "deliverable",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "4-业务数据口径模板【研发交付】.Word.html",
+          "sourceMarkdown": "4-业务数据口径模板【研发交付】.md"
         },
         {
-          "file": "5-知识库配置标准模板【知识】.md",
+          "file": "5-知识库配置标准模板【知识】.Word.docx",
           "title": "知识库配置标准模板",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "5-知识库配置标准模板【知识】.Word.html",
+          "sourceMarkdown": "5-知识库配置标准模板【知识】.md"
         },
         {
           "file": "5-PRD【交付】.docx",
@@ -300,11 +349,13 @@
           "previewHtml": "6-产品原型Demo【交付】.html"
         },
         {
-          "file": "6-提示词工程标准模板【知识】.md",
+          "file": "6-提示词工程标准模板【知识】.Word.docx",
           "title": "提示词工程标准模板",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "6-提示词工程标准模板【知识】.Word.html",
+          "sourceMarkdown": "6-提示词工程标准模板【知识】.md"
         },
         {
           "file": "7-技能Skill标准模板【知识】.docx",
@@ -315,11 +366,13 @@
           "previewHtml": "7-技能Skill标准模板【知识】.html"
         },
         {
-          "file": "7-技能Skill标准模板【知识】.md",
+          "file": "7-技能Skill标准模板【知识】.Word.docx",
           "title": "技能Skill标准模板",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "7-技能Skill标准模板【知识】.Word.html",
+          "sourceMarkdown": "7-技能Skill标准模板【知识】.md"
         },
         {
           "file": "8-提示词工程标准模板【知识】.docx",
@@ -338,11 +391,13 @@
           "previewHtml": "9-连接器标准模板【知识】.html"
         },
         {
-          "file": "9-连接器标准模板【知识】.md",
+          "file": "9-连接器标准模板【知识】.Word.docx",
           "title": "连接器标准模板",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "9-连接器标准模板【知识】.Word.html",
+          "sourceMarkdown": "9-连接器标准模板【知识】.md"
         }
       ],
       "counts": {
@@ -358,39 +413,49 @@
       "dir": "04",
       "items": [
         {
-          "file": "0-阶段四规范说明.md",
+          "file": "0-阶段四规范说明.Word.docx",
           "title": "阶段四规范说明",
-          "type": "md",
+          "type": "docx",
           "category": "spec",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "0-阶段四规范说明.Word.html",
+          "sourceMarkdown": "0-阶段四规范说明.md"
         },
         {
-          "file": "1-纳米Work工作台实现规范【知识】.md",
+          "file": "1-纳米Work工作台实现规范【知识】.Word.docx",
           "title": "纳米Work工作台实现规范",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "1-纳米Work工作台实现规范【知识】.Word.html",
+          "sourceMarkdown": "1-纳米Work工作台实现规范【知识】.md"
         },
         {
-          "file": "2-纳米Work工作台开发标准【知识】.md",
+          "file": "2-纳米Work工作台开发标准【知识】.Word.docx",
           "title": "纳米Work工作台开发标准",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "2-纳米Work工作台开发标准【知识】.Word.html",
+          "sourceMarkdown": "2-纳米Work工作台开发标准【知识】.md"
         },
         {
-          "file": "3-纳米Work智能体接入规范【知识】.md",
+          "file": "3-纳米Work智能体接入规范【知识】.Word.docx",
           "title": "纳米Work智能体接入规范",
-          "type": "md",
+          "type": "docx",
           "category": "knowledge",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "3-纳米Work智能体接入规范【知识】.Word.html",
+          "sourceMarkdown": "3-纳米Work智能体接入规范【知识】.md"
         },
         {
-          "file": "4-纳米Work项目进度表【交付】.md",
+          "file": "4-纳米Work项目进度表【交付】.Word.docx",
           "title": "纳米Work项目进度表",
-          "type": "md",
+          "type": "docx",
           "category": "deliverable",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "4-纳米Work项目进度表【交付】.Word.html",
+          "sourceMarkdown": "4-纳米Work项目进度表【交付】.md"
         }
       ],
       "counts": {
@@ -406,11 +471,13 @@
       "dir": "05",
       "items": [
         {
-          "file": "0-阶段五规范说明.md",
+          "file": "0-阶段五规范说明.Word.docx",
           "title": "阶段五规范说明",
-          "type": "md",
+          "type": "docx",
           "category": "spec",
-          "previewable": true
+          "previewable": true,
+          "previewHtml": "0-阶段五规范说明.Word.html",
+          "sourceMarkdown": "0-阶段五规范说明.md"
         },
         {
           "file": "1-客户反馈跟踪表【交付】.docx",

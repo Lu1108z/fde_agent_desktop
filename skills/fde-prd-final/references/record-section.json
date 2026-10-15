@@ -1,0 +1,27 @@
+{
+  "stage3": {
+    "prdFinal": {
+      "document": "stage3/prd.md",
+      "version": "",
+      "requirementsVersion": "",
+      "goalLayer": "",
+      "featureLayer": "",
+      "interactionLayer": "",
+      "features": [
+        {
+          "id": "",
+          "name": "",
+          "page": "",
+          "description": "",
+          "priority": "",
+          "requirementIds": [],
+          "agentId": "",
+          "agentNoneReason": "",
+          "dataDatasetIds": [],
+          "noDataReason": ""
+        }
+      ],
+      "reviewEvidence": ""
+    }
+  }
+}

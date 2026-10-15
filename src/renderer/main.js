@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import App from './App.vue';
+import UiSelect from './components/common/UiSelect.vue';
 import router from './router';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './styles/tailwind.css';
@@ -17,6 +18,6 @@ if (!window.api) {
 // 挂载前套用已保存的主题，避免首帧用默认色再跳变
 initTheme();
 
-createApp(App).use(router).mount('#app');
+createApp(App).component('UiSelect', UiSelect).use(router).mount('#app');
 
 

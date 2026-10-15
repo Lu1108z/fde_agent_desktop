@@ -431,9 +431,7 @@
               </div>
               <div>
                 <label class="ed-label">分类</label>
-                <select v-model="form.category" class="ed-input">
-                  <option v-for="c in businessCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
-                </select>
+                <UiSelect field v-model="form.category" class="ed-input" :options="[...(businessCategories).map((c) => ({ value: c.id, label: String(c.name) }))]" />
               </div>
               <div>
                 <label class="ed-label">图标名（fa 图标，无 fa- 前缀）</label>

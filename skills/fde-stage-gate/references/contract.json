@@ -1,0 +1,498 @@
+{
+  "contractVersion": "0.1",
+  "status": "design-baseline",
+  "authority": [
+    "fde-handbook/02/0-阶段二规范说明.md",
+    "fde-handbook/03/0-阶段三规范说明.md",
+    "fde-handbook/02/正式交付模板",
+    "fde-handbook/03/正式交付模板"
+  ],
+  "principles": {
+    "countBusinessDeliverablesNotFileFormats": true,
+    "keepSourceAndVersionForEveryFact": true,
+    "doNotCopyExampleProjectFacts": true,
+    "doNotInventSignaturesSqlOrEvaluationResults": true,
+    "stage2AgentAndDataDependencies": "拟定内容可标待确认并记录责任人；阶段三验收前必须定稿",
+    "stage3EvaluationThreshold": "取项目已确认的验收口径；手册中的通常≥90%不是统一替代值",
+    "pendingAtStage3Gate": "block"
+  },
+  "stages": [
+    {
+      "stage": 2,
+      "deliverableIds": [
+        "S2-1",
+        "S2-2",
+        "S2-3"
+      ],
+      "workflow": [
+        "首次启动及组织关系",
+        "逐轮需求与数据对接",
+        "AI能力清单",
+        "原型",
+        "演示及需求收敛"
+      ],
+      "gate": [
+        "三类交付均存在且版本关联一致",
+        "每轮对接有当轮确认记录，未确认事项单独列出",
+        "AI能力与需求存在对应关系且效果指标可测量",
+        "原型主流程可交互并有业务方方向认可证据",
+        "六字段中的拟定关联智能体和数据依赖明确标待确认及责任人"
+      ]
+    },
+    {
+      "stage": 3,
+      "deliverableIds": [
+        "S3-1",
+        "S3-2",
+        "S3-3",
+        "S3-4",
+        "S3-5",
+        "S3-6"
+      ],
+      "workflow": [
+        "需求最终确认",
+        "实施与数据口径及PRD初稿",
+        "智能体矩阵与逐个设计",
+        "PRD、数据口径与原型定稿",
+        "实际评测及阶段验收"
+      ],
+      "gate": [
+        "六件交付均存在且归属同一已签需求版本",
+        "需求总签有真实有效的确认凭据",
+        "关联智能体、数据依赖和数据口径无待确认项",
+        "智能体矩阵覆盖已签需求，输入输出无断点",
+        "有真实Eval结果，达到项目约定验收线",
+        "定稿PRD、原型、智能体设计和数据口径相互一致",
+        "原型本体已归档且主流程运行检查通过"
+      ]
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "S2-1",
+      "stage": 2,
+      "name": "需求与数据对接确认表（含组织关系）",
+      "kind": "document",
+      "projectOutputs": [
+        "stage2/contact-form.md"
+      ],
+      "sourceTemplates": [
+        "fde-handbook/02/2-需求与数据对接确认表【交付】（含组织关系）.docx"
+      ],
+      "input": [
+        "客户资料",
+        "每轮会议纪要或沟通记录"
+      ],
+      "required": {
+        "project": [
+          "项目名称",
+          "客户单位",
+          "本轮日期与轮次",
+          "参会人员"
+        ],
+        "organization": [
+          "关键人及项目角色",
+          "决策人",
+          "业务负责人",
+          "操作用户",
+          "信息科或数据联系人"
+        ],
+        "perRound": [
+          "本轮议题与结论",
+          "业务目标",
+          "场景",
+          "需求编号及来源",
+          "业务流程节点的角色/输入/处理/输出/涉及系统/异常",
+          "数据项/源系统/可提供性/责任人",
+          "验收指标初稿",
+          "待确认事项",
+          "当轮确认凭据或状态"
+        ]
+      },
+      "machineChecks": [
+        "轮次和需求编号唯一",
+        "需求来源可定位到轮次",
+        "每个业务流程节点有输入与输出",
+        "每条数据依赖有来源系统和责任人",
+        "待确认项有责任人且不得标已确认"
+      ],
+      "humanChecks": [
+        "核对组织关系及决策人",
+        "核对每轮沟通结论与确认凭据"
+      ]
+    },
+    {
+      "id": "S2-2",
+      "stage": 2,
+      "name": "AI需求能力清单",
+      "kind": "document",
+      "projectOutputs": [
+        "stage2/ai-capability.md"
+      ],
+      "sourceTemplates": [
+        "fde-handbook/02/3-AI需求能力清单【交付】.docx"
+      ],
+      "input": [
+        "S2-1"
+      ],
+      "required": {
+        "perCapability": [
+          "能力编号与名称",
+          "能力描述",
+          "关联需求编号",
+          "输入",
+          "输出",
+          "效果指标及目标值",
+          "验收方法与判定方",
+          "数据依赖",
+          "优先级",
+          "异常处理或人工兜底"
+        ],
+        "summary": [
+          "需求到AI能力映射",
+          "本期实施范围",
+          "测试数据集或待准备说明"
+        ]
+      },
+      "machineChecks": [
+        "能力编号唯一",
+        "关联需求编号在S2-1存在",
+        "效果指标包含可核验目标值",
+        "本期AI需求均有对应能力或明确排除理由"
+      ],
+      "humanChecks": [
+        "业务方确认能力范围与效果目标",
+        "确认验收方法和判定方"
+      ]
+    },
+    {
+      "id": "S2-3",
+      "stage": 2,
+      "name": "产品原型 Demo",
+      "kind": "artifact-package",
+      "projectOutputs": [
+        "prototype/"
+      ],
+      "sourceTemplates": [
+        "fde-handbook/02/1-产品原型设计规范【知识】.docx",
+        "fde-handbook/02/3-产品原型Demo【交付】.md"
+      ],
+      "input": [
+        "S2-1",
+        "S2-2"
+      ],
+      "required": {
+        "perFeatureSixFields": [
+          "功能名称",
+          "所属页面",
+          "功能描述",
+          "优先级",
+          "关联智能体",
+          "数据依赖"
+        ],
+        "prototype": [
+          "可打开的原型本体",
+          "页面清单",
+          "核心场景及主流程",
+          "版本与演示说明"
+        ]
+      },
+      "machineChecks": [
+        "六字段列全部存在",
+        "每项功能对应已登记需求和原型页面",
+        "关联智能体与数据依赖若属拟定必须标待确认及责任人",
+        "原型入口存在且内部页面链接可达"
+      ],
+      "humanChecks": [
+        "演示核心流程并记录业务方方向认可",
+        "评审功能范围是否覆盖真实场景"
+      ]
+    },
+    {
+      "id": "S3-1",
+      "stage": 3,
+      "name": "智能体设计表",
+      "kind": "document-package",
+      "projectOutputs": [
+        "stage3/agent-design.md",
+        "stage3/agents/"
+      ],
+      "sourceTemplates": [
+        "fde-handbook/03/1-智能体设计表【交付】.docx",
+        "fde-handbook/03/1-智能体设计表【交付】.md"
+      ],
+      "input": [
+        "S3-2",
+        "S2-2",
+        "S2-3"
+      ],
+      "required": {
+        "matrix": [
+          "业务链路",
+          "智能体清单",
+          "每个智能体负责的环节",
+          "上下游输入输出",
+          "需求与功能关联"
+        ],
+        "perAgent": [
+          "身份卡与量化成功标准",
+          "Workflow",
+          "节点输入处理输出",
+          "Playbook",
+          "边界",
+          "异常兜底",
+          "六组件索引",
+          "提示词全文",
+          "知识库配置",
+          "技能清单",
+          "连接器及数据权限",
+          "记忆策略",
+          "A/B记录或不适用说明",
+          "实际Eval结果与验收线",
+          "业务专家确认"
+        ]
+      },
+      "machineChecks": [
+        "一个智能体一份设计",
+        "已签需求和功能均被矩阵覆盖或有明确不适用理由",
+        "上下游输入输出类型可衔接",
+        "所有引用的数据集在S3-4存在",
+        "Eval结果和验收线均有数值及证据引用",
+        "不把示例A/B结果当实际测试"
+      ],
+      "humanChecks": [
+        "业务专家审查边界和高风险转人工",
+        "设计负责人审查可实施性",
+        "核验实际Eval与签字证据"
+      ]
+    },
+    {
+      "id": "S3-2",
+      "stage": 3,
+      "name": "需求最终确认表",
+      "kind": "document",
+      "projectOutputs": [
+        "stage3/final-req.md"
+      ],
+      "sourceTemplates": [
+        "fde-handbook/03/2-需求最终确认表【交付】.docx"
+      ],
+      "input": [
+        "S2-1",
+        "S2-2",
+        "S2-3"
+      ],
+      "required": {
+        "document": [
+          "项目概述",
+          "核心痛点",
+          "目标场景",
+          "AI赋能方案",
+          "最终需求编号与范围",
+          "功能及非目标",
+          "验收口径",
+          "配合与约束",
+          "版本",
+          "相关方确认记录"
+        ]
+      },
+      "machineChecks": [
+        "最终需求编号唯一且来源可追溯",
+        "阶段二未决事项均已处理或明确排除",
+        "签字版本与后续交付所用基线版本一致"
+      ],
+      "humanChecks": [
+        "客户及相关方确认最终需求和验收口径",
+        "核实签字或有效确认凭据，AI不得代签"
+      ]
+    },
+    {
+      "id": "S3-3",
+      "stage": 3,
+      "name": "产品实施计划表",
+      "kind": "document",
+      "projectOutputs": [
+        "stage3/impl-plan.md"
+      ],
+      "sourceTemplates": [
+        "fde-handbook/03/3-产品实施计划表【交付】.md",
+        "fde-handbook/03/3-产品实施计划表【交付】.xlsx"
+      ],
+      "input": [
+        "S3-2",
+        "环境与资源确认资料"
+      ],
+      "required": {
+        "perTask": [
+          "任务编号",
+          "阶段",
+          "任务内容",
+          "负责人",
+          "计划开始与完成",
+          "工期",
+          "前置依赖",
+          "交付物",
+          "状态"
+        ],
+        "plan": [
+          "前期调研与环境准备",
+          "SDR部署或复用安排",
+          "产品及智能体实施",
+          "里程碑与验收标准"
+        ]
+      },
+      "machineChecks": [
+        "任务编号唯一",
+        "前置依赖指向现有任务且无循环",
+        "完成日期不早于开始日期",
+        "里程碑有负责人和交付物",
+        "示例日期与人名未作为默认事实保留"
+      ],
+      "humanChecks": [
+        "负责人和执行方确认排期与资源"
+      ]
+    },
+    {
+      "id": "S3-4",
+      "stage": 3,
+      "name": "业务数据口径模板（研发交付）",
+      "kind": "document",
+      "projectOutputs": [
+        "stage3/data-metric.md"
+      ],
+      "sourceTemplates": [
+        "fde-handbook/03/4-业务数据口径模板【研发交付】.docx",
+        "fde-handbook/03/4-业务数据口径模板【研发交付】.md"
+      ],
+      "input": [
+        "S3-2",
+        "信息科确认的数据源与SQL",
+        "SDR标准库版本"
+      ],
+      "required": {
+        "global": [
+          "数据源清单与责任人",
+          "过滤",
+          "去重",
+          "时间口径",
+          "单位与精度",
+          "权限与敏感分级"
+        ],
+        "perDataset": [
+          "数据集编码和名称",
+          "标准库或新增",
+          "粒度与主键",
+          "来源系统",
+          "更新频率",
+          "责任人",
+          "SQL或标准库编码与版本"
+        ],
+        "perMetric": [
+          "指标名称和类型",
+          "计算口径",
+          "来源库表及字段",
+          "取数SQL",
+          "样例值与核对方"
+        ]
+      },
+      "machineChecks": [
+        "数据集编码唯一",
+        "每个指标引用已登记数据集或明确新增数据集",
+        "新增字段与SQL最终输出字段一致",
+        "每个数据指标有来源表和SQL",
+        "待信息科提供、示意或空SQL均阻断阶段三验收"
+      ],
+      "humanChecks": [
+        "信息科核对物理库表字段和提供的SQL",
+        "研发与业务方核对指标口径及权限"
+      ]
+    },
+    {
+      "id": "S3-5",
+      "stage": 3,
+      "name": "PRD定稿",
+      "kind": "document",
+      "projectOutputs": [
+        "stage3/prd.md"
+      ],
+      "sourceTemplates": [
+        "fde-handbook/03/2.4-产品需求文档PRD(模板)【交付】.md",
+        "fde-handbook/03/5-PRD【交付】.docx"
+      ],
+      "input": [
+        "S3-2",
+        "S2-3"
+      ],
+      "required": {
+        "document": [
+          "目标层",
+          "功能层",
+          "交互层",
+          "业务逻辑及异常边界",
+          "功能六字段清单",
+          "数据字典",
+          "非功能要求",
+          "需求覆盖对照",
+          "版本与定稿状态"
+        ]
+      },
+      "machineChecks": [
+        "功能与已签需求逐项对应",
+        "关联智能体在S3-1矩阵存在",
+        "数据依赖在S3-4有口径或登记",
+        "六字段无待确认项",
+        "原型页面在S3-6存在",
+        "无示例项目名称或数值残留"
+      ],
+      "humanChecks": [
+        "产品负责人和业务方评审需求覆盖及交互方案"
+      ]
+    },
+    {
+      "id": "S3-6",
+      "stage": 3,
+      "name": "产品原型Demo定稿",
+      "kind": "artifact-package",
+      "projectOutputs": [
+        "stage3/prototype-final.md",
+        "stage3/prototype/"
+      ],
+      "outputPathStatus": "proposed-app-change-required",
+      "sourceTemplates": [
+        "fde-handbook/03/6-产品原型Demo【交付】.docx"
+      ],
+      "input": [
+        "S2-3",
+        "S3-2",
+        "S3-5"
+      ],
+      "required": {
+        "package": [
+          "可运行原型本体或有效平台链接",
+          "归档版本",
+          "页面清单",
+          "需求及PRD版本",
+          "主流程运行检查结果",
+          "演示确认记录"
+        ]
+      },
+      "machineChecks": [
+        "原型入口可打开",
+        "页面与资源链接可达",
+        "核心需求均有页面或流程映射",
+        "原型版本与已签需求及定稿PRD一致",
+        "说明文档不能单独算原型本体"
+      ],
+      "humanChecks": [
+        "业务方走查核心流程并确认定稿版本"
+      ]
+    }
+  ],
+  "crossDocumentChecks": [
+    "S2-1需求编号须被S2-2能力及S2-3功能引用或说明排除原因",
+    "S3-2最终需求须与S3-5功能、S3-6原型、S3-1智能体矩阵对应",
+    "S3-5六字段中的关联智能体须存在于S3-1，数据依赖须能追溯到S3-4",
+    "S3-1的Eval指标须对应S3-2约定的验收口径，不得凭模板示例自行设定",
+    "阶段三任何必填待确认项、缺失证据或跨文档矛盾均阻断放行"
+  ]
+}

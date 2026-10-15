@@ -1,0 +1,14 @@
+{
+  "stage3": {
+    "prototypeFinal": {
+      "indexDocument": "stage3/prototype-final.md",
+      "entry": "stage3/prototype/index.html",
+      "version": "",
+      "requirementsVersion": "",
+      "prdVersion": "",
+      "featureIds": [],
+      "smokeTestEvidence": "",
+      "businessApprovalEvidence": ""
+    }
+  }
+}

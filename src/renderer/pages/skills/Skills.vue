@@ -1,16 +1,7 @@
 <template>
-  <div class="flex h-full min-h-0 sk-bg">
-    <!-- ── 左侧:技能分组树 ────────────────────────── -->
-    <aside class="sk-tree shrink-0 flex flex-col border-r">
-      <div class="px-3 pt-3.5 pb-3 border-b border-slate-100">
-        <div class="flex items-center gap-2">
-          <span class="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-            <i class="fa-solid fa-brain text-white text-[11px]"></i>
-          </span>
-          <span class="text-[12.5px] font-semibold text-slate-700">技能体系</span>
-        </div>
-      </div>
-
+  <div class="resource-browser sk-bg">
+    <aside class="resource-sidebar flex flex-col">
+      <div class="resource-sidebar-heading">技能体系</div>
       <div class="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
         <button
           class="tree-node"
@@ -31,7 +22,9 @@
           :key="g.id"
           class="tree-node"
           :class="active === g.id ? 'tree-node--active' : ''"
-          @click="active = g.id"
+          @click="active = g.id; groupContextMenu = null"
+          @contextmenu.prevent.stop="openGroupContextMenu($event, g)"
+          @keydown.shift.f10.prevent="openGroupContextMenu($event, g)"
         >
           <span class="tree-badge" :style="{ background: accent(g.color || groupColor(g.id)) }">
             <i :class="faIcon(g.icon, 'toolbox') + ' text-[10px]'" />
@@ -46,114 +39,77 @@
       </div>
     </aside>
 
-    <!-- ── 右侧:技能卡片 ────────────────────────── -->
-    <div class="flex-1 min-w-0 overflow-y-auto">
-      <div class="px-6 py-6 lg:px-8">
-        <PageHero
-          :title="activeName"
-          :count="filtered.length"
-          description="AI 内置的真实技能包 · 覆盖产品文档 / 原型 / 出图 / 陪练全链路"
-          icon="fa-solid fa-brain"
-          :image="heroImage"
-          image-class="page-hero__image--center"
-        >
-          <template #actions>
-            <button @click="refresh" :disabled="importing" class="btn-sm"><i class="fa-solid fa-rotate"></i>刷新</button>
-            <button @click="openHub" class="btn-sm"><i class="fa-solid fa-cloud-arrow-down"></i>技能中心</button>
-            <button @click="startImport" :disabled="importing" class="btn-sm-pri"><i class="fa-solid fa-file-zipper"></i>导入技能包</button>
-          </template>
-        </PageHero>
-
-        <div class="flex items-center gap-3 mb-5">
-          <div class="sk-search">
-            <i class="fa-solid fa-magnifying-glass sk-search__icon"></i>
-            <input
-              v-model="keyword"
-              type="text"
-              placeholder="搜索技能名称 / 描述 / 标识…"
-              class="sk-search__input"
-            />
-            <button v-if="keyword" @click="keyword = ''" class="sk-search__clear" title="清空">
-              <i class="fa-solid fa-circle-xmark"></i>
-            </button>
-          </div>
-          <span v-if="keyword.trim()" class="text-[12.5px] text-slate-400 shrink-0">
-            匹配 <b class="text-slate-600">{{ filtered.length }}</b> 项
-          </span>
-        </div>
-
-        <div v-if="active === 'all'" class="grid grid-cols-4 gap-4 mb-5">
-          <div v-for="s in statCards" :key="s.label" class="stat-card">
-            <div class="stat-icon" :style="{ background: s.bg, boxShadow: `0 6px 16px color-mix(in srgb, ${s.bg} 33%, transparent)` }">
-              <i :class="'fa-solid ' + s.icon"></i>
-            </div>
-            <div>
-              <div class="text-[22px] font-bold text-slate-800 leading-none tracking-tight">{{ s.value }}</div>
-              <div class="text-[11px] text-slate-400 mt-1.5">{{ s.label }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="filtered.length" class="sk-grid">
-          <div
-            v-for="sk in pagedItems"
-            :key="sk.id"
-            class="sk-card text-left group"
-            role="button"
-            tabindex="0"
-            @click="openSkill(sk)"
-            @keydown.enter.self="openSkill(sk)"
-            @keydown.space.prevent.self="openSkill(sk)"
-          >
-            <div class="sk-card__accent" :style="{ background: accent(sk.color) }"></div>
-            <div class="flex items-start gap-3">
-              <span class="sk-icon" :style="{ background: accent(sk.color), boxShadow: `0 6px 16px color-mix(in srgb, ${accent(sk.color)} 33%, transparent)` }">
-                <i :class="faIcon(sk.icon, 'cube')"></i>
-              </span>
-              <div class="flex-1 min-w-0">
-                <h3 class="text-[13.5px] font-semibold text-slate-800 truncate group-hover:text-blue-700 transition-colors">{{ sk.name }}</h3>
-                <div class="flex items-center gap-1.5 mt-1">
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{{ groupName(sk.group) }}</span>
-                  <span v-if="sk.generated" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 font-medium"><i class="fa-solid fa-wand-magic-sparkles mr-0.5"></i>自动生成</span>
-                  <span v-if="sk.version" class="text-[10px] text-slate-400">v{{ sk.version }}</span>
-                </div>
-              </div>
-            </div>
-            <p class="text-[12px] text-slate-500 mt-3 leading-relaxed line-clamp-2">{{ sk.summary || '——' }}</p>
-            <div class="sk-card__footer pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-              <span class="font-mono min-w-0 truncate">{{ sk.id }}</span>
-              <div class="sk-card__actions flex items-center gap-2 shrink-0">
-                <button type="button" @click.stop="openSkill(sk)" class="card-action card-action--primary"><i class="fa-solid fa-eye"></i>查看</button>
-                <button type="button" @click.stop="deleteSkill(sk)" :disabled="deleting" class="card-action card-action--danger"><i class="fa-solid fa-trash"></i>删除</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-else class="text-center py-20 text-slate-300">
-          <i class="fa-solid fa-inbox text-5xl mb-3"></i>
-          <p class="text-[13px]">该分组下暂无技能</p>
-        </div>
-
-        <!-- 分页条 -->
-        <div v-if="totalPages > 1" class="flex items-center justify-center gap-1 mt-6">
-          <button class="pgn" :disabled="currentPage <= 1" @click="currentPage--">
-            <i class="fa-solid fa-chevron-left text-[10px]"></i>
-          </button>
-          <button
-            v-for="p in totalPages" :key="p"
-            class="pgn" :class="p === currentPage ? 'pgn--cur' : ''"
-            @click="currentPage = p"
-          >{{ p }}</button>
-          <button class="pgn" :disabled="currentPage >= totalPages" @click="currentPage++">
-            <i class="fa-solid fa-chevron-right text-[10px]"></i>
-          </button>
+    <div class="resource-workspace">
+      <div class="resource-toolbar">
+        <label class="resource-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input v-model="keyword" aria-label="搜索技能" placeholder="搜索技能、描述或标识…" /></label>
+        <div class="resource-toolbar-actions">
+          <button @click="refresh" :disabled="refreshing || importing" class="btn-sm" title="刷新技能"><i class="fa-solid fa-rotate" :class="{ 'fa-spin': refreshing }"></i></button>
+          <button @click="startImport" :disabled="importing" class="btn-sm-pri"><i class="fa-solid fa-plus"></i>导入技能包</button>
+          <button @click="openHub" class="btn-sm"><i class="fa-solid fa-store"></i>技能中心</button>
         </div>
       </div>
+      <div class="resource-body">
+        <main class="resource-center">
+          <div class="resource-title"><span class="resource-title-icon"><i class="fa-solid fa-brain"></i></span><div><h1>{{ activeName }}<span>共 {{ filtered.length }} 个</span></h1><p>AI 内置的真实技能包 · 覆盖产品文档 / 原型 / 出图 / 陪练全链路</p></div></div>
+          <div class="resource-filters">
+            <button class="resource-filter" :class="{ 'is-active': active === 'all' && skillFilter === 'all' }" @click="active = 'all'; skillFilter = 'all'">全部 <span>{{ skills.length }}</span></button>
+            <button class="resource-filter" :class="{ 'is-active': viewMode === 'group' }" @click="active = 'all'; skillFilter = 'all'; viewMode = 'group'">能力分组 <span>{{ groups.length }}</span></button>
+            <button class="resource-filter" :class="{ 'is-active': active === 'product-doc' }" @click="active = 'product-doc'; skillFilter = 'all'">产品文档 <span>{{ skills.filter(s => s.group === 'product-doc').length }}</span></button>
+            <button class="resource-filter" :class="{ 'is-active': skillFilter === 'visual' }" @click="active = 'all'; skillFilter = 'visual'">出图 / 可视化 <span>{{ skills.filter(s => ['report-image', 'dataviz'].includes(s.group)).length }}</span></button>
+            <div class="resource-view-controls"><UiSelect field v-model="sortOrder" aria-label="技能排序" :options="[{ value: 'default', label: '默认排序' }, { value: 'name', label: '名称排序' }, { value: 'category', label: '分类排序' }]" /><div class="resource-view-toggle"><button :class="{ 'is-active': viewMode === 'list' }" @click="viewMode = 'list'"><i class="fa-solid fa-list mr-1"></i>列表</button><button :class="{ 'is-active': viewMode === 'group' }" @click="viewMode = 'group'"><i class="fa-solid fa-layer-group mr-1"></i>分组</button></div></div>
+          </div>
+          <ResourceList class="skills-readable-list" :show-selection-mark="false" summary-label="能做什么" :items="skillRows" :selected-key="selected?.id || ''" :grouped="viewMode === 'group'" name-label="技能名称" meta-label="版本" @select="openSkill" @action="openSkillActions" />
+          <div v-if="totalPages > 1" class="resource-pagination"><button class="pgn" :disabled="currentPage <= 1" @click="currentPage--"><i class="fa-solid fa-chevron-left"></i></button><button v-for="p in totalPages" :key="p" class="pgn" :class="{ 'pgn--cur': currentPage === p }" @click="currentPage = p">{{ p }}</button><button class="pgn" :disabled="currentPage >= totalPages" @click="currentPage++"><i class="fa-solid fa-chevron-right"></i></button></div>
+        </main>
+        <aside class="resource-detail" aria-label="技能详情">
+          <div v-if="selected" class="resource-detail-scroll">
+            <div class="resource-detail-heading"><span class="resource-icon" :style="{ background: accent(selected.color) }"><i :class="faIcon(selected.icon, 'cube')"></i></span><div class="min-w-0"><h2>{{ selectedPresentation.name }}</h2><span class="resource-tag mt-1">{{ groupName(selected.group) }}</span></div></div>
+            <p class="resource-detail-description">{{ selectedPresentation.purpose }}</p>
+            <dl class="skill-outcomes"><dt>你提供</dt><dd>{{ selectedPresentation.input }}</dd><dt>你得到</dt><dd>{{ selectedPresentation.output }}</dd></dl>
+            <div class="resource-detail-actions"><button class="btn-sm-pri" @click="useSkill"><i class="fa-solid fa-play"></i>立即使用</button><div class="resource-detail-menu"><button class="btn-sm" aria-label="更多技能操作" :aria-expanded="detailMenuOpen" @click="detailMenuOpen = !detailMenuOpen"><i class="fa-solid fa-ellipsis"></i></button><div v-if="detailMenuOpen" class="resource-detail-menu-popover"><button @click="detailMenuOpen = false; startEdit()"><i class="fa-solid fa-pen mr-2"></i>编辑技能</button><button @click="detailMenuOpen = false; openDir(selected)"><i class="fa-solid fa-folder-open mr-2"></i>打开目录</button><button @click="detailMenuOpen = false; deleteSkill(selected)" :disabled="deleting" class="text-red-600"><i class="fa-solid fa-trash mr-2"></i>删除技能</button></div></div></div>
+            <div class="resource-detail-tabs" role="tablist" aria-label="技能详情分类"><button v-for="tab in skillDetailTabs" :key="tab.key" role="tab" :aria-selected="detailTab === tab.key" :class="{ 'is-active': detailTab === tab.key }" @click="detailTab = tab.key">{{ tab.label }}</button></div>
+            <template v-if="detailTab === 'info'">
+              <dl class="resource-detail-info"><dt><i class="fa-solid fa-fingerprint"></i>技能 ID</dt><dd>{{ selected.id }}</dd><dt><i class="fa-regular fa-folder"></i>分类</dt><dd><span class="resource-tag">{{ groupName(selected.group) }}</span></dd><dt><i class="fa-solid fa-box"></i>来源</dt><dd>{{ selected.builtin ? '内置技能' : selected.generated ? '自动生成' : '本地导入' }}</dd><dt><i class="fa-solid fa-code-branch"></i>版本</dt><dd>{{ selected.version ? 'v' + selected.version : '未标注' }}</dd></dl>
+              <div class="resource-detail-section"><h3>分类标签</h3><div class="resource-detail-tags"><span class="resource-tag">{{ groupName(selected.group) }}</span><span class="resource-tag">{{ selected.builtin ? '内置' : '自定义' }}</span></div></div>
+              <div class="resource-detail-section"><h3>相关文档</h3><button class="resource-detail-file" @click="detailTab = 'document'"><i class="fa-regular fa-file-lines text-blue-600"></i>{{ selected.file || 'SKILL.md' }}<i class="fa-solid fa-chevron-right ml-auto text-[10px]"></i></button></div>
+              <div class="resource-detail-section"><h3>调用方式</h3><p>{{ selected.id === 'fde-coach' ? '点击“立即使用”，启动 FDE 教练陪练。' : '点击“立即使用”，在 AI 助手中启动这个技能。' }}</p><code class="mt-2 block rounded-lg bg-blue-50 p-3 text-[11px] text-blue-700">/{{ selected.id }}</code></div>
+            </template>
+            <div v-else-if="loading" class="resource-empty"><i class="fa-solid fa-circle-notch fa-spin"></i><p>正在读取技能…</p></div>
+            <div v-else-if="error" class="resource-empty"><p>{{ error }}</p></div>
+            <div v-else-if="detailTab === 'document'" class="resource-detail-markdown" v-html="rendered"></div>
+            <div v-else-if="skillExamples" class="resource-detail-markdown" v-html="skillExamples"></div>
+            <div v-else class="resource-empty"><p>这份技能暂未单独提供使用示例。<br />可以在“相关文档”中查看完整说明。</p></div>
+          </div>
+          <div v-else class="resource-empty"><i class="fa-solid fa-brain"></i><p>选择一个技能查看详情</p></div>
+        </aside>
+      </div>
+    </div>
+
+    <div v-if="groupContextMenu" class="fixed inset-0 z-[60]" @click.self="groupContextMenu = null" @contextmenu.prevent.self="groupContextMenu = null" @keydown.esc="groupContextMenu = null">
+      <div role="menu" aria-label="分组操作" class="skill-group-context" :style="{ left: groupContextMenu.x + 'px', top: groupContextMenu.y + 'px' }">
+        <button role="menuitem" autofocus @click="requestDeleteGroup(groupContextMenu.group)"><i class="fa-regular fa-trash-can" aria-hidden="true"></i>删除分组</button>
+      </div>
+    </div>
+    <div v-if="deleteGroupTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40" @click.self="!deletingGroup && (deleteGroupTarget = null)">
+      <section role="dialog" aria-modal="true" aria-label="删除技能分组" class="w-[360px] rounded-2xl bg-white p-5 shadow-xl">
+        <h2 class="text-[15px] font-semibold text-slate-800">删除分组「{{ deleteGroupTarget.name }}」？</h2>
+        <p class="mt-3 text-[13px] leading-6 text-slate-600">只移除分组。组内技能会回到原分类或“通用工具”，技能文件会保留。</p>
+        <p v-if="deleteGroupError" role="alert" class="mt-3 text-[12px] text-red-600">{{ deleteGroupError }}</p>
+        <div class="mt-5 flex justify-end gap-2">
+          <button class="btn-sm" :disabled="deletingGroup" @click="deleteGroupTarget = null">取消</button>
+          <button class="btn-sm-pri" :disabled="deletingGroup" @click="confirmDeleteGroup">{{ deletingGroup ? '删除中…' : '删除分组' }}</button>
+        </div>
+      </section>
+    </div>
+    <div v-if="lastDeletedGroup" class="skill-group-undo" role="status">
+      <span>已删除分组「{{ lastDeletedGroup.name }}」</span>
+      <button :disabled="deletingGroup" @click="undoDeleteGroup">撤销</button>
+      <button aria-label="关闭分组删除提示" :disabled="deletingGroup" @click="lastDeletedGroup = null">×</button>
     </div>
 
     <!-- ── 技能说明抽屉 ────────────────────────── -->
     <transition name="drawer">
-      <div v-if="selected" class="fixed inset-0 z-50">
+      <div v-if="selected && editing" class="fixed inset-0 z-50">
         <div class="absolute inset-0 bg-slate-900/40" @click="!editing && (selected = null)"></div>
         <aside
           class="drawer-resizable absolute right-0 top-0 bottom-0 glass-card shadow-2xl flex flex-col"
@@ -215,10 +171,7 @@
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-[12px] font-medium text-slate-600 mb-1.5">分类</label>
-                  <select v-model="form.category"
-                    class="w-full px-3 py-2 rounded-lg border border-slate-200 text-[13px] text-slate-800 glass-card focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
-                    <option v-for="g in SKILL_GROUP_OPTIONS" :key="g.id" :value="g.id">{{ g.name }}</option>
-                  </select>
+                  <UiSelect field v-model="form.category" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-[13px] text-slate-800 glass-card focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" :options="[...(skillGroupOptions).map((g) => ({ value: g.id, label: String(g.name) }))]" />
                 </div>
                 <div>
                   <label class="block text-[12px] font-medium text-slate-600 mb-1.5">图标 <span class="text-slate-400 font-normal">(Font Awesome 名)</span></label>
@@ -313,6 +266,7 @@
                 </div>
 
                 <!-- 空态 -->
+                <div v-else-if="hubError" role="alert" class="flex flex-col items-center justify-center py-20 text-slate-500"><p class="text-[12.5px]">{{ hubError }}</p><button class="btn-sm mt-3" @click="hubResetAndSearch">重新加载</button></div>
                 <div v-else-if="!hubItems.length" class="flex flex-col items-center justify-center py-24 text-slate-300">
                   <i class="fa-solid fa-inbox text-4xl mb-3"></i>
                   <p class="text-[12.5px]">没有找到匹配的技能</p>
@@ -421,7 +375,7 @@
     <!-- Toast -->
     <transition name="fade">
       <div v-if="createGroupOpen" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="absolute inset-0 bg-slate-900/40" @click="createGroupOpen = false"></div>
+        <div class="absolute inset-0 bg-slate-900/40" @click="!creatingGroup && (createGroupOpen = false)"></div>
         <div class="relative w-[380px] max-w-[92vw] glass-card rounded-2xl shadow-2xl p-6">
           <div class="flex items-center gap-2 mb-4"><i class="fa-solid fa-folder-plus text-primary"></i><b>新建技能分组</b></div>
           <label class="block text-[12px] text-slate-600 mb-1.5">分组名称</label>
@@ -430,7 +384,8 @@
             <div><label class="block text-[12px] text-slate-600 mb-1.5">图标</label><input v-model="newGroup.icon" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-[13px]" placeholder="folder" /></div>
             <div><label class="block text-[12px] text-slate-600 mb-1.5">颜色</label><input v-model="newGroup.color" type="color" class="w-full h-9 rounded-lg border border-slate-200" /></div>
           </div>
-          <div class="flex justify-end gap-2"><button class="btn-sm" @click="createGroupOpen = false">取消</button><button class="btn-sm-pri" @click="createGroup">创建分组</button></div>
+          <p v-if="groupError" role="alert" class="mb-3 text-[12px] text-red-600">{{ groupError }}</p>
+          <div class="flex justify-end gap-2"><button class="btn-sm" :disabled="creatingGroup" @click="createGroupOpen = false">取消</button><button class="btn-sm-pri" :disabled="creatingGroup" @click="createGroup">{{ creatingGroup ? '创建中…' : '创建分组' }}</button></div>
         </div>
       </div>
     </transition>
@@ -447,17 +402,25 @@
 import { useAccentColor } from '@/composables/useAccentColor.js';
 const { accent } = useAccentColor();
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { skillPresentation, skillDestination } from '@/data/skill-launch';
 import { marked } from 'marked';
-import PageHero from '@/components/common/PageHero.vue';
-import { useHeroImage } from '@/composables/useHeroImage.js';
+import ResourceList from '@/components/common/ResourceList.vue';
+import { useRouter } from 'vue-router';
+const router = useRouter();
 import { useDrawerResize } from '@/composables/useDrawerResize.js';
-const heroImage = useHeroImage('skills');
 const { width: drawerWidth, resizing, startResize } = useDrawerResize('sk.drawerWidth');
 
 const groups = ref([]);
 const skills = ref([]);
 const active = ref('all');
 const keyword = ref('');
+const skillFilter = ref('all');
+const sortOrder = ref('default');
+const viewMode = ref('list');
+const detailTab = ref('info');
+const detailMenuOpen = ref(false);
+const skillSource = ref('');
+const skillDetailTabs = [{ key: 'info', label: '基础信息' }, { key: 'document', label: '相关文档' }, { key: 'examples', label: '使用示例' }];
 const selected = ref(null);
 const loading = ref(false);
 const error = ref('');
@@ -474,17 +437,86 @@ const form = ref({ name: '', description: '', body: '', category: 'general', ico
 // 编辑时的分类下拉选项 —— 与主进程 SKILLS_GROUPS 同 id/中文名(不可复用 hubCategories
 // 那是 SkillHub 的 API tag;也不可用 groups ref 它只含 count>0 的组)。
 const createGroupOpen = ref(false);
+const creatingGroup = ref(false);
+const groupError = ref('');
 const newGroup = ref({ name: '', icon: 'folder', color: '#64748b' });
 
-function openCreateGroup() { newGroup.value = { name: '', icon: 'folder', color: '#64748b' }; createGroupOpen.value = true; }
-async function createGroup() {
-  const name = newGroup.value.name.trim();
-  if (!name) return showToast('请输入分组名称');
-  if (groups.value.some((g) => g.name === name)) return showToast('分组名称已存在');
-  const res = await window.api.skills.createGroup(newGroup.value);
-  if (res?.success) { createGroupOpen.value = false; await loadManifest(); active.value = res.group.id; showToast('分组已创建'); }
-  else showToast('创建失败：' + (res?.error || '未知错误'));
+function openCreateGroup() {
+  newGroup.value = { name: '', icon: 'folder', color: '#64748b' };
+  groupError.value = '';
+  createGroupOpen.value = true;
 }
+async function createGroup() {
+  if (creatingGroup.value) return;
+  const name = newGroup.value.name.trim();
+  groupError.value = '';
+  if (!name) { groupError.value = '请输入分组名称'; return; }
+  if (groups.value.some(g => g.name === name)) { groupError.value = '分组名称已存在'; return; }
+  creatingGroup.value = true;
+  try {
+    // IPC 只接收普通对象，不能直接发送 Vue 的响应式 Proxy。
+    const payload = { name, icon: String(newGroup.value.icon || 'folder'), color: String(newGroup.value.color || '#64748b') };
+    const res = await window.api.skills.createGroup(payload);
+    if (!res?.success) throw new Error(res?.error || '创建失败');
+    if (!await loadManifest()) throw new Error('分组已保存，但清单读取失败，请刷新技能库');
+    active.value = res.group.id;
+    keyword.value = '';
+    skillFilter.value = 'all';
+    createGroupOpen.value = false;
+    showToast('分组已创建');
+  } catch (e) { groupError.value = e.message || '创建失败，请重试'; }
+  finally { creatingGroup.value = false; }
+}
+const groupContextMenu = ref(null);
+function openGroupContextMenu(event, group) {
+  groupContextMenu.value = null;
+  if (!group?.custom || deletingGroup.value || editing.value || saving.value) return;
+  const rect = event.currentTarget?.getBoundingClientRect();
+  const x = event.type === 'keydown' ? rect?.left : event.clientX;
+  const y = event.type === 'keydown' ? rect?.bottom : event.clientY;
+  groupContextMenu.value = {
+    group,
+    x: Math.max(8, Math.min(Number(x) || 8, window.innerWidth - 160)),
+    y: Math.max(8, Math.min(Number(y) || 8, window.innerHeight - 56)),
+  };
+}
+const deletingGroup = ref(false);
+const deleteGroupTarget = ref(null);
+const deleteGroupError = ref('');
+const lastDeletedGroup = ref(null);
+function requestDeleteGroup(group) {
+  if (!group?.custom || deletingGroup.value || editing.value || saving.value) return;
+  groupContextMenu.value = null;
+  deleteGroupTarget.value = { id: group.id, name: group.name, icon: group.icon, color: group.color };
+  deleteGroupError.value = '';
+}
+async function confirmDeleteGroup() {
+  if (!deleteGroupTarget.value || deletingGroup.value) return;
+  deletingGroup.value = true;
+  const group = { ...deleteGroupTarget.value };
+  try {
+    const res = await window.api.skills.deleteGroup(group.id);
+    if (!res?.success) throw new Error(res?.error || '删除分组失败');
+    lastDeletedGroup.value = group;
+    deleteGroupTarget.value = null;
+    if (active.value === group.id) active.value = 'all';
+    if (!await loadManifest()) showToast('分组已删除，请刷新技能库');
+  } catch (error) { deleteGroupError.value = error.message || '删除分组失败'; }
+  finally { deletingGroup.value = false; }
+}
+async function undoDeleteGroup() {
+  if (!lastDeletedGroup.value || deletingGroup.value) return;
+  deletingGroup.value = true;
+  try {
+    const res = await window.api.skills.createGroup({ ...lastDeletedGroup.value });
+    if (!res?.success) throw new Error(res?.error || '恢复分组失败');
+    lastDeletedGroup.value = null;
+    if (await loadManifest()) active.value = res.group.id;
+    showToast('分组已恢复');
+  } catch (error) { showToast('恢复分组失败：' + (error.message || error)); }
+  finally { deletingGroup.value = false; }
+}
+
 const SKILL_GROUP_OPTIONS = [
   { id: 'product-doc',  name: '产品文档' },
   { id: 'prototype',    name: '原型设计' },
@@ -494,6 +526,11 @@ const SKILL_GROUP_OPTIONS = [
   { id: 'thinking',     name: '思考协作' },
   { id: 'general',      name: '通用工具' },
 ];
+
+const skillGroupOptions = computed(() => [
+  ...SKILL_GROUP_OPTIONS,
+  ...groups.value.filter(group => !SKILL_GROUP_OPTIONS.some(item => item.id === group.id)),
+]);
 
 function showToast(msg) {
   toast.value = msg;
@@ -517,6 +554,8 @@ const hubPrevCursors = ref([]);  // 游标栈:每页起始游标,用于"上一�
 const hubNextCursor = ref(null); // 下一页游标(本页返回的 nextCursor)
 const hubPageNum = ref(1);       // 当前页码(仅显示用)
 const hubLoading = ref(false);
+const hubError = ref('');
+let hubRequestSeq = 0;
 const hubInstalling = ref(''); // 正在安装的 slug
 let hubDebounce = null;
 
@@ -543,13 +582,17 @@ async function loadManifest() {
   try {
     const res = await window.api.skills.getManifest();
     if (res && res.success && res.data) {
-      groups.value = res.data.groups || [];
-      skills.value = res.data.skills || [];
+      skills.value = (res.data.skills || []).map(skill => ({ ...skill, group: skillPresentation(skill).group }));
+      groups.value = (res.data.groups || []).map(group => ({ ...group, count: skills.value.filter(skill => skill.group === group.id).length })).filter(group => group.count || group.custom);
+      error.value = '';
+      return true;
     } else {
       error.value = res?.error || '技能清单读取失败';
+      return false;
     }
   } catch (e) {
-    console.error('[skills] load manifest failed', e);
+    error.value = e.message || '技能清单读取失败';
+    return false;
   }
 }
 
@@ -576,7 +619,9 @@ async function startImport() {
     if (res && res.success) {
       progressPct.value = 100;
       importResult.value = res;
-      await loadManifest();
+      if (!await loadManifest() || !skills.value.some(skill => skill.id === res.skillId)) throw new Error('技能包已写入，但未能读取安装结果，请刷新技能库');
+      keyword.value = '';
+      skillFilter.value = 'all';
       if (res.skillId) {
         const g = skills.value.find((s) => s.id === res.skillId)?.group;
         if (g) active.value = g;
@@ -611,25 +656,22 @@ function openHub() {
 
 // 加载一页(cursor 为 null 即第一页)。结果替换 hubItems,并记录 nextCursor 供翻页
 async function hubLoadPage(cursor) {
-  if (hubLoading.value) return;
+  const requestId = ++hubRequestSeq;
   hubLoading.value = true;
+  hubError.value = '';
   const q = hubKeyword.value.trim();
   try {
     const res = await window.api.skills.hubSearch(q, hubActiveCat.value, 24, cursor);
-    if (res && res.success) {
-      hubItems.value = res.items || [];
-      hubNextCursor.value = res.nextCursor || null;
-    } else {
-      hubItems.value = [];
-      hubNextCursor.value = null;
-    }
+    if (requestId !== hubRequestSeq) return;
+    if (!res?.success) throw new Error(res?.error || '技能中心加载失败');
+    hubItems.value = res.items || [];
+    hubNextCursor.value = res.nextCursor || null;
   } catch (e) {
-    console.error('[skills] hub search failed', e);
+    if (requestId !== hubRequestSeq) return;
     hubItems.value = [];
     hubNextCursor.value = null;
-  } finally {
-    hubLoading.value = false;
-  }
+    hubError.value = e.message || '技能中心加载失败，请重试';
+  } finally { if (requestId === hubRequestSeq) hubLoading.value = false; }
 }
 
 // 重新搜索:清空游标栈,回到第一页(关键词变化 / 切分类时调用)
@@ -698,7 +740,7 @@ async function installFromHub(item) {
     if (res && res.success) {
       progressPct.value = 100;
       importResult.value = { skillId: res.skillId || item.displayName || item.name };
-      await loadManifest();
+      if (!await loadManifest() || !skills.value.some(skill => skill.id === res.skillId)) throw new Error('技能包已写入，但未能读取安装结果，请刷新技能库');
       showToast(`技能「${item.displayName || item.name}」安装成功`);
     } else {
       importError.value = res?.error || '安装失败';
@@ -716,6 +758,7 @@ async function installFromHub(item) {
 }
 
 const activeName = computed(() => {
+  if (skillFilter.value === 'visual') return '出图 / 可视化';
   if (active.value === 'all') return '全部技能';
   return groups.value.find((g) => g.id === active.value)?.name || '全部技能';
 });
@@ -724,10 +767,26 @@ const filtered = computed(() => {
   let list = active.value === 'all' ? skills.value : skills.value.filter((s) => s.group === active.value);
   if (keyword.value.trim()) {
     const kw = keyword.value.trim().toLowerCase();
-    list = list.filter((s) => s.name.toLowerCase().includes(kw) || (s.summary || '').toLowerCase().includes(kw) || s.id.includes(kw));
+    list = list.filter((s) => `${skillPresentation(s).name} ${skillPresentation(s).purpose} ${s.name} ${s.description || s.summary || ''} ${s.id}`.toLowerCase().includes(kw));
   }
-  return list;
+  if (skillFilter.value === 'visual') list = list.filter(s => ['report-image', 'dataviz'].includes(s.group));
+  return [...list].sort((a, b) => (viewMode.value === 'group' || sortOrder.value === 'category' ? groupName(a.group).localeCompare(groupName(b.group), 'zh-CN') : 0) || (sortOrder.value === 'name' ? skillPresentation(a).name.localeCompare(skillPresentation(b).name, 'zh-CN') : 0));
 });
+
+const skillExamples = computed(() => {
+  const match = skillSource.value.match(/^#{1,3}[^\n]*(?:示例|Examples?|Usage)[^\n]*\n([\s\S]*?)(?=^#{1,3} |(?![\s\S]))/im);
+  return match ? marked.parse(match[0]) : '';
+});
+const skillRows = computed(() => pagedItems.value.map(sk => ({ key: sk.id, name: skillPresentation(sk).name, subtitle: sk.id, category: groupName(sk.group), summary: skillPresentation(sk).purpose, meta: sk.version ? 'v' + sk.version : '—', icon: faIcon(sk.icon, 'cube'), color: accent(sk.color), raw: sk })));
+async function openSkillActions(sk) { await openSkill(sk); if (selected.value?.id === sk.id) detailMenuOpen.value = true; }
+const selectedPresentation = computed(() => selected.value ? skillPresentation(selected.value) : {});
+function useSkill() { if (selected.value) router.push({ path: skillDestination(selected.value.id), query: { skill: selected.value.id, skillRun: String(Date.now()) } }); }
+watch(filtered, (list) => {
+  if (editing.value || saving.value) return;
+  if (!list.length) { selected.value = null; return; }
+  if (!selected.value || !list.some(sk => sk.id === selected.value.id)) openSkill(list[0]);
+});
+watch(active, () => { if (active.value !== 'all') skillFilter.value = 'all'; detailMenuOpen.value = false; });
 
 // ── 分页 ──
 const currentPage = ref(1);
@@ -737,7 +796,7 @@ const pagedItems = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
   return filtered.value.slice(start, start + pageSize.value);
 });
-watch([active, keyword], () => { currentPage.value = 1; });
+watch([active, keyword, skillFilter, sortOrder, viewMode], () => { currentPage.value = 1; });
 watch(totalPages, (tp) => { if (currentPage.value > tp) currentPage.value = tp; });
 
 const statCards = computed(() => [
@@ -759,7 +818,12 @@ function faIcon(name, fallback) {
   return n.startsWith('fa-') ? `fa-solid ${n}` : `fa-solid fa-${n}`;
 }
 
+let skillReadSeq = 0;
 async function openSkill(sk) {
+  if (!sk || saving.value) return;
+  const requestId = ++skillReadSeq;
+  detailMenuOpen.value = false;
+  skillSource.value = '';
   selected.value = sk;
   editing.value = false;
   loading.value = true;
@@ -767,24 +831,26 @@ async function openSkill(sk) {
   rendered.value = '';
   try {
     const res = await window.api.skills.read(sk.id, sk.file || 'SKILL.md');
+    if (requestId !== skillReadSeq) return;
     if (res && res.success) {
       // 去掉 frontmatter,只渲染正文
       const body = (res.content || '').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+      skillSource.value = body;
       rendered.value = marked.parse(body);
     } else {
       error.value = res?.error || '读取失败';
     }
   } catch (e) {
-    error.value = e.message || '读取失败';
+    if (requestId === skillReadSeq) error.value = e.message || '读取失败';
   } finally {
-    loading.value = false;
+    if (requestId === skillReadSeq) loading.value = false;
   }
 }
 
 // 进编辑态:openSkill 只存了渲染后 html,没存源码 body,需重新读原文拆出纯 body。
 async function startEdit() {
   const sk = selected.value;
-  if (!sk) return;
+  if (!sk || loading.value || saving.value) return;
   form.value = {
     name: sk.name || '',
     // selected.description 是 manifest 全文(非截断 summary),可直接用
@@ -793,15 +859,16 @@ async function startEdit() {
     category: sk.group || 'general',
     icon: (sk.icon || '').replace(/^fa-solid\s+fa-|^fa-/, ''),
   };
-  editing.value = true;
+  loading.value = true;
   try {
     const res = await window.api.skills.read(sk.id, sk.file || 'SKILL.md');
     if (res && res.success) {
       form.value.body = (res.content || '').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
-    }
+      editing.value = true;
+    } else throw new Error(res?.error || '读取源码失败');
   } catch (e) {
     showToast('读取源码失败:' + (e.message || e));
-  }
+  } finally { loading.value = false; }
 }
 
 function cancelEdit() {
@@ -810,7 +877,9 @@ function cancelEdit() {
 
 async function saveEdit() {
   const sk = selected.value;
-  if (!sk || saving.value) return;
+  if (!sk || saving.value || loading.value) return;
+  if (!form.value.name.trim()) return showToast('技能名称不能为空');
+  if (!form.value.body.trim()) return showToast('技能正文不能为空');
   saving.value = true;
   try {
     const payload = {
@@ -826,7 +895,7 @@ async function saveEdit() {
       await loadManifest();
       // 用新数据刷新当前 selected(loadManifest 换了 skills 数组引用)
       const fresh = skills.value.find((s) => s.id === sk.id);
-      if (fresh) { selected.value = fresh; await openSkill(fresh); }
+      if (fresh) { selected.value = fresh; saving.value = false; await openSkill(fresh); }
       editing.value = false;
       showToast('已保存');
     } else {
@@ -841,9 +910,10 @@ async function saveEdit() {
 
 async function openDir(sk) {
   try {
-    await window.api.skills.open(sk.id);
+    const res = await window.api.skills.open(sk.id);
+    if (!res?.success) throw new Error(res?.error || '打开目录失败');
   } catch (e) {
-    console.error('[skills] open dir failed', e);
+    showToast('打开目录失败：' + (e.message || e));
   }
 }
 
@@ -851,8 +921,8 @@ async function refresh() {
   if (refreshing.value) return;
   refreshing.value = true;
   try {
-    await loadManifest();
-    showToast('技能库已刷新');
+    if (await loadManifest()) showToast('技能库已刷新');
+    else showToast(error.value || '刷新失败');
   } finally {
     setTimeout(() => { refreshing.value = false; }, 300);
   }
@@ -883,6 +953,12 @@ async function deleteSkill(sk) {
 </script>
 
 <style scoped>
+ .skill-group-context { position: fixed; min-width: 148px; padding: 5px; border: 1px solid #e2e8f0; border-radius: 9px; background: white; box-shadow: 0 8px 24px #0f172a1a; }
+.skill-group-context button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 10px; border-radius: 6px; color: #dc2626; font-size: 12px; text-align: left; }
+.skill-group-context button:hover, .skill-group-context button:focus-visible { background: #fff1f2; outline: none; }
+.skill-group-undo { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid #dbe5f5; border-radius: 12px; background: white; box-shadow: 0 8px 28px #0f172a1a; color: #475569; font-size: 12px; }
+.skill-group-undo button { color: #2563eb; font-size: 12px; }
+
 .sk-bg {
   background: var(--color-content-bg);
 }
@@ -1192,4 +1268,16 @@ async function deleteSkill(sk) {
 .skill-md :deep(pre code) { background: transparent; padding: 0; color: inherit; }
 .skill-md :deep(blockquote) { border-left: 3px solid var(--ui-brand); padding: 0.2em 0 0.2em 0.9em; margin: 0.6em 0; color: var(--ui-text); background: var(--ui-bg-3); border-radius: 0 6px 6px 0; }
 .skill-md :deep(a) { color: var(--ui-brand); text-decoration: none; }
+.skill-outcomes { display:grid; grid-template-columns:54px minmax(0,1fr); gap:8px 10px; margin:0 0 18px; font-size:12px; line-height:1.8; }
+.skill-outcomes dt { color:#8b9ab0; }.skill-outcomes dd { color:#425572; }
+.skills-readable-list :deep(.resource-row-summary) { white-space:normal; color:#52657f; font-size:12px; line-height:1.6; }
+.skills-readable-list :deep(.resource-col-name) { width:29%; }
+.skills-readable-list :deep(.resource-row-name strong) { color:#263a57; font-weight:600; }
+</style>
+
+<style src="../../styles/resource-browser.css">.skill-outcomes { display:grid; grid-template-columns:54px minmax(0,1fr); gap:8px 10px; margin:0 0 18px; font-size:12px; line-height:1.8; }
+.skill-outcomes dt { color:#8b9ab0; }.skill-outcomes dd { color:#425572; }
+.skills-readable-list :deep(.resource-row-summary) { white-space:normal; color:#52657f; font-size:12px; line-height:1.6; }
+.skills-readable-list :deep(.resource-col-name) { width:29%; }
+.skills-readable-list :deep(.resource-row-name strong) { color:#263a57; font-weight:600; }
 </style>

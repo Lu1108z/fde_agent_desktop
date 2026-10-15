@@ -17,7 +17,7 @@
 
         <h1 class="text-2xl font-bold text-slate-800 mb-2">新建 FDE 项目</h1>
         <p class="text-sm text-slate-500 mb-8">
-          填入客户需求或对接确认表要点,进入五阶段作战工作台 —— 从需求沟通到原型、智能体设计、上线定稿
+          先填写医院背景或初步需求，从第一阶段调研准备开始，再逐步完成需求、智能体设计与交付。
         </p>
 
         <!-- Textarea -->
@@ -32,7 +32,7 @@
           ></textarea>
           <p class="text-xs text-slate-400 mt-2">
             <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i>
-            提示:需求/对接确认表越详细,阶段②生成的功能清单、PRD 与原型越贴近客户预期
+            创建后可继续补充客户资料、对接记录和招投标调研，准备完成再进入需求沟通。
           </p>
         </div>
 

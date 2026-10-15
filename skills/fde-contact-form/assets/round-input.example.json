@@ -1,0 +1,18 @@
+{
+  "project": {"id": "P-001", "name": "示例项目", "client": "示例单位"},
+  "organization": [
+    {"name": "张甲", "title": "总经理", "projectRole": "最终决策人", "concern": "投入产出", "decisionMaker": true, "contact": "会议确认"}
+  ],
+  "round": {
+    "id": "R-01", "date": "2026-09-29", "topic": "项目启动与需求初访", "participants": ["张甲", "李乙"],
+    "decisionMaker": "张甲", "businessOwner": "李乙", "operator": "待确认（责任人：李乙）", "itContact": "待确认（责任人：李乙）",
+    "businessGoal": "减少人工汇总耗时", "asIs": "当前由业务人员手工汇总；耗时待统计", "pain": "多系统数据重复整理", "desiredOutcome": "缩短汇总时间", "scenario": "业务人员按周汇总数据",
+    "conclusion": "确认需要梳理周报流程", "nextActions": "李乙补充现行周报样本",
+    "requirements": [{"id": "REQ-01", "description": "生成周报草稿", "priority": "P1", "inScope": true, "involvesAi": true, "constraint": "样本待提供"}],
+    "processNodes": [{"id": "PROC-01", "name": "收集数据", "role": "业务人员", "input": "各系统导出表", "action": "核对并汇总", "output": "周报草稿", "system": "现有业务系统", "exception": "缺数据时人工追补", "aiInsertion": "草稿汇总"}],
+    "dataItems": [{"id": "DATA-01", "name": "周报原始数据", "sourceSystem": "现有业务系统", "vendor": "待确认", "content": "周报所需指标", "method": "导出", "availability": "待评估", "frequency": "每周", "owner": "李乙", "readinessAiImpact": "样本待提供，影响自动汇总测试"}],
+    "acceptanceDraft": "周报生成时间与人工核对准确率待基线确认", "acceptanceMetrics": [{"name": "生成耗时", "target": "待基线确认", "judge": "业务负责人", "aiCriterion": "待确认"}],
+    "openItems": [{"item": "确认操作员与信息科联系人", "owner": "李乙", "status": "pending"}],
+    "confirmation": {"status": "pending", "date": "", "evidence": ""}
+  }
+}

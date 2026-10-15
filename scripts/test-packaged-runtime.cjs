@@ -1,0 +1,20 @@
+const fs=require('fs'),path=require('path'),os=require('os'),assert=require('node:assert/strict');
+const root=path.join(process.resourcesPath,'app.asar');
+(async()=>{
+ assert.equal(require(path.join(root,'package.json')).version,require('../package.json').version);
+ const {extractFileText}=require(path.join(root,'src/main/knowledge-retrieval'));
+ const temp=fs.mkdtempSync(path.join(os.tmpdir(),'fde-packaged-runtime-'));
+ const pdfPath=path.join(temp,'preview.pdf');
+ const stream='BT /F1 14 Tf 50 750 Td (FDE packaged PDF reading test) Tj ET';
+ const objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
+ let data='%PDF-1.4\n',offsets=[0];objects.forEach((object,i)=>{offsets.push(Buffer.byteLength(data));data+=`${i+1} 0 obj\n${object}\nendobj\n`});const xref=Buffer.byteLength(data);data+='xref\n0 6\n0000000000 65535 f \n'+offsets.slice(1).map(offset=>String(offset).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+ fs.writeFileSync(pdfPath,data);
+ const pdf=await extractFileText(pdfPath,'pdf');assert.equal(pdf.status,'ready',JSON.stringify(pdf));assert.match(pdf.text,/FDE packaged PDF reading test/);
+ const {htmlToWord,markdownHtml}=require(path.join(root,'src/main/handbook-word'));
+ const word=await htmlToWord(await markdownHtml('# 试用检查\n\n正文和表格。\n\n|名称|状态|\n|---|---|\n|资料|已读取|'),'/tmp');
+ const doc=await require(path.join(root,'node_modules/mammoth')).convertToHtml({buffer:word});assert.match(doc.value,/<h1>试用检查/);assert.match(doc.value,/<table>/);
+ fs.rmSync(temp,{recursive:true,force:true});
+ const pty=require(path.join(root,'node_modules/node-pty'));let output='';const terminal=pty.spawn('/bin/zsh',['-c','printf FDE_TERMINAL_OK'],{name:'xterm',cols:80,rows:24,cwd:'/tmp',env:process.env});
+ await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Terminal did not finish')),5000);terminal.onData(t=>output+=t);terminal.onExit(()=>{clearTimeout(timer);assert.match(output,/FDE_TERMINAL_OK/);resolve();});});
+ console.log('PASS packaged renderer version, native Word, bundled PDF and terminal');
+})().catch(e=>{console.error(e);process.exitCode=1;});

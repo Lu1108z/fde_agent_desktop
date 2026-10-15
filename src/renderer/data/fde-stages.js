@@ -13,39 +13,38 @@ export const FDE_STAGES = [
     key: 'research',
     name: '调研准备 + 备弹知识',
     short: '调研备弹',
-    label: '调研备弹', // 进度条上的单一阶段名(不带「+」,避免读成两个并列入口)
+    label: '调研准备', // 进度条上的单一阶段名
     steps: '资料收集 / 需求梳理', // 步骤卡副标题:这一阶段实际在做的两件事
     nextStep: '把行业知识、调研框架和话术练熟，带着六项框架进场做需求沟通',
     goal: '进场前把弹备足——行业政策/术语/痛点/对标案例装进脑子,调研框架和话术练到条件反射。',
     // 阶段一是纯知识内化,无交付物
-    inputs: ['客户线索', '拓客经验', '客户方资料'],
+    inputs: ['客户线索', '拓客经验', '客户方资料', '公开招投标资料'],
     deliverables: [], // 无交付物(备弹知识/调研SOP/话术卡=内化)
-    internalize: ['备弹知识库', '调研框架 SOP(六项框架)', '调研话术卡(破冰/SPIN/七维串)'],
+    internalize: ['备弹知识库', '调研框架 SOP(六项框架)', '调研话术卡(破冰/SPIN/七维串)', '国家招投标项目调研'],
     owner: 'FDE 项目经理',
     duration: '进场前准备',
     successCriteria: '客户说行业术语能接上话;六项框架背熟;话术练到不看卡能走一遍。',
-    aiSupport: '备弹知识库 / 话术卡 / 六项框架 查阅 + AI 辅助备弹',
+    aiSupport: '备弹知识库 / 话术卡 / 六项框架 / 国家招投标项目调研 查阅 + AI 辅助备弹',
   },
   {
     id: 2,
     key: 'requirement-prototype',
     name: '需求沟通 + 原型设计',
     short: '沟通·原型',
-    label: '需求原型',
+    label: '需求沟通',
     steps: '方案沟通 / 原型确认',
     nextStep: '确认需求与数据对接，出 AI 能力清单，再喂智能体出可交互原型',
     goal: '结构化挖需求、当场确认,出对接确认表 + AI能力清单,喂智能体出可交互原型收敛需求。',
     inputs: ['备弹知识', '调研 SOP'],
     deliverables: [
-      { key: 'contact-form', name: '需求与数据对接确认表(含组织关系)', form: 'docx', sign: '群确认(等同签字)' },
-      { key: 'ai-capability', name: 'AI需求能力清单', form: 'docx', note: '每条带效果指标+验收口径' },
-      { key: 'prd', name: 'PRD(三层:目标/功能/交互,收敛稿)', form: 'md' },
-      { key: 'prototype', name: '可交互原型(收敛稿)', form: 'html', note: '能看能点,收敛需求用' },
+      {key:'contact-form',name:'需求与数据对接确认表',form:'docx',sign:'当轮确认，含组织关系'},
+      {key:'ai-capability',name:'AI能力清单',form:'docx',note:'量化效果指标与验收口径'},
+      {key:'prototype-demo',name:'产品原型 Demo',form:'html',note:'可交互、多页面原型；PRD 在阶段三生成'},
     ],
     owner: 'FDE 项目经理 + 业务科室',
     duration: '2+1 主场(按"次"算:2次对接 + 1次确认出原型),约一天一轮',
     successCriteria: '组织关系摸清、需求逐轮聊透、AI能力量化可验收、原型能点、方向认可。',
-    aiSupport: '核心阶段:结构化拆解 → PRD三层 → 信息架构 → 六区块 → 可交互原型(约3小时/版)',
+    aiSupport: '核心阶段:结构化拆解 → 信息架构 → 六区块 → 可交互原型(约3小时/版)',
     rhythm: '2+1(数"次",需求大则 (2+1)×n)',
     isCore: true,
   },
@@ -54,7 +53,7 @@ export const FDE_STAGES = [
     key: 'confirm-agent',
     name: '需求确认 + 智能体设计',
     short: '需求确认·智能体',
-    label: '智能体设计',
+    label: '需求确认',
     steps: '功能设计 / 方案评审',
     nextStep: '需求签字定死，拆智能体矩阵逐个过 Eval，PRD 与原型升级为定稿版',
     goal: '需求签字定死,拆智能体矩阵逐个设计过 Eval;PRD+原型升级为定稿版。',
@@ -78,7 +77,7 @@ export const FDE_STAGES = [
     key: 'nano-workbench',
     name: '纳米Work 行业工作台',
     short: '工作台上线',
-    label: '工作台上线',
+    label: '行业工作台',
     steps: '平台搭建 / 数据接入',
     nextStep: '建模、搭前后端并部署，先出 demo，再交付客户能访问能用的工作台',
     goal: '建模、搭前后端、部署,做成客户能访问、能用的行业工作台。',
@@ -101,7 +100,7 @@ export const FDE_STAGES = [
     key: 'trial-optimize',
     name: '客户试用 + 智能体优化',
     short: '试用·定稿',
-    label: '试用定稿',
+    label: '客户试用',
     steps: '试用反馈 / 持续迭代',
     nextStep: '代理商试跑、三轮迭代定稿，拿到客户交付签字',
     goal: '代理商试跑、三轮定稿、客户交付签字,沉淀可复制行业模板。',
@@ -145,8 +144,8 @@ export const FDE_RHYTHM = {
   overtime: '任一线被甲方卡住(尤其签不了字)=加时赛:先发邮件告知 → 暂停计时、单独记。',
 };
 
-/** 默认新建项目落在的阶段(用户确认:阶段②,过渡友好) */
-export const DEFAULT_STAGE = 2;
+/** 新建项目先完成调研准备，再进入需求沟通。 */
+export const DEFAULT_STAGE = 1;
 
 export function getStage(id) {
   return FDE_STAGES.find((s) => s.id === id) || null;

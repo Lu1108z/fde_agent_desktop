@@ -1,0 +1,3 @@
+interface:
+  display_name: "FDE 需求最终确认表"
+  short_description: "生成与核查 S3-2 正式交付"

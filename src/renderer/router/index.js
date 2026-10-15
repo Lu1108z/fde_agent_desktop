@@ -5,13 +5,18 @@ import Workbench from '@/pages/workbench/Workbench.vue';
 import ProjectSpec from '@/components/workbench/ProjectSpec.vue';
 import TrainingGuide from '@/pages/training/TrainingGuide.vue';
 import AgentHome from '@/pages/projects/AgentHome.vue';
+import Coach from '@/pages/training/Coach.vue';
 import ProjectList from '@/pages/projects/ProjectList.vue';
+import ProjectManagement from '@/pages/projects/ProjectManagement.vue';
+import ProjectOnline from '@/pages/projects/ProjectOnline.vue';
 import ProjectCreate from '@/pages/projects/ProjectCreate.vue';
 import ProjectDetail from '@/pages/projects/ProjectDetail.vue';
+import TeamLibrary from '@/pages/library/TeamLibrary.vue';
 import Knowledge from '@/pages/knowledge/Knowledge.vue';
 import Skills from '@/pages/skills/Skills.vue';
 import Settings from '@/pages/settings/Settings.vue';
 import ExpertSquare from '@/pages/experts/ExpertSquare.vue';
+import CodeRepository from '@/pages/code/CodeRepository.vue';
 import CodeWorkspaceList from '@/pages/code/CodeWorkspaceList.vue';
 import CodeWorkspace from '@/pages/code/CodeWorkspace.vue';
 
@@ -28,13 +33,20 @@ const router = createRouter({
         { path: 'project-spec', component: ProjectSpec },
         { path: 'training', component: TrainingGuide },
         { path: 'chat', component: AgentHome },
+        { path: 'coach', component: Coach },
         { path: 'code', component: CodeWorkspaceList },
         { path: 'code/:id', component: CodeWorkspace, props: true },
         { path: 'projects', component: ProjectList },
+        { path: 'project-management', component: ProjectOnline },
+        { path: 'project-management/imported', component: ProjectManagement },
         { path: 'projects/new', component: ProjectCreate },
+        { path: 'projects/:slug/conversations', component: AgentHome, props: route => ({ projectSlug: route.params.slug }), meta: { projectConversation: true } },
         { path: 'projects/:slug', component: ProjectDetail, props: true },
         { path: 'experts', component: ExpertSquare },
         { path: 'apps', component: ExpertSquare },
+        { path: 'library', redirect: () => ({ path: '/library/team' }) },
+        { path: 'library/team', component: TeamLibrary },
+        { path: 'library/repository', component: CodeRepository },
         { path: 'knowledge', component: Knowledge },
         { path: 'skills', component: Skills },
         { path: 'settings', component: Settings },
@@ -48,6 +60,7 @@ let bootChecked = false;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 router.beforeEach(async (to) => {
+  if (to.path === '/chat' && (to.query.coach || to.query.skill === 'fde-coach')) return { path: '/coach', query: to.query };
   if (to.path === '/setup') return true;
   if (bootChecked) return true;
   bootChecked = true;

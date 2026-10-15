@@ -1,0 +1,459 @@
+<h1>360 纳米 Work 行业 AI 工作台 · AI 开发规范体系</h1>
+<blockquote>
+<p>本文档是阶段四（纳米Work行业工作台）的开发标准总纲。项目系统名称：<strong>360 纳米 Work 行业 AI 工作台</strong>（仓库代号 <code>ai-work-platform</code>）。这是一个前后端分离的 monorepo，由三个可独立部署的服务组成，以「多租户权限底座 + 通用任务调度/消息推送引擎」为核心。AI 原生开发——用 Claude Code 写代码，用一套可执行的规范体系约束 AI 产出，保证 AI 写的代码也符合团队规范。所有 FDE 照此开发，做出来的东西能互相接手、能复制到下个行业。</p>
+</blockquote>
+<h2>〇、三个服务（先认清家底）</h2>
+<p>平台不是单个后端，是三个能各自部署的服务，靠 <code>docker-compose.yml</code> 编排、nginx 反代分流。</p>
+<table>
+<thead>
+<tr>
+<th>服务</th>
+<th>目录</th>
+<th>端口</th>
+<th>技术栈</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>API</strong></td>
+<td><code>saas-lobster-api</code></td>
+<td>8100</td>
+<td>Python 3.11 · FastAPI · SQLAlchemy 2.0(async) · Pydantic 2</td>
+<td>后端主服务，多租户管理底座</td>
+</tr>
+<tr>
+<td><strong>Scheduler</strong></td>
+<td><code>saas-lobster-scheduler</code></td>
+<td>8101</td>
+<td>Python 3.11 · FastAPI · APScheduler</td>
+<td>独立定时任务调度中心，跟主服务解耦</td>
+</tr>
+<tr>
+<td><strong>Frontend</strong></td>
+<td><code>saas-lobster-vben</code></td>
+<td>80（compose 映射 8080）</td>
+<td>Vue 3 · TS · Vite · Element Plus（Vben Admin 5）</td>
+<td>Web 管理后台，nginx 托管</td>
+</tr>
+</tbody></table>
+<ul>
+<li><strong>调度独立</strong>：定时任务由独立的 Scheduler 承担，API 主服务<strong>不内置调度器</strong>。Scheduler 启动时自动扫 <code>scripts/</code> 目录，把脚本注册成可调度任务，以子进程执行，跑完通过钉钉/企微/飞书/邮件等通道推结果。</li>
+<li><strong>数据库与 Redis 是外部实例</strong>，不由 compose 启动。Redis 分区：API 用 DB 10，Scheduler 用 DB 11。</li>
+<li><strong>配置中心优先</strong>：LLM、S3、图床等配置优先从数据库配置中心加载，<code>.env</code> 仅作兜底。</li>
+</ul>
+<h2>一、体系概览：三层机制约束 AI</h2>
+<p>这不是一份供人翻阅的文档，而是三层自动生效的机制——AI 写的代码也被强制拉回规范。</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>载体</th>
+<th>作用</th>
+<th>何时生效</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>① 铁律</strong></td>
+<td><code>CLAUDE.md</code>（根目录）</td>
+<td>AI 编码红线、强制 Skill 路由、Git/验证铁律</td>
+<td>每次会话自动加载</td>
+</tr>
+<tr>
+<td><strong>② 规范库</strong></td>
+<td><code>.claude/skills/</code></td>
+<td>分场景编码规范 + 代码生成器（api-* 32 + vben-* 32 + 流程类）</td>
+<td>按任务匹配触发</td>
+</tr>
+<tr>
+<td><strong>③ 门禁</strong></td>
+<td><code>.claude/hooks/redline-guard.py</code></td>
+<td>写文件后自动静态检查红线，命中即反馈 AI 修正</td>
+<td>每次写文件后</td>
+</tr>
+</tbody></table>
+<p>门禁层具体由这几个 hook / 脚本落地，从软引导到硬拦截层层收口：</p>
+<table>
+<thead>
+<tr>
+<th>载体</th>
+<th>强度</th>
+<th>触发时机</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>.claude/hooks/skill-router.py</code></td>
+<td>软引导</td>
+<td>每次发开发类指令，提醒先加载对应 Skill</td>
+</tr>
+<tr>
+<td><code>.claude/hooks/redline-guard.py</code></td>
+<td>硬拦截</td>
+<td>每次写文件后，命中红线即反馈修正</td>
+</tr>
+<tr>
+<td><code>scripts/pre-commit.sh</code> + <code>.github/workflows/ci-gate.yml</code></td>
+<td>硬拦截</td>
+<td>提交 / PR，lint + 测试不过不让合</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>AI 编码工作流（不可跳步）：<strong>Skill 匹配 → 规范记忆 → TDD（红-绿-重构）→ 完工验证 → 人工 Review → 人工合并</strong>。</p>
+</blockquote>
+<h2>二、统一技术栈（锁死，不许自由发挥）</h2>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>必须用</th>
+<th>禁止</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>后端框架</td>
+<td>Python + FastAPI</td>
+<td>Django、Flask、裸写</td>
+</tr>
+<tr>
+<td>后端 ORM</td>
+<td>SQLAlchemy 2.0（async）+ Pydantic 2</td>
+<td>同步 ORM、手拼 SQL</td>
+</tr>
+<tr>
+<td>后端规范</td>
+<td>ruff（line-length=120, py311）、loguru 日志、async-first</td>
+<td>print 日志、同步阻塞 IO</td>
+</tr>
+<tr>
+<td>前端框架</td>
+<td>Vue 3 + <code>&lt;script setup&gt;</code> + Composition API</td>
+<td>Options API、Vue 2</td>
+</tr>
+<tr>
+<td>前端语言</td>
+<td>TypeScript（strict）</td>
+<td>裸 JS、<code>any</code> 泛滥</td>
+</tr>
+<tr>
+<td>前端 UI</td>
+<td>Vben Admin 5（<code>@vben/web-ele</code>）</td>
+<td>Element Plus 魔改、Ant Design、Naive UI 混用</td>
+</tr>
+<tr>
+<td>前端构建/状态/路由</td>
+<td>Vite 5 / Pinia / Vue Router 4</td>
+<td>webpack、Vuex、全局变量、手写 hash 跳转</td>
+</tr>
+<tr>
+<td>前端 HTTP</td>
+<td><code>@vben/request</code> 封装的 axios</td>
+<td>页面里直接 <code>axios.create</code>、<code>fetch</code></td>
+</tr>
+<tr>
+<td>图表</td>
+<td>ECharts</td>
+<td>Chart.js / AntV / D3 混用</td>
+</tr>
+</tbody></table>
+<p><strong>为什么锁死</strong>：统一技术栈，一个 FDE 做的东西另一个能无痛接手，换行业也能直接复制。技术栈一乱，复制就无从谈起。</p>
+<h2>三、后端红线（saas-lobster-api）</h2>
+<p>必须遵守，违反被 hook 自动拦截：</p>
+<ol>
+<li>每个 <code>.py</code> 文件首行必须是 <code>from __future__ import annotations</code></li>
+<li><code>api/</code> 层禁止写 SQL / ORM 查询（<code>db.execute</code> / <code>select(...)</code> / <code>.query(...)</code>），必须下沉到 <code>services/</code></li>
+<li>禁止同步 ORM：<code>db.query(...)</code> → 必须 <code>await db.execute(...)</code></li>
+<li>业务代码禁止 <code>os.getenv()</code>，必须走 <code>core/config.py</code> 的 Settings</li>
+<li><code>services/</code> 层有 ORM 查询时，必须带 <code>hospital_id</code> 过滤（多租户隔离）</li>
+<li>禁止裸 <code>print(...)</code>，必须用 logging</li>
+<li>全量类型注解（函数签名 + 返回值）</li>
+</ol>
+<p><strong>分层规则（严格单向，禁止反向/循环依赖）：</strong></p>
+<pre><code>api/ → services/ → managers/（可选）→ db/
+schemas/  Pydantic DTO（被 api/services 引用）
+core/     基础设施：deps/auth/redis/llm/s3/config（叶子层，不依赖业务）
+middleware/  横切面（洋葱模型，外→内）
+</code></pre>
+<ul>
+<li><code>api/</code>：HTTP 入口、参数校验、鉴权、响应组装（薄）</li>
+<li><code>services/</code>：事务编排、跨表逻辑、调外部（LLM/S3/Redis）</li>
+<li><code>managers/</code>：复杂实体生命周期管理（可选）</li>
+<li><code>db/</code>：ORM 模型 + 会话 + 引擎</li>
+<li><code>core/</code> 是叶子层，不依赖任何业务层；<code>db/models</code> 禁止导入 <code>schemas/</code>（ORM 与 DTO 单向）</li>
+</ul>
+<p><strong>中间件（洋葱模型，外→内执行）：</strong></p>
+<pre><code>CORS → TenantContext（注入租户上下文）→ SystemAudit（系统审计）→ APILogger（接口日志）
+</code></pre>
+<p>多租户隔离靠 <code>TenantContextMiddleware</code> 注入租户上下文，业务表通过 <code>TenantScopedMixin</code> 打租户字段（<code>hospital_id</code>）。</p>
+<p><strong>命名约定：</strong></p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>路径</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>路由</td>
+<td><code>api/&lt;entities&gt;.py</code></td>
+<td><code>api/products.py</code></td>
+</tr>
+<tr>
+<td>业务</td>
+<td><code>services/&lt;entity&gt;_service.py</code></td>
+<td><code>services/product_service.py</code></td>
+</tr>
+<tr>
+<td>模型</td>
+<td><code>db/models.py</code> 内 <code>&lt;Entity&gt;Model</code></td>
+<td><code>ProductModel</code></td>
+</tr>
+<tr>
+<td>DTO</td>
+<td><code>schemas/&lt;entity&gt;.py</code></td>
+<td><code>schemas/product.py</code></td>
+</tr>
+<tr>
+<td>测试</td>
+<td><code>tests/test_&lt;entities&gt;.py</code></td>
+<td><code>tests/test_products.py</code></td>
+</tr>
+</tbody></table>
+<p><strong>接口契约：</strong></p>
+<ul>
+<li>列表接口统一返回 <code>{&quot;items&quot;: [...], &quot;total&quot;: N}</code></li>
+<li>错误统一 <code>raise HTTPException(status_code, detail=&quot;中文说明&quot;)</code></li>
+<li>单对象直接返回，不加 Result 包装层</li>
+</ul>
+<h2>四、前端红线（saas-lobster-vben）</h2>
+<p>必须遵守，违反被 hook 自动拦截：</p>
+<ol>
+<li>只能改 <code>apps/web-ele/src/</code>，禁止改 <code>packages/@vben/*</code> / <code>@core/*</code></li>
+<li>网络请求必须用 <code>requestClient</code>（<code>@vben/request</code>），禁止 <code>import axios</code> / <code>fetch</code></li>
+<li>只用 <code>&lt;script setup&gt;</code> Composition API，禁止 Options API（<code>data</code>/<code>methods</code>/<code>computed</code>）</li>
+<li><code>: any</code> 超过 1 处即返工，必须补全类型</li>
+<li>颜色必须引用 Theme Token，禁止硬编码 <code>#RRGGBB</code></li>
+<li>字号只允许 12/14/16/18/20/24/32/48px</li>
+<li>文案必须用 <code>$t()</code>（国际化）</li>
+<li>类型定义放 <code>src/types/api/&lt;module&gt;.ts</code></li>
+</ol>
+<p><strong>目录结构：</strong></p>
+<pre><code>apps/web-ele/src/
+├── views/        页面（按模块分组）
+├── api/          接口封装（requestClient）
+├── router/       静态路由（routes/modules/&lt;module&gt;.ts）
+├── store/        Pinia 状态
+├── composables/  可复用 hooks
+├── components/   通用业务组件
+└── types/api/    TS 类型定义
+</code></pre>
+<h2>五、Skill 路由（开发前必须先加载对应 Skill）</h2>
+<table>
+<thead>
+<tr>
+<th>任务类型</th>
+<th>必须加载的 Skill</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>前端任何开发</td>
+<td><code>vben-guide</code></td>
+</tr>
+<tr>
+<td>后端任何开发</td>
+<td><code>api-guide</code></td>
+</tr>
+<tr>
+<td>数据建模</td>
+<td><code>api-er-modeling</code></td>
+</tr>
+<tr>
+<td>标准 CRUD 模块</td>
+<td><code>api-template-standard-crud-module</code> + <code>vben-crud-generator</code></td>
+</tr>
+<tr>
+<td>SSE 流式接口</td>
+<td><code>api-template-sse-streaming-module</code> + <code>vben-chat-stream-generator</code></td>
+</tr>
+<tr>
+<td>后台任务</td>
+<td><code>api-template-background-job-module</code></td>
+</tr>
+<tr>
+<td>报表导出</td>
+<td><code>api-template-report-generation-module</code></td>
+</tr>
+<tr>
+<td>修复 Bug</td>
+<td><code>systematic-debugging</code>（禁止猜修）</td>
+</tr>
+<tr>
+<td>完工验证</td>
+<td><code>verification-before-completion</code></td>
+</tr>
+<tr>
+<td>分支收尾</td>
+<td><code>finishing-a-development-branch</code></td>
+</tr>
+</tbody></table>
+<h2>六、开发工作流（不可跳步）</h2>
+<pre><code>1. 匹配 Skill → 2. 加载规范 → 3. TDD（红-绿-重构）
+→ 4. 完工验证 → 5. 人工 Review → 6. 人工合并
+</code></pre>
+<p><strong>TDD 三步：</strong></p>
+<ul>
+<li>RED：先写失败的测试</li>
+<li>GREEN：最小实现让测试通过</li>
+<li>REFACTOR：重构保持绿</li>
+</ul>
+<p><strong>两步交付节奏（别一口气憋大的）：</strong></p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>干什么</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>第一步：还原 demo</td>
+<td>核心流程能跑通、关键页面能点能看</td>
+<td>拿去给代理商/客户演示，验证方向对不对</td>
+</tr>
+<tr>
+<td>第二步：补齐完整</td>
+<td>基于反馈把剩下的页面、接口、业务规则全落地</td>
+<td>直到整个系统能真正上线用</td>
+</tr>
+</tbody></table>
+<h2>七、完工前强制验证（未过不得声称&quot;完成&quot;）</h2>
+<pre><code class="language-bash"># 后端
+cd saas-lobster-api &amp;&amp; ruff check . &amp;&amp; ruff format --check .
+cd saas-lobster-api &amp;&amp; pytest -q
+
+# 前端
+cd saas-lobster-vben &amp;&amp; pnpm lint
+cd saas-lobster-vben &amp;&amp; pnpm check:type
+</code></pre>
+<p><strong>额外检查清单：</strong></p>
+<ul>
+<li>改了表结构 → 生成并人工复核 Alembic 迁移</li>
+<li>加了接口 → 在 <code>http://localhost:8100/docs</code> 确认可调</li>
+<li>涉及多租户 → 验证跨 <code>hospital_id</code> 数据不可见</li>
+</ul>
+<h2>八、数据模型与权限底座</h2>
+<p>数据表按前缀分类：<code>sys_*</code>（系统）、<code>busi_*</code>（业务）、<code>log_*</code>（日志）。</p>
+<table>
+<thead>
+<tr>
+<th>分类</th>
+<th>数据表</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>系统</td>
+<td><code>sys_users</code> / <code>sys_roles</code> / <code>sys_menus</code></td>
+<td>用户 / 角色 / 菜单</td>
+</tr>
+<tr>
+<td>系统</td>
+<td><code>sys_role_menus</code> / <code>sys_user_roles</code> / <code>sys_role_hospitals</code></td>
+<td>RBAC 关系表（角色-菜单 / 用户-角色 / 角色-租户）</td>
+</tr>
+<tr>
+<td>系统</td>
+<td><code>sys_settings</code> / <code>sys_cron_jobs</code></td>
+<td>用户设置 / 定时任务配置</td>
+</tr>
+<tr>
+<td>业务</td>
+<td><code>busi_hospitals</code> / <code>busi_departments</code></td>
+<td>租户 / 部门</td>
+</tr>
+<tr>
+<td>日志</td>
+<td><code>log_login</code> / <code>log_system_audit</code> / <code>log_mcp_queries</code></td>
+<td>登录日志 / 系统审计 / LLM 查询日志</td>
+</tr>
+</tbody></table>
+<p><strong>RBAC 链路</strong>：用户 →（<code>sys_user_roles</code>）→ 角色 →（<code>sys_role_menus</code>）→ 菜单；租户维度再经 <code>sys_role_hospitals</code> 隔离。用户/角色/菜单/部门/租户五要素 + 三张绑定表，构成完整权限体系。</p>
+<p><strong>后端菜单模式</strong>：菜单树由数据库 <code>sys_menus</code> 下发，前端不硬编码。登录后前端调 <code>/api/auth/me</code> 拿到当前用户可见菜单，动态渲染侧边栏。新功能要可见，得两步——① 开发者注册静态路由（<code>router/routes/modules/&lt;module&gt;.ts</code>）；② 管理员在「菜单管理 + 角色授权」后台配置。</p>
+<blockquote>
+<p>库里另有 <code>busi_dispatch_*</code>、<code>busi_report_*</code> 等历史遗留表，来自早期业务模块，当前功能已不依赖，别照着它们建新表。</p>
+</blockquote>
+<h2>九、发布与访问（CI/CD）</h2>
+<p>线上发布走 <strong>极库云流水线 → 360 智汇云容器云</strong>，不用本地 <code>docker compose</code>。</p>
+<p>极库云（项目：商业化 FDE 作战项目 → 流水线）为三个服务各配了一条流水线，点「运行」一键发布：</p>
+<table>
+<thead>
+<tr>
+<th>流水线 ID</th>
+<th>名称</th>
+<th>对应服务</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>22530</td>
+<td><code>ai-work-platform-api</code></td>
+<td>后端主服务</td>
+</tr>
+<tr>
+<td>22531</td>
+<td><code>ai-work-platform-scheduler</code></td>
+<td>调度服务</td>
+</tr>
+<tr>
+<td>22532</td>
+<td><code>ai-work-platform-frontend</code></td>
+<td>前端</td>
+</tr>
+</tbody></table>
+<p>每条流水线 3 个串行任务全绿即发布成功：<code>代码源 → 构建容器云镜像 → 容器云发布</code>。发布后进「360 智汇云 → 容器云 CIS → 工作负载」看三个 Deployment（api/scheduler/frontend）的 Pod 状态、日志、监控。</p>
+<p><strong>nginx 反代规则</strong>（前端容器内分流）：<code>/api/scheduling/</code> → <code>scheduler:8101</code>；<code>/api/</code> → <code>api:8100</code>；其余 → 前端 SPA。</p>
+<h2>十、Git 规范</h2>
+<p><strong>分支命名：</strong></p>
+<table>
+<thead>
+<tr>
+<th>前缀</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>feat/</code></td>
+<td>新功能</td>
+</tr>
+<tr>
+<td><code>fix/</code></td>
+<td>缺陷修复</td>
+</tr>
+<tr>
+<td><code>refactor/</code></td>
+<td>重构</td>
+</tr>
+<tr>
+<td><code>docs/</code></td>
+<td>文档</td>
+</tr>
+</tbody></table>
+<p><strong>Commit 格式（Conventional Commits）：</strong></p>
+<pre><code>&lt;type&gt;(&lt;scope&gt;): &lt;中文描述&gt;
+# 示例：feat(user): 用户列表支持 Excel 导出
+</code></pre>
+<p><strong>铁律：</strong></p>
+<ul>
+<li>AI 禁止 <code>git merge</code> 到 master</li>
+<li>AI 禁止 <code>git push --force</code> 到 master</li>
+<li>合并一律人工操作，必须经过 Code Review</li>
+</ul>
+<h2>十一、新成员上手</h2>
+<pre><code class="language-bash"># 1. 安装本地 pre-commit 门禁（一次性）
+bash scripts/install-hooks.sh
+
+# 2. 阅读规范入口
+# README.md → &quot;AI 开发规范体系&quot; 章节
+# CLAUDE.md → 完整铁律
+# docs/DEV-STANDARDS.md → 完整规范总纲
+</code></pre>
+<h2>十二、重要命名说明</h2>
+<p>多租户字段全平台统一使用 <code>hospital_id</code>（历史命名，语义即 <code>tenant_id</code>）。禁止改名，所有业务查询必须带此字段过滤。</p>

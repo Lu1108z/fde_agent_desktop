@@ -118,15 +118,7 @@
                  勾了几十个模型时"测通了"只代表那一个通,其余照样可能 400,是假保障。 -->
             <div class="inline-flex items-center gap-1.5">
               <div class="relative">
-                <select
-                  v-model="testModel"
-                  :disabled="!selectedModels.length"
-                  class="appearance-none pl-3 pr-8 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 max-w-[220px] font-mono text-[12.5px]"
-                >
-                  <option value="" disabled>选择要测试的模型…</option>
-                  <option v-for="m in selectedModels" :key="m" :value="m">{{ m }}</option>
-                </select>
-                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                <UiSelect field v-model="testModel" :disabled="!selectedModels.length" class="appearance-none pl-3 pr-8 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 max-w-[220px] font-mono text-[12.5px]" :options="[{ value: '', label: '选择要测试的模型…', disabled: true }, ...(selectedModels).map((m) => ({ value: m, label: String(m) }))]" />
               </div>
               <button
                 @click="testConn"
@@ -157,15 +149,7 @@
           <div class="rounded-2xl border border-slate-200/80 bg-white/60 p-3">
             <div class="flex items-center gap-2">
               <label class="text-sm font-medium text-slate-700 shrink-0">默认模型</label>
-              <select
-                :value="selectedModels[0] || ''"
-                @change="makeDefaultModel($event.target.value)"
-                :disabled="!selectedModels.length"
-                class="min-w-0 flex-1 appearance-none px-3 py-2 rounded-xl border border-slate-200 bg-white text-[12.5px] text-slate-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono"
-              >
-                <option value="" disabled>先获取或添加模型</option>
-                <option v-for="m in selectedModels" :key="m" :value="m">{{ m }}</option>
-              </select>
+              <UiSelect field :model-value="selectedModels[0] || ''" @change="makeDefaultModel($event)" :disabled="!selectedModels.length" class="min-w-0 flex-1 appearance-none px-3 py-2 rounded-xl border border-slate-200 bg-white text-[12.5px] text-slate-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono" :options="[{ value: '', label: '先获取或添加模型', disabled: true }, ...(selectedModels).map((m) => ({ value: m, label: String(m) }))]" />
               <span class="shrink-0 text-[11px] text-slate-400">已选 {{ selectedModels.length }}</span>
               <button
                 v-if="modelChoices.length || selectedModels.length"
@@ -335,26 +319,11 @@
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-[12px] font-medium text-slate-600 mb-1">协议</label>
-                  <select
-                    v-model="form.apiMode"
-                    class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
-                  >
-                    <option value="auto">自动识别</option>
-                    <option value="chat_completions">OpenAI Chat Completions</option>
-                    <option value="codex_responses">OpenAI Responses</option>
-                    <option value="anthropic_messages">Anthropic Messages</option>
-                  </select>
+                  <UiSelect field v-model="form.apiMode" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" :options="[{ value: 'auto', label: '自动识别' }, { value: 'chat_completions', label: 'OpenAI Chat Completions' }, { value: 'codex_responses', label: 'OpenAI Responses' }, { value: 'anthropic_messages', label: 'Anthropic Messages' }]" />
                 </div>
                 <div>
                   <label class="block text-[12px] font-medium text-slate-600 mb-1">认证方式</label>
-                  <select
-                    v-model="form.authMode"
-                    class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
-                  >
-                    <option value="bearer">Authorization: Bearer</option>
-                    <option value="x-api-key">x-api-key</option>
-                    <option value="custom">自定义 Header</option>
-                  </select>
+                  <UiSelect field v-model="form.authMode" class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400" :options="[{ value: 'bearer', label: 'Authorization: Bearer' }, { value: 'x-api-key', label: 'x-api-key' }, { value: 'custom', label: '自定义 Header' }]" />
                 </div>
               </div>
 

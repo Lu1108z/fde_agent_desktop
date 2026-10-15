@@ -1,0 +1,254 @@
+<h1>连接器（Connector）配置规范</h1>
+<h2>一、工具 vs 连接器</h2>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>定义</th>
+<th>示例</th>
+<th>配置复杂度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>工具（Tool）</td>
+<td>封装好的原子能力，开箱即用</td>
+<td>查询工具、文档生成工具</td>
+<td>低</td>
+</tr>
+<tr>
+<td>连接器（Connector）</td>
+<td>对接外部系统的桥接层</td>
+<td>CRM连接器、HIS连接器</td>
+<td>高</td>
+</tr>
+</tbody></table>
+<h2>二、配置步骤</h2>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>步骤一：梳理数据需求</td>
+<td>问业务专家：&quot;你干这个活，需要查哪些系统？&quot;</td>
+</tr>
+<tr>
+<td>步骤二：申请数据权限</td>
+<td>向数据管理员申请访问权限</td>
+</tr>
+<tr>
+<td>步骤三：编写接口调用代码</td>
+<td>明确请求方法、参数、返回格式、错误码</td>
+</tr>
+<tr>
+<td>步骤四：处理异常和超时</td>
+<td>重试机制、超时设置、降级策略</td>
+</tr>
+<tr>
+<td>步骤五：配置 MCP（可选）</td>
+<td>使用 MCP 协议标准化连接</td>
+</tr>
+<tr>
+<td>步骤六：测试连通性</td>
+<td>测试连接、测试查询、测试性能</td>
+</tr>
+</tbody></table>
+<h2>三、连接器配置检查表</h2>
+<ul>
+<li><input disabled="" type="checkbox"> 数据需求已梳理</li>
+<li><input disabled="" type="checkbox"> 数据权限已申请</li>
+<li><input disabled="" type="checkbox"> 接口调用代码已编写</li>
+<li><input disabled="" type="checkbox"> 异常处理已实现</li>
+<li><input disabled="" type="checkbox"> 重试机制已配置</li>
+<li><input disabled="" type="checkbox"> 超时设置已配置</li>
+<li><input disabled="" type="checkbox"> 测试脚本已编写</li>
+<li><input disabled="" type="checkbox"> 连通性已测试</li>
+</ul>
+<h2>四、MCP 配置方法</h2>
+<p>MCP（Model Context Protocol）是标准化的协议，用于让 AI 模型与外部工具和数据源交互。</p>
+<p>MCP 配置步骤：</p>
+<ol>
+<li>安装 MCP 服务：<code>npm install -g @modelcontextprotocol/cli</code></li>
+<li>配置 MCP 服务器：创建 <code>mcp_config.json</code> 文件</li>
+<li>编写 MCP 服务器：定义工具、实现工具调用</li>
+<li>在智能体中使用 MCP：通过客户端调用或在 Prompt 中声明</li>
+<li>测试 MCP 连接：验证工具列表、工具调用</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>对比项</th>
+<th>传统 API</th>
+<th>MCP</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>协议标准</td>
+<td>每个系统不同</td>
+<td>统一标准协议</td>
+</tr>
+<tr>
+<td>工具发现</td>
+<td>需要手动文档</td>
+<td>自动发现可用工具</td>
+</tr>
+<tr>
+<td>类型安全</td>
+<td>弱类型</td>
+<td>强类型（JSON Schema）</td>
+</tr>
+<tr>
+<td>错误处理</td>
+<td>各系统不同</td>
+<td>统一错误格式</td>
+</tr>
+<tr>
+<td>调试能力</td>
+<td>依赖日志</td>
+<td>内置 Trace 机制</td>
+</tr>
+</tbody></table>
+<h2>五、自定义连接器</h2>
+<p>自定义连接器通过 DataHub MCP APIHub 和纳米 Work 提供标准化接入接口，支持同步和流式输出两种调用模式。</p>
+<h3>5.1 DataHub MCP APIHub</h3>
+<p>DataHub MCP APIHub 是统一的 API 网关层，负责将外部数据源和服务以 MCP 协议标准化暴露给智能体。</p>
+<p>接入步骤：</p>
+<ol>
+<li>在 DataHub 控制台注册 API 服务，配置请求/响应 Schema</li>
+<li>选择输出模式：同步（sync）或流式（stream）</li>
+<li>配置鉴权方式（API Key / OAuth2 / 签名验证）</li>
+<li>发布为 MCP Tool，智能体即可自动发现并调用</li>
+<li>在监控面板查看调用量、延迟、错误率</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>标准化接入</td>
+<td>通过 MCP 协议统一封装第三方 API，智能体无需关心底层差异</td>
+</tr>
+<tr>
+<td>同步输出</td>
+<td>适用于响应时间短的查询类接口，请求-响应一次性返回完整结果</td>
+</tr>
+<tr>
+<td>流式输出</td>
+<td>适用于大模型生成、长文本返回等场景，通过 SSE/WebSocket 实时推送分片数据</td>
+</tr>
+<tr>
+<td>工具自动发现</td>
+<td>已注册的 API 自动出现在智能体可用工具列表中</td>
+</tr>
+<tr>
+<td>权限管控</td>
+<td>基于 RBAC 控制智能体对不同 API 的访问范围</td>
+</tr>
+</tbody></table>
+<h3>5.2 纳米 Work 标准化接入</h3>
+<p>纳米 Work 提供工作流和任务编排的标准化连接能力，将企业内部系统（OA、CRM、ERP等）统一纳管，对智能体暴露标准化接口。</p>
+<p>接入步骤：</p>
+<ol>
+<li>在纳米 Work 平台注册目标系统，配置连接参数</li>
+<li>定义接口映射：将原系统接口映射为标准化 MCP Tool</li>
+<li>配置输出模式：同步返回或流式推送</li>
+<li>设置超时与重试策略</li>
+<li>测试连通性并发布上线</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>系统纳管</td>
+<td>将分散的企业内部系统统一接入管理</td>
+</tr>
+<tr>
+<td>标准化接口</td>
+<td>屏蔽底层系统差异，对智能体提供统一调用规范</td>
+</tr>
+<tr>
+<td>同步调用</td>
+<td>适用于即时查询类操作（如查询审批状态、获取用户信息）</td>
+</tr>
+<tr>
+<td>流式调用</td>
+<td>适用于批量数据导出、实时事件推送等长耗时场景</td>
+</tr>
+<tr>
+<td>工作流编排</td>
+<td>支持多系统串联调用，编排复杂业务流程</td>
+</tr>
+</tbody></table>
+<h3>5.3 同步与流式输出对比</h3>
+<table>
+<thead>
+<tr>
+<th>对比项</th>
+<th>同步输出</th>
+<th>流式输出</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>适用场景</td>
+<td>短耗时查询、状态获取</td>
+<td>大模型生成、批量数据、实时推送</td>
+</tr>
+<tr>
+<td>响应方式</td>
+<td>一次性返回完整结果</td>
+<td>分片逐步推送（SSE/WebSocket）</td>
+</tr>
+<tr>
+<td>超时风险</td>
+<td>低（秒级响应）</td>
+<td>需配置长连接保活</td>
+</tr>
+<tr>
+<td>用户体验</td>
+<td>等待后一次展示</td>
+<td>实时渐进式展示</td>
+</tr>
+<tr>
+<td>错误处理</td>
+<td>标准 HTTP 状态码</td>
+<td>需处理中断续传、心跳检测</td>
+</tr>
+</tbody></table>
+<h2>六、验收标准</h2>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>达标标准</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>接口能调通</td>
+<td>能正常调用外部系统</td>
+</tr>
+<tr>
+<td>异常处理到位</td>
+<td>超时、失败、权限错误都有兜底</td>
+</tr>
+<tr>
+<td>权限配置正确</td>
+<td>智能体只能访问它该访问的数据</td>
+</tr>
+<tr>
+<td>性能符合要求</td>
+<td>响应时间在可接受范围内</td>
+</tr>
+<tr>
+<td>有使用文档</td>
+<td>接口说明、调用示例、错误码</td>
+</tr>
+</tbody></table>

@@ -1,0 +1,3 @@
+interface:
+  display_name: "FDE 业务数据口径"
+  short_description: "生成与核查 S3-4 正式交付"

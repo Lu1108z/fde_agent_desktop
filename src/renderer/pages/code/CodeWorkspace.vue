@@ -133,20 +133,7 @@
             </div>
             <div class="assistant-body">
               <!-- 思考 / 工具步骤：独立折叠区 -->
-              <div v-if="msg.thinkingSteps && msg.thinkingSteps.length" class="think-block">
-                <button class="think-toggle" @click="msg.thinkOpen = !msg.thinkOpen">
-                  <i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
-                  <span>{{ msg.pending ? '正在思考与执行…' : '思考与执行过程' }}</span>
-                  <span class="think-count">{{ msg.thinkingSteps.length }}</span>
-                  <i class="fa-solid text-[9px] ml-auto" :class="msg.thinkOpen ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
-                </button>
-                <div v-if="msg.thinkOpen" class="think-rail">
-                  <div v-for="(s, i) in msg.thinkingSteps" :key="i" class="think-step">
-                    <i :class="s.icon" class="think-ico"></i>
-                    <span class="think-text" v-html="renderInline(s.text)"></span>
-                  </div>
-                </div>
-              </div>
+              <ThinkingSummary :message="msg" :busy="msg.pending" />
               <!-- 正文（markdown 渲染）-->
               <div v-if="msg.content" class="assistant-md markdown-body" v-html="renderContent(msg.content)"></div>
               <div v-else-if="msg.pending && !(msg.thinkingSteps && msg.thinkingSteps.length)" class="text-slate-400 text-sm py-1">
@@ -310,7 +297,7 @@
           </div>
           <div class="terminal-actions">
             <span class="terminal-cwd" :title="workspace?.path">{{ workspace?.path || '当前工作区' }}</span>
-            <select v-model="terminalShell" class="terminal-shell-select" title="选择终端"><option v-for="shell in terminalShells" :key="shell.id" :value="shell.id">{{ shell.label }}</option></select>
+            <UiSelect field v-model="terminalShell" class="terminal-shell-select" title="选择终端" :options="[...(terminalShells).map((shell) => ({ value: shell.id, label: String(shell.label) }))]" />
             <button class="terminal-icon-btn" title="清空终端" @click="clearTerminal"><i class="fa-solid fa-eraser"></i></button>
             <button class="terminal-icon-btn" title="重启终端" @click="restartTerminal"><i class="fa-solid fa-arrows-rotate"></i></button>
             <button class="terminal-icon-btn" :title="terminalOpen ? '收起终端' : '展开终端'" @click="toggleTerminal"><i class="fa-solid" :class="terminalOpen ? 'fa-chevron-down' : 'fa-chevron-up'"></i></button>
@@ -371,6 +358,8 @@ import DiffApprovalDialog from '@/components/code/DiffApprovalDialog.vue';
 import { useChatComposer } from '@/composables/useChatComposer';
 import { marked } from 'marked';
 import { useTheme } from '@/composables/useTheme.js';
+import ThinkingSummary from '@/components/agent/ThinkingSummary.vue';
+import { finalizeResponseSummary, publicToolStep, splitResponseSummary } from '@/data/response-summary.mjs';
 
 const props = defineProps({ id: { type: String, required: true } });
 
@@ -394,7 +383,8 @@ const terminalTheme = () => TERMINAL_THEMES[theme.value] || TERMINAL_THEMES.blue
 marked.setOptions({ gfm: true, breaks: true });
 const renderContent = (text) => {
   if (!text) return '';
-  try { return marked.parse(String(text)); } catch { return String(text); }
+  const content = splitResponseSummary(text).content;
+  try { return marked.parse(content); } catch { return content; }
 };
 const renderInline = (text) => {
   if (!text) return '';
@@ -946,6 +936,7 @@ const finishStream = (convId) => {
   const last = msgs[msgs.length - 1];
   if (last && last.role === 'assistant') {
     last.pending = false;
+    finalizeResponseSummary(last);
     // 落本回合小结 + 完成后默认收起思考过程，回归干净的答案视图。
     const meta = pendingMetaByConv.get(convId);
     if (meta) { last.meta = meta; last.thinkOpen = false; }
@@ -1012,18 +1003,13 @@ const handleSessionUpdate = (data) => {
   } else if (type === 'agent_thought_chunk' || type === 'agent_reasoning') {
     const msg = getOrCreateAssistant(targetMsgs);
     const t = textOf(content);
-    if (t) {
-      const steps = msg.thinkingSteps;
-      const last = steps[steps.length - 1];
-      if (last && last.icon === 'fa-solid fa-brain' && !last.finalized) last.text += t;
-      else steps.push({ text: t, icon: 'fa-solid fa-brain', finalized: false });
-    }
+    if (!msg.thinkingSteps.some(s => s.kind === 'public-progress' && s.text === '正在整理问题和相关上下文。')) msg.thinkingSteps.push({ text: '正在整理问题和相关上下文。', kind: 'public-progress', icon: 'fa-solid fa-book-open' });
     if (isActive) scrollToBottom();
     scheduleStreamEnd(conv.id);
   } else if (type === 'tool_call' || type === 'tool_call_start') {
     const msg = getOrCreateAssistant(targetMsgs);
     const toolName = update.title || update.toolName || update.name || 'tool';
-    msg.thinkingSteps.push({ text: `调用工具: ${toolName}`, icon: 'fa-solid fa-wrench', finalized: true });
+    msg.thinkingSteps.push({ text: publicToolStep(toolName), kind: 'public-progress', icon: 'fa-solid fa-wrench', finalized: true });
     if (isActive) captureLiveEdit(update);
     const t = streamEndTimers.get(conv.id);
     if (t) clearTimeout(t);
@@ -1035,7 +1021,7 @@ const handleSessionUpdate = (data) => {
       const msg = getOrCreateAssistant(targetMsgs);
       const toolName = update.title || update.toolName || update.name || 'tool';
       msg.thinkingSteps.push({
-        text: status === 'failed' ? `${toolName} 失败` : `${toolName} 完成`,
+        text: publicToolStep(toolName, status), kind: 'public-progress',
         icon: status === 'failed' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-circle-check',
         finalized: true,
       });

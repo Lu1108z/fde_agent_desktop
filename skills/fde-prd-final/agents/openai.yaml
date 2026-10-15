@@ -1,0 +1,3 @@
+interface:
+  display_name: "FDE PRD 定稿"
+  short_description: "生成与核查 S3-5 正式交付"

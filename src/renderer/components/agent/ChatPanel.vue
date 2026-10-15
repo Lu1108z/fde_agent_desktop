@@ -1,9 +1,9 @@
-﻿<template>
+<template>
   <!-- min-h-0：本身也是 flex 子项，不加会被消息列表撑高超出视口，
        导致内部 overflow-y-auto 失效、absolute bottom-0 的输入框被顶到屏幕外。 -->
-  <div class="flex-1 flex flex-col min-w-0 min-h-0 relative glass-card">
+  <div class="flex-1 flex flex-col min-w-0 min-h-0 relative chat-surface" :class="{ 'chat-surface--welcome': messages.length === 0 && !isLoading, 'chat-surface--branded': branded }">
     <!-- Messages area -->
-    <div ref="chatContainerRef" class="flex-1 overflow-y-auto px-4 pt-5" :class="messages.length > 0 ? 'pb-[160px]' : ''">
+    <div ref="chatContainerRef" class="chat-scroll flex-1 min-h-0 overflow-y-auto px-4 pt-5" :class="messages.length > 0 ? (chatAttachments.length ? 'pb-[250px]' : 'pb-[180px]') : ''">
       <!-- Loading state -->
       <div v-if="isLoading" class="flex flex-col items-center justify-center py-24">
         <div class="relative w-12 h-12 mb-5">
@@ -21,8 +21,11 @@
       <WelcomeHero
         v-else-if="messages.length === 0"
         class="h-full"
+        :coach-mode="coachMode"
+        :branded="branded"
         :available-models="availableModels"
         :current-model="currentModel"
+        @start-voice="$emit('start-voice')"
         @send-quick="(text) => $emit('send-quick', text)"
         @send-with-attachments="(text, atts) => $emit('send-with-attachments', text, atts)"
         @navigate="(tab) => $emit('navigate', tab)"
@@ -30,7 +33,7 @@
       />
 
       <!-- Message list -->
-      <div v-else class="w-full max-w-4xl mx-auto space-y-7">
+      <div v-else class="chat-transcript w-full max-w-4xl mx-auto space-y-7">
 
         <!-- Message list -->
         <div
@@ -84,55 +87,13 @@
 
           <!-- Assistant Message -->
           <div v-else class="w-full flex flex-col items-start">
-            <!-- Thinking Steps -->
-            <div v-if="msg.thinkingSteps && msg.thinkingSteps.length > 0" class="mb-3">
-              <button
-                type="button"
-                class="cursor-pointer group/think flex items-center gap-2.5 w-full text-left transition-all duration-300"
-                @click="msg.expanded = !msg.expanded"
-              >
-                <div
-                  class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-500"
-                  :class="msg.thinkingDone ? 'bg-gradient-to-br from-slate-100 to-slate-50 shadow-sm' : 'bg-gradient-to-br from-blue-100 to-indigo-50 shadow-md shadow-blue-100/50'"
-                >
-                  <i class="fa-solid text-sm transition-all duration-300" :class="msg.thinkingDone ? 'fa-brain text-slate-400' : 'fa-brain text-blue-500 animate-pulse'"></i>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <span class="text-[13px] font-semibold tracking-tight transition-colors" :class="msg.thinkingDone ? 'text-slate-500' : 'text-blue-700'">
-                      {{ msg.thinkingDone ? '推理完成' : liveStatusText }}
-                    </span>
-                    <span v-if="!msg.thinkingDone" class="flex gap-[3px]">
-                      <span class="w-1 h-1 rounded-full bg-blue-400 animate-bounce" style="animation-delay: 0ms"></span>
-                      <span class="w-1 h-1 rounded-full bg-blue-400 animate-bounce" style="animation-delay: 150ms"></span>
-                      <span class="w-1 h-1 rounded-full bg-blue-400 animate-bounce" style="animation-delay: 300ms"></span>
-                    </span>
-                    <span v-if="!msg.thinkingDone && elapsedSec > 0" class="text-[11px] text-slate-400 tabular-nums font-medium">已用时 {{ elapsedSec }}s</span>
-                    <i v-if="msg.thinkingDone" class="fa-solid fa-chevron-down text-[9px] text-slate-400 transition-transform duration-300" :class="msg.expanded ? 'rotate-180' : ''"></i>
-                  </div>
-                  <div class="text-[11px] text-slate-400 mt-0.5 font-medium">
-                    {{ msg.thinkingSteps.filter(s => s.visible).length }} 个步骤
-                    <template v-if="msg.thinkingDone">· 点击{{ msg.expanded ? '收起' : '展开' }}详情</template>
-                  </div>
-                </div>
-              </button>
-
-              <div v-show="msg.expanded || !msg.thinkingDone" class="mt-2 ml-4 pl-4 border-l-2 border-blue-200/40 space-y-0.5 max-h-[220px] overflow-y-auto transition-all pr-1 scrollbar-hide">
-                <div
-                  v-for="(step, si) in msg.thinkingSteps"
-                  :key="si"
-                  v-show="step.visible !== false"
-                  class="flex items-start gap-2.5 py-1 group/step"
-                >
-                  <div class="w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 transition-colors" :class="si === msg.thinkingSteps.length - 1 && !msg.thinkingDone ? 'bg-blue-500 text-white shadow-sm' : 'glass-card border border-slate-200/60 text-slate-400'">
-                    <i :class="step.icon || 'fa-solid fa-circle'" class="text-[8px]"></i>
-                  </div>
-                  <!-- Browser screenshot or image result -->
-                  <img v-if="step.image" :src="step.image.startsWith('data:') ? step.image : 'data:image/png;base64,' + step.image" class="max-w-[300px] rounded-lg border border-slate-200 mt-1" />
-                  <span v-else class="text-[12px] leading-relaxed text-slate-600" v-html="renderMarkdown(step.text)"></span>
-                </div>
-              </div>
+            <div v-if="!msg.systemNotice" class="assistant-message-heading">
+              <img :src="coachAvatar" alt="FDE 助手" />
+              <span>{{ projectMeta?.projectType === 'fde-coach' || slug.startsWith('coach-') ? 'FDE 教练' : projectMeta?.aiApp?.name || 'FDE 智能助手' }}</span>
+              <span v-if="isStreaming && idx === messages.length - 1" class="assistant-message-status">正在回复</span>
             </div>
+            <!-- Thinking Steps -->
+            <ThinkingSummary v-if="!msg.systemNotice" :message="msg" :busy="isStreaming && idx === messages.length - 1 && !msg.thinkingDone" />
 
             <!-- System notice: 引擎回执(如已并入/已排队)，非 AI 回答，浅灰提示条 -->
             <div v-if="msg.systemNotice && (msg.displayContent || msg.content)" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[13px] text-slate-500">
@@ -141,8 +102,10 @@
             </div>
 
             <!-- Message content: Doubao-style, no bubble, plain text on background -->
-            <div v-if="msg.content && !msg.systemNotice" class="w-full leading-[1.75] text-[13.5px] text-slate-800 prose prose-slate max-w-none" v-html="renderAssistantContent(msg.content)" @click="handleContentImgClick">
-            </div>
+            <StreamingAnswer v-if="msg.content && !msg.systemNotice" :key="`${slug}:${msg.streamId || 'history'}:${idx}`"
+              class="assistant-answer w-full leading-[1.85] text-[14px] text-slate-800 prose prose-slate max-w-none"
+              :content="msg.content" :animate="Boolean(msg.streamId)" :streaming="isStreaming && idx === messages.length - 1"
+              :stopped="msg.cancelled" :render="renderAssistantContent" @progress="followStreamingAnswer" @click="handleContentImgClick" />
 
             <!-- Action bar (always visible) -->
             <div v-if="msg.content && !msg.systemNotice" class="flex items-center gap-0.5 mt-2">
@@ -182,7 +145,7 @@
     </div>
 
     <!-- Floating input area (hidden when welcome hero is shown - it has its own input) -->
-    <div v-if="messages.length > 0" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white/95 to-transparent pt-10 pb-5 px-4">
+    <div v-if="messages.length > 0" class="chat-composer-dock absolute bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white/95 to-transparent pt-6 pb-4 px-4">
       <div class="w-full max-w-4xl mx-auto relative">
         <!-- Slash command palette -->
         <div v-if="showSlashMenu" class="absolute bottom-full mb-2 left-2 right-2 glass-card border border-slate-200/80 rounded-2xl shadow-xl shadow-slate-900/5 overflow-hidden z-20 max-h-[220px] overflow-y-auto">
@@ -198,13 +161,10 @@
           <div v-if="filteredCommands.length === 0" class="px-4 py-3 text-[11px] text-slate-400 text-center">无匹配命令</div>
         </div>
 
-        <!-- Doubao-style composer -->
-        <div
-          class="group/composer rounded-[26px] border transition-all duration-200"
-          :class="isFocused ? 'glass-card border-blue-400/70 shadow-[0_6px_28px_-8px_hsl(var(--primary)_/_28%)]' : 'bg-slate-50 border-slate-200 hover:border-slate-300 hover:bg-slate-50/70 shadow-[0_2px_12px_-6px_rgba(15,23,42,0.12)]'"
-        >
+        <!-- 简约输入框 -->
+        <div class="fde-composer">
           <!-- Attachment preview (images + files) -->
-          <div v-if="chatAttachments.length > 0" class="flex items-center gap-2 px-5 pt-4 flex-wrap">
+          <div v-if="chatAttachments.length > 0" class="fde-composer-attachments flex items-center gap-2 px-5 pt-4 flex-wrap">
             <div v-for="(att, ai) in chatAttachments" :key="ai" class="relative group/att">
               <img v-if="att.type === 'image'" :src="'data:' + att.media_type + ';base64,' + att.data" class="w-14 h-14 object-cover rounded-xl border border-slate-200" />
               <div v-else class="flex items-center gap-2 h-14 px-3 rounded-xl border border-slate-200 glass-card max-w-[200px]">
@@ -222,96 +182,31 @@
 
           <textarea
             ref="inputRef"
+            :aria-label="coachMode ? '发送给 FDE 教练的消息' : '发送给 AI 助手的消息'"
             v-model="inputText"
-            :placeholder="isStreaming ? 'AI 正在响应中…' : '发消息、输入 / 唤起指令，Ctrl + Enter 发送'"
+            :placeholder="isStreaming ? '正在回复…' : '向我提问…'"
             rows="1"
             :disabled="isStreaming"
             @input="autoGrow"
             @focus="isFocused = true"
             @blur="isFocused = false"
-            class="w-full resize-none text-[14px] text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none leading-6 px-5 pt-4 pb-1 max-h-[168px] scrollbar-hide disabled:opacity-60"
+            class="scrollbar-hide disabled:opacity-60"
             @keydown.ctrl.enter.prevent="sendMessage"
             @keydown.meta.enter.prevent="sendMessage"
           ></textarea>
 
-          <!-- Bottom toolbar -->
-          <div class="flex items-center justify-between px-3 pb-3 pt-1.5">
-            <div class="flex items-center gap-1.5">
-              <ModelSelector
-                :models="availableModels"
-                :current="currentModel"
-                @change="(id) => $emit('change-model', id)"
-              />
-              <span
-                class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border cursor-pointer hover:opacity-80 transition-colors"
-                :style="{
-                  fontSize: '10px', lineHeight: '1',
-                  background: `color-mix(in srgb, ${accent(projectMeta?.aiApp?.color)} 5%, transparent)`,
-                  borderColor: `color-mix(in srgb, ${accent(projectMeta?.aiApp?.color)} 19%, transparent)`,
-                  color: accent(projectMeta?.aiApp?.color),
-                }"
-              >
-                <i :class="'fa-solid fa-' + (projectMeta?.aiApp?.icon || 'robot')" style="font-size:9px"></i>
-                {{ (projectMeta?.aiApp?.name) || 'AI 产品设计智能体' }}
-                <i class="fa-solid fa-chevron-down ml-0.5" style="font-size:7px"></i>
-              </span>
-              <button
-                @click="pickImage"
-                :disabled="isStreaming"
-                class="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                title="上传图片"
-              >
-                <i class="fa-solid fa-image text-xs"></i>
-              </button>
-              <button
-                @click="pickFile"
-                :disabled="isStreaming"
-                class="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                title="上传文件"
-              >
-                <i class="fa-solid fa-paperclip text-xs"></i>
-              </button>
-              <button
-                @click="toggleRecording"
-                :disabled="isStreaming || !recordingSupported"
-                class="w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                :class="isRecording ? 'text-white bg-danger hover:bg-danger-deep' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-100'"
-                :title="recordingSupported ? (isRecording ? '停止录音' : '语音输入') : '当前环境不支持录音'"
-              >
-                <i class="fa-solid text-xs" :class="isRecording ? 'fa-stop' : 'fa-microphone'"></i>
-              </button>
-              <span v-if="isRecording" class="text-[11px] text-danger font-medium select-none tabular-nums">{{ recordSeconds }}s · 点击停止</span>
-              <span v-else-if="isTranscribing" class="text-[11px] text-blue-500 font-medium select-none">识别中…</span>
-              <button
-                @click="triggerSlash"
-                :disabled="isStreaming"
-                class="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                title="指令"
-              >
-                <i class="fa-solid fa-slash text-xs"></i>
-              </button>
+          <div class="fde-composer-toolbar">
+            <div class="fde-composer-left">
+              <AttachmentMenu :disabled="isStreaming" :recording="isRecording" :voice-supported="recordingSupported" commands
+                @image="pickImage" @file="pickFile" @voice="toggleRecording" @command="triggerSlash" />
+              <span v-if="isRecording" class="fde-composer-status">录音中 {{ recordSeconds }}s</span>
+              <span v-else-if="isTranscribing" class="fde-composer-status">识别中…</span>
             </div>
-
-            <div class="flex items-center gap-2.5">
-              <span v-if="isStreaming && elapsedSec >= 25" class="text-[11px] text-amber-600 select-none">响应较慢？可点右侧停止，换个模型或稍后重试</span>
-              <span v-else class="hidden sm:inline text-[11px] text-slate-400 select-none">Ctrl + Enter 发送</span>
-              <button
-                v-if="isStreaming"
-                @click="$emit('cancel')"
-                class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-900 text-white flex items-center justify-center transition-all cursor-pointer shadow-sm"
-                title="停止生成"
-              >
-                <span class="w-3 h-3 rounded-[3px] glass-card"></span>
-              </button>
-              <button
-                v-else
-                @click="sendMessage"
-                :disabled="!inputText.trim() && chatAttachments.length === 0"
-                class="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200"
-                :class="(inputText.trim() || chatAttachments.length > 0) ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white cursor-pointer shadow-md shadow-blue-500/30 hover:shadow-lg hover:shadow-blue-500/40 active:scale-95' : 'bg-slate-100 text-slate-300 cursor-not-allowed'"
-              >
-                <i class="fa-solid fa-arrow-up text-xs"></i>
-              </button>
+            <div class="fde-composer-right">
+              <ModelSelector minimal :models="availableModels" :current="currentModel" @change="(id) => $emit('change-model', id)" />
+              <button type="button" class="fde-voice-button" :class="{ 'is-recording': isRecording }" :disabled="isStreaming || !recordingSupported || isTranscribing" @click="toggleRecording" :aria-label="isRecording ? '停止录音' : '语音输入'" :title="isRecording ? '停止录音' : '语音输入'"><i class="fa-solid" :class="isRecording ? 'fa-stop' : 'fa-microphone'" aria-hidden="true"></i></button>
+              <button v-if="isStreaming" type="button" class="fde-send-button" @click="$emit('cancel')" title="停止生成" aria-label="停止生成"><i class="fa-solid fa-stop" style="font-size:12px" aria-hidden="true"></i></button>
+              <button v-else type="button" class="fde-send-button" @click="sendMessage" aria-label="发送消息" :disabled="!inputText.trim() && chatAttachments.length === 0"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
             </div>
           </div>
         </div>
@@ -323,17 +218,23 @@
 </template>
 
 <script setup>
-import { useAccentColor } from '@/composables/useAccentColor.js';
-const { accent } = useAccentColor();
 import { ref, reactive, nextTick, watch, computed, onMounted, onBeforeUnmount } from 'vue';
 import { marked } from 'marked';
 import WelcomeHero from './WelcomeHero.vue';
+import coachAvatar from '@/assets/fde-coach-avatar.png';
 import ModelSelector from './ModelSelector.vue';
+import AttachmentMenu from './AttachmentMenu.vue';
+import './chat-composer.css';
 import ImageLightbox from '@/components/common/ImageLightbox.vue';
 import AttachmentChip from '@/components/common/AttachmentChip.vue';
 import { prepareImage } from '@/composables/imagePrep';
+import StreamingAnswer from './StreamingAnswer.vue';
+import ThinkingSummary from './ThinkingSummary.vue';
+import { cleanAssistantContent } from '@/data/assistant-content';
 
 const props = defineProps({
+  coachMode: { type: Boolean, default: false },
+  branded: { type: Boolean, default: false },
   slug: { type: String, required: true },
   projectName: { type: String, default: '' },
   projectMeta: { type: Object, default: () => ({}) },
@@ -346,17 +247,7 @@ const props = defineProps({
   currentModel: { type: String, default: '' },
 });
 
-const emit = defineEmits(['send', 'send-quick', 'send-with-attachments', 'cancel', 'navigate', 'fork', 'regenerate', 'feedback', 'delete', 'change-model', 'preview-file']);
-
-// 等待"活着感"：随等待时长升级的安心文案，把"慢"归因到网关而非软件卡死。
-// 只在"进行中"的思考头部使用（thinkingDone 时仍显示"推理完成"）。
-const liveStatusText = computed(() => {
-  const s = props.elapsedSec;
-  if (s >= 60) return '已等待较久 — 网关可能拥塞';
-  if (s >= 25) return '模型网关响应较慢，仍在等待…';
-  if (s >= 8) return '正在处理，请稍候…';
-  return '深度推理中';
-});
+const emit = defineEmits(['start-voice', 'send', 'send-quick', 'send-with-attachments', 'cancel', 'navigate', 'fork', 'regenerate', 'feedback', 'delete', 'change-model', 'preview-file']);
 
 const inputText = ref('');
 const inputRef = ref(null);
@@ -409,8 +300,8 @@ const handleContentImgClick = (e) => {
 const autoGrow = () => {
   const el = inputRef.value;
   if (!el) return;
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 168) + 'px';
+  el.style.height = props.branded ? '34px' : 'auto';
+  if (!props.branded) el.style.height = Math.min(el.scrollHeight, 132) + 'px';
 };
 
 const triggerSlash = () => {
@@ -436,6 +327,8 @@ const closeMenu = () => { menuIdx.value = null; };
 onMounted(() => document.addEventListener('click', closeMenu));
 onBeforeUnmount(() => {
   document.removeEventListener('click', closeMenu);
+  if (fileResolveTimer) clearTimeout(fileResolveTimer);
+  fileResolverDisposed = true;
   try { if (mediaRecorder && isRecording.value) mediaRecorder.stop(); } catch { /* ignore */ }
   stopTracks();
 });
@@ -656,6 +549,12 @@ const scrollToBottom = () => {
   });
 };
 
+const followStreamingAnswer = () => {
+  const el = chatContainerRef.value;
+  // Follow growing text only while the reader is already at the bottom.
+  if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 100) scrollToBottom();
+};
+
 const scrollToMessage = (index) => {
   nextTick(() => {
     const el = chatContainerRef.value?.querySelector(`[data-msg-index="${index}"]`);
@@ -745,6 +644,7 @@ const CARD_EXTS_SET = new Set([
 ]);
 
 const renderAssistantContent = (content) => {
+  content=cleanAssistantContent(content);
   if (!content) return '';
   try {
     const card = (fp) => deliveryCardHtml(fp, resolvedFiles.get(fp));
@@ -838,39 +738,72 @@ const renderAssistantContent = (content) => {
 // Async file metadata resolution cache
 const resolvedFiles = reactive(new Map());
 const resolveQueue = new Set();
+const missingFiles = new Map();
+let fileResolveTimer = null;
+let fileResolverDisposed = false;
 
 async function resolveFileRefs(content) {
   if (!content) return;
   const allExtsRe = new RegExp(`(?:MEDIA:|(?:^|[\\s|(\`]))([^\\s，。、\\n|)<>\`]*\\.(${ALL_EXTS}))`, 'gim');
   let match;
-  const refs = [];
+  const refs = new Set();
   while ((match = allExtsRe.exec(content)) !== null) {
     const fp = match[1];
-    if (fp && !resolvedFiles.has(fp) && !resolveQueue.has(fp) && !fp.startsWith('http')) refs.push(fp);
+    if (fp && !resolvedFiles.has(fp) && !resolveQueue.has(fp) && !fp.startsWith('http') && Date.now() - (missingFiles.get(fp) || 0) > 20000) refs.add(fp);
   }
+  const slug = props.slug;
+  for (const fp of refs) resolveQueue.add(fp);
   for (const fp of refs) {
-    resolveQueue.add(fp);
+    if (fileResolverDisposed || props.slug !== slug) { resolveQueue.delete(fp); continue; }
     try {
-      const res = await window.api.hermes.resolveFileRef(props.slug, fp);
+      const res = await window.api.hermes.resolveFileRef(slug, fp);
+      if (fileResolverDisposed || props.slug !== slug) continue;
       if (res && res.success && res.file) {
         resolvedFiles.set(fp, res.file);
-      }
-    } catch { /* skip */ }
-    resolveQueue.delete(fp);
+      } else missingFiles.set(fp, Date.now());
+    } catch { missingFiles.set(fp, Date.now()); }
+    finally { resolveQueue.delete(fp); }
   }
 }
 
-watch(() => props.messages, (msgs) => {
-  if (!msgs) return;
-  for (const msg of msgs) {
-    if (msg.role === 'assistant' && msg.content) resolveFileRefs(msg.content);
-  }
-}, { immediate: true, deep: true });
+watch(() => props.slug, () => { resolvedFiles.clear(); missingFiles.clear(); resolveQueue.clear(); });
+watch(() => [props.isStreaming, ...props.messages.filter(msg => msg.role === 'assistant').map(msg => msg.content)], () => {
+  if (fileResolveTimer) clearTimeout(fileResolveTimer);
+  fileResolveTimer = setTimeout(() => {
+    if (fileResolverDisposed) return;
+    if (!props.isStreaming) missingFiles.clear();
+    resolveFileRefs(props.messages.filter(msg => msg.role === 'assistant').map(msg => msg.content || '').join('\n'));
+  }, 250);
+}, { immediate: true });
 
-defineExpose({ scrollToBottom, scrollToMessage });
+function setDraft(text) {
+  inputText.value = text;
+  nextTick(() => { autoGrow(); inputRef.value?.focus(); });
+}
+defineExpose({ scrollToBottom, scrollToMessage, setDraft });
 </script>
 
 <style scoped>
+.chat-surface { isolation:isolate; background:#fff; }
+.chat-surface--welcome { background:#fff; }
+.chat-surface--branded .fde-composer { min-height:52px; padding:8px 10px; border-radius:28px; }
+.chat-surface--branded .fde-composer textarea { min-height:34px; height:34px!important; max-height:34px; padding:6px 2px; }
+.chat-surface--branded .fde-send-button { width:32px; height:32px; font-size:15px; }
+.chat-surface--branded :deep(.attachment-trigger) { width:34px; height:34px; }
+.chat-scroll { position:relative; z-index:1; scrollbar-gutter:stable; }
+.chat-composer-dock { z-index:5; pointer-events:auto; }
+.chat-transcript { max-width:820px; padding:20px 24px 24px; background:#fff; border:1px solid #edf1f7; border-radius:16px; }
+.assistant-message-heading { display:flex; align-items:center; gap:9px; margin-bottom:12px; font-size:12px; color:#475569; font-weight:500; }
+.assistant-message-heading img { width:30px; height:30px; object-fit:cover; border-radius:50%; border:1px solid #e3ecf8; }
+.assistant-message-status { font-size:11px; color:#2563eb; font-weight:400; }
+.assistant-answer { overflow-wrap:anywhere; }
+.chat-composer-dock > div { max-width:788px; }
+.chat-composer { background:#fff!important; border-color:#dce5f3; box-shadow:0 4px 20px rgba(39,71,119,.06)!important; }
+.chat-composer:focus-within { border-color:#8aafff; }
+.composer-toolbar { flex-wrap:wrap; gap:8px; }
+.composer-tools { min-width:0; flex-wrap:wrap; }
+.chat-composer button:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+
 /* Ensure markdown content renders correctly inside chat bubbles */
 :deep(.prose) {
   font-size: 13.5px;

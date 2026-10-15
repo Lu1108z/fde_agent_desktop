@@ -1,0 +1,230 @@
+<h1>提示词（Prompt）工程规范</h1>
+<h2>一、Prompt 库结构</h2>
+<p>每个智能体的提示词集中管理，目录结构如下：</p>
+<pre><code>prompt_library/
+├── 01_线索清洗智能体/
+│   ├── prompt.md（当前使用的Prompt）
+│   └── test_records.md（测试记录）
+├── 02_策略生成智能体/
+│   ├── prompt.md
+│   └── test_records.md
+├── 03_招投标智能体/
+│   ├── prompt.md
+│   └── test_records.md
+├── ...
+└── README.md（Prompt管理说明）
+</code></pre>
+<p>设计原则：</p>
+<ul>
+<li>一个智能体只保留一个当前使用的 Prompt</li>
+<li>使用 Git 进行版本管理（不需要 v1/v2 文件）</li>
+<li>A/B 测试结果记录在测试报告中，不保留旧的 Prompt 文件</li>
+<li>修改 Prompt 时，通过 Git commit 记录变更历史</li>
+</ul>
+<h2>二、Prompt 编写规范</h2>
+<p>每个 Prompt 必须包含以下六要素：</p>
+<pre><code>【角色】
+你是一位……（专家身份、经验背景）
+【任务】
+你要……（具体干什么、分几步）
+【输入】
+你会收到……（数据格式、字段说明）
+【规则】
+1. （业务判断规则，从 Playbook 来）
+2. （边界规则：什么该做、什么转人工）
+3. （异常处理：数据缺失/歧义怎么办）
+【输出格式】
+按……格式输出（结构、字段、语气）
+【约束】
+- 只用企业内部数据，不编造
+- 不确定的明确说&quot;不确定&quot;，不硬答
+</code></pre>
+<h2>三、Prompt 编写步骤</h2>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>步骤一：定义角色</td>
+<td>从身份卡提取一句话定位，写入【角色】</td>
+</tr>
+<tr>
+<td>步骤二：描述任务</td>
+<td>从核心职责提取具体步骤，写入【任务】</td>
+</tr>
+<tr>
+<td>步骤三：明确输入</td>
+<td>从节点表提取数据格式，写入【输入】</td>
+</tr>
+<tr>
+<td>步骤四：定义规则</td>
+<td>从 Playbook 提取业务规则，写入【规则】</td>
+</tr>
+<tr>
+<td>步骤五：定义输出格式</td>
+<td>从节点表提取输出结构，写入【输出格式】</td>
+</tr>
+<tr>
+<td>步骤六：设置约束</td>
+<td>从边界和异常层提取，写入【约束】</td>
+</tr>
+</tbody></table>
+<h2>四、完整示例：招投标智能体 Prompt</h2>
+<pre><code>【角色】
+你是一位资深招投标专家，做过 500+ 份中标标书，精通政企采购规则、
+评分逻辑和废标红线。你的任务是帮商务团队把投标文件的初稿又快又稳地做出来。
+【任务】
+你会收到一份招标文件。你要：
+1. 提取所有评分点、资格要求、废标条款
+2. 把应答项分成&quot;必须响应 / 加分项 / 废标风险项&quot;三类
+3. 从公司知识库匹配资质和案例素材
+4. 逐条生成应答内容
+5. 按招标要求的目录结构组装成完整初稿
+6. 把缺失项和高风险项标红，交人工确认
+【输入】
+你会收到：招标文件（PDF/Word）+ 公司资质库/案例库/产品库的检索接口
+【规则】
+1. 废标项识别：出现&quot;应&quot;&quot;必须&quot;&quot;否则废标&quot;等强制性表述的，全部提取为强制项，宁多勿漏
+2. 技术应答：只按公司真实能力答，绝不夸大——夸大会在评审现场翻车
+3. 资质响应：逐条比对招标要求 vs 公司现有资质，缺的直接标红，不许编
+4. 商务报价：不碰，直接标&quot;转人工&quot;
+5. 找不到匹配案例：明确说&quot;无匹配，需人工提供&quot;，不硬凑
+【输出格式】
+按招标文件要求的目录结构输出，每条应答标明：
+- 应答内容
+- 引用的素材来源
+- 状态标记：✅已完成 / ⚠️需人工确认 / ❌缺失待补
+【约束】
+- 只用公司真实资质和案例，不编造
+- 废标风险项一个都不能漏，吃不准就标红
+- 报价、盖章、提交这些决策动作绝不代做
+</code></pre>
+<h2>五、版本管理（使用 Git）</h2>
+<p>使用 Git 管理 Prompt 的版本历史，而不是保留多个文件版本：</p>
+<pre><code class="language-bash"># 修改 Prompt 后提交
+git add prompt_library/01_线索清洗智能体/prompt.md
+git commit -m &quot;fix: 修复线索清洗规则，新增去重逻辑&quot;
+# 查看历史版本
+git log prompt_library/01_线索清洗智能体/prompt.md
+# 回滚到历史版本
+git checkout &lt;commit_hash&gt; -- prompt_library/01_线索清洗智能体/prompt.md
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Commit 类型</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>feat</td>
+<td>新增 Prompt</td>
+<td>feat: 新增线索清洗智能体 Prompt</td>
+</tr>
+<tr>
+<td>fix</td>
+<td>修复 Prompt 问题</td>
+<td>fix: 修复招投标智能体废标项识别规则</td>
+</tr>
+<tr>
+<td>refactor</td>
+<td>重构 Prompt</td>
+<td>refactor: 优化输出格式说明</td>
+</tr>
+<tr>
+<td>test</td>
+<td>测试相关</td>
+<td>test: 添加 A/B 测试记录</td>
+</tr>
+</tbody></table>
+<h2>六、A/B 测试记录</h2>
+<p>在智能体目录下创建 <code>test_records.md</code> 记录测试结果：</p>
+<pre><code># 测试记录
+
+## 2026-07-20 招投标智能体 A/B 测试
+
+测试版本
+- 版本A：修改前（commit: abc123）
+- 版本B：修改后（commit: def456）
+
+测试数据
+- 测试场景：10 份历史招标文件
+- 测试结果：
+  - 版本A准确率：85%
+  - 版本B准确率：92%
+
+结论
+选择版本B上线，理由：废标项零遗漏
+</code></pre>
+<h2>七、常见错误与修正</h2>
+<table>
+<thead>
+<tr>
+<th>错误写法</th>
+<th>正确写法</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&quot;你要认真分析&quot;</td>
+<td>&quot;你要提取评分点、资格要求、废标条款&quot;</td>
+<td>要具体，不要模糊</td>
+</tr>
+<tr>
+<td>&quot;尽量准确&quot;</td>
+<td>&quot;准确率≥90%&quot;</td>
+<td>要量化，不要模糊</td>
+</tr>
+<tr>
+<td>&quot;看着办&quot;</td>
+<td>&quot;吃不准就标红交人&quot;</td>
+<td>要明确规则，不要自由发挥</td>
+</tr>
+<tr>
+<td>&quot;编一个合理的答案&quot;</td>
+<td>&quot;缺的直接标红，不许编&quot;</td>
+<td>禁止编造，诚实告知</td>
+</tr>
+<tr>
+<td>没有异常处理</td>
+<td>&quot;找不到匹配案例：明确说无匹配，需人工提供&quot;</td>
+<td>必须有兜底策略</td>
+</tr>
+</tbody></table>
+<h2>八、版本管理要求</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>要求</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Prompt 文件</td>
+<td>每个智能体只保留一个 prompt.md 文件</td>
+</tr>
+<tr>
+<td>Git 管理</td>
+<td>使用 Git 管理版本历史，每次修改都要提交 commit</td>
+</tr>
+<tr>
+<td>Commit 规范</td>
+<td>遵循 Git commit 规范（feat/fix/refactor/test）</td>
+</tr>
+<tr>
+<td>A/B 测试记录</td>
+<td>在 test_records.md 中记录测试结果</td>
+</tr>
+<tr>
+<td>业务方签字</td>
+<td>重大修改需要业务方确认，记录在 commit message 中</td>
+</tr>
+<tr>
+<td>回滚机制</td>
+<td>通过 Git 回滚到历史版本，Git log 可查看所有历史</td>
+</tr>
+</tbody></table>

@@ -19,6 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const mammoth = require('mammoth');
+const {convertMarkdownItem} = require('./convert-handbook-word');
 
 const HANDBOOK_DIR = path.join(__dirname, '..', 'fde-handbook');
 
@@ -46,7 +47,7 @@ function knowledgeType(fileName) {
 
 // 去掉「N-」序号前缀和【标签】,得到干净展示名
 function displayName(fileName) {
-  const base = fileName.replace(/\.(md|docx)$/i, '');
+  const base = fileName.replace(/\.(md|docx)$/i, '').replace(/\.Word$/i, '');
   return base
     .replace(/^[\d.]+-/, '')             // 去序号前缀(支持 0- / 00- / 2.5- 等)
     .replace(/【知识[^】]*】|【[^】]*交付】/g, '') // 去分类标签(含【知识·调研】【研发交付】)
@@ -72,8 +73,16 @@ async function convertDocxToHtml(dir, docxFile) {
 async function buildStage(stageDir) {
   const dir = path.join(HANDBOOK_DIR, stageDir);
   if (!fs.existsSync(dir)) return null;
-  const files = fs.readdirSync(dir)
-    .filter((f) => /\.(md|docx)$/i.test(f))
+  const available = fs.readdirSync(dir);
+  const files = available
+    .filter((f) => {
+      if (!/\.(md|docx)$/i.test(f)) return false;
+      if (!/\.Word\.docx$/i.test(f)) return true;
+      // A Word-only document is a valid original. Skip generated variants
+      // only when their Markdown or canonical Word source is present.
+      const stem = f.replace(/\.Word\.docx$/i, '');
+      return !available.some(name => [stem + '.md', stem + '.docx'].some(source => name.toLowerCase() === source.toLowerCase()));
+    })
     .sort((a, b) => a.localeCompare(b, 'zh'));
 
   const items = [];
@@ -95,7 +104,7 @@ async function buildStage(stageDir) {
         item.previewable = true;       // docx 也可内嵌预览(渲染 html 快照)
       }
     }
-    items.push(item);
+    items.push(ext === 'md' ? await convertMarkdownItem(dir, item) : item);
   }
 
   return {

@@ -1,0 +1,76 @@
+.resource-browser { display: flex; height: 100%; min-height: 0; overflow: hidden; color: #18233b; background: #fff; }
+.resource-browser .resource-sidebar { width: 210px; flex-shrink: 0; background: linear-gradient(140deg, #f8fbff, #f0f6ff); border-right: 1px solid #e7edf7; }
+.resource-sidebar-heading { height: 62px; display: flex; align-items: center; padding: 0 20px; font-size: 16px; font-weight: 600; }
+.resource-browser .tree-node { min-height: 39px; padding: 8px 10px; border-radius: 8px; font-size: 12px; color: #60708d; }
+.resource-browser .tree-node--active { color: #1e5bff; background: #e8f0ff; }
+.resource-browser .tree-badge { width: 23px; height: 23px; border-radius: 6px; }
+.resource-browser .tree-count { background: transparent; color: #8c9bb4; }
+.resource-browser .tree-node--active .tree-count { color: #2463eb; background: transparent; }
+.resource-workspace { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 0; }
+.resource-toolbar { min-height: 62px; display: flex; align-items: center; gap: 12px; padding: 12px 24px; border-bottom: 1px solid #edf1f8; }
+.resource-search { flex: 1; max-width: 620px; min-width: 120px; position: relative; }
+.resource-search i { position: absolute; top: 50%; left: 12px; transform: translateY(-50%); color: #8191ac; font-size: 13px; }
+.resource-search input { width: 100%; height: 35px; border: 1px solid transparent; border-radius: 7px; padding: 0 12px 0 35px; background: #f2f6fc; color: #334155; font-size: 12px; outline: none; }
+.resource-search input:focus { border-color: #9dbbff; background: #fff; }
+.resource-toolbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.resource-browser .btn-sm, .resource-browser .btn-sm-pri { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 7px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.resource-browser .btn-sm { border: 1px solid #dfe8f8; background: #fff; color: #456085; }
+.resource-browser .btn-sm-pri { border: 1px solid #1e5eff; background: linear-gradient(135deg, #2672ff, #1b50ee); color: #fff; box-shadow: 0 3px 8px #2463eb18; }
+.resource-browser button:disabled { opacity: .5; cursor: not-allowed; }
+.resource-browser button:focus-visible, .resource-browser tr:focus-visible { outline: 2px solid #3978ff; outline-offset: -2px; }
+.resource-body { display: flex; min-height: 0; flex: 1; }
+.resource-center { min-width: 0; flex: 1; overflow-y: auto; padding: 28px 24px; }
+.resource-title { display: flex; align-items: center; gap: 15px; margin-bottom: 26px; }
+.resource-title-icon { display: flex; flex-shrink: 0; width: 44px; height: 44px; align-items: center; justify-content: center; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #1475ff, #5c99ff); box-shadow: 0 5px 12px #2463eb25; font-size: 19px; }
+.resource-title h1 { display: flex; align-items: baseline; gap: 12px; font-size: 19px; font-weight: 600; line-height: 1.4; }
+.resource-title h1 span { font-size: 12px; font-weight: 400; color: #8a99b1; }
+.resource-title p { margin-top: 5px; font-size: 12px; line-height: 1.6; color: #72809a; }
+.resource-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 22px; }
+.resource-filter { display: inline-flex; gap: 7px; align-items: center; padding: 7px 11px; border-radius: 11px; background: #f3f6fa; color: #63738c; font-size: 11px; }
+.resource-filter span { padding: 0 5px; border-radius: 8px; background: #fff; font-size: 10px; }
+.resource-filter.is-active { background: #2463ff; color: #fff; }
+.resource-filter.is-active span { color: #2463ff; }
+.resource-view-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.resource-view-controls select { height: 32px; border: 1px solid #e3eaf6; border-radius: 7px; padding: 0 7px; background: #fff; font-size: 11px; color: #5b6d89; }
+.resource-view-toggle { display: flex; padding: 3px; gap: 2px; border-radius: 7px; background: #f2f5fa; }
+.resource-view-toggle button { border-radius: 5px; padding: 5px 8px; font-size: 11px; color: #7887a1; }
+.resource-view-toggle button.is-active { color: #fff; background: #4c86ff; }
+.resource-list table { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: left; }
+.resource-list th { height: 43px; font-size: 11px; font-weight: 500; color: #65748d; background: #f4f7fc; }
+.resource-list th, .resource-list td { padding: 10px 8px; border-bottom: 1px solid #edf1f8; }
+.resource-list th:first-child { border-radius: 9px 0 0 0; }
+.resource-list th:last-child { border-radius: 0 9px 0 0; }
+.resource-list tbody tr { height: 59px; cursor: pointer; }
+.resource-list tbody tr:hover { background: #f7faff; }
+.resource-list tbody tr.is-selected { background: #eaf1ff; }
+.resource-col-mark { width: 32px; }.resource-col-name { width: 30%; }.resource-col-category { width: 94px; }.resource-col-meta { width: 88px; }.resource-col-action { width: 43px; }
+.resource-row-mark { display: flex; width: 14px; height: 14px; align-items: center; justify-content: center; border-radius: 3px; border: 1px solid #ccd7ea; background: #fff; font-size: 9px; color: #fff; }
+.resource-row-mark.is-checked { background: #2867f8; border-color: #2867f8; }
+.resource-row-name { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 12px; font-weight: 500; }
+.resource-row-name > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resource-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; color: #fff; font-size: 14px; box-shadow: 0 3px 6px #234a8420; }
+.resource-tag { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 5px; background: #ebf1ff; padding: 3px 6px; color: #4771e3; font-size: 10px; line-height: 1.4; }
+.resource-row-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: #7b89a1; }
+.resource-row-meta { font-size: 11px; color: #8a99b1; }
+.resource-row-more { width: 26px; height: 26px; border-radius: 6px; color: #6684bc; font-size: 13px; }.resource-row-more:hover { background: #dce8ff; }
+.resource-list .resource-group-row { height: 32px; background: #f8faff; color: #657b9d; font-size: 11px; font-weight: 600; }
+.resource-detail { width: 344px; flex-shrink: 0; min-width: 0; border-left: 1px solid #e8eef7; display: flex; flex-direction: column; overflow: hidden; background: linear-gradient(180deg, #fff, #fbfdff); }
+.resource-detail-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 20px; }
+.resource-detail-heading { display: flex; align-items: center; gap: 14px; }.resource-detail-heading .resource-icon { width: 52px; height: 52px; border-radius: 13px; font-size: 22px; }
+.resource-detail-heading h2 { font-size: 17px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.4; }
+.resource-detail-description { margin: 18px 0; font-size: 12px; line-height: 1.85; color: #60718e; overflow-wrap: anywhere; }
+.resource-detail-actions { display: flex; align-items: center; gap: 8px; }.resource-detail-actions .btn-sm-pri { flex: 1; height: 38px; }
+.resource-detail-menu { position: relative; }.resource-detail-menu-popover { position: absolute; right: 0; top: 38px; z-index: 10; width: 130px; padding: 5px; background: #fff; border: 1px solid #dfe7f5; border-radius: 8px; box-shadow: 0 8px 24px #1c38651c; }.resource-detail-menu-popover button { display: block; width: 100%; text-align: left; font-size: 11px; padding: 8px; border-radius: 5px; }.resource-detail-menu-popover button:hover { background: #edf4ff; }
+.resource-detail-tabs { display: flex; gap: 8px; border-bottom: 1px solid #e7edf7; margin-top: 22px; }.resource-detail-tabs button { flex: 1; padding: 12px 3px; border-bottom: 2px solid transparent; font-size: 11px; color: #8492ab; }.resource-detail-tabs button.is-active { border-color: #2867ff; color: #2867ff; font-weight: 600; }
+.resource-detail-info { display: grid; grid-template-columns: 100px minmax(0,1fr); gap: 17px 8px; padding: 22px 0; font-size: 11px; line-height: 1.6; color: #647795; }.resource-detail-info dt i { width: 17px; color: #879abc; }.resource-detail-info dd { overflow-wrap: anywhere; }
+.resource-detail-section { border-top: 1px solid #edf1f8; padding: 18px 0; }.resource-detail-section h3 { margin-bottom: 12px; font-size: 12px; font-weight: 600; }.resource-detail-section p { font-size: 11px; line-height: 1.8; color: #8290a7; }.resource-detail-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+.resource-detail-file { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px; text-align: left; border: 1px solid #e1e9f6; border-radius: 8px; font-size: 12px; color: #5f7397; }
+.resource-detail-markdown { padding-top: 20px; font-size: 12px; line-height: 1.8; color: #52627d; overflow-wrap: anywhere; }.resource-detail-markdown h1,.resource-detail-markdown h2,.resource-detail-markdown h3 { font-weight: 600; color: #243856; margin: 1em 0 .5em; }.resource-detail-markdown h1 { font-size: 18px; }.resource-detail-markdown h2 { font-size: 15px; }.resource-detail-markdown h3 { font-size: 13px; }.resource-detail-markdown p { margin-bottom: .9em; }.resource-detail-markdown ul,.resource-detail-markdown ol { padding-left: 18px; list-style: revert; }.resource-detail-markdown pre { overflow-x: auto; padding: 10px; border-radius: 7px; background: #f0f4fa; font-size: 11px; }.resource-detail-markdown table { display: block; max-width: 100%; overflow-x: auto; }.resource-detail-markdown td,.resource-detail-markdown th { border: 1px solid #e0e7f2; padding: 6px; }.resource-detail-markdown a { color: #2463eb; }
+.resource-pagination { display: flex; justify-content: center; gap: 5px; margin-top: 22px; }
+.resource-empty { padding: 60px 16px; text-align: center; font-size: 12px; color: #8a9ab4; }.resource-empty > i { font-size: 30px; margin-bottom: 14px; }
+@media (max-width: 1150px) { .resource-browser .resource-sidebar { width: 184px; }.resource-detail { width: 300px; }.resource-center { padding: 22px 16px; }.resource-col-category { width: 80px; }.resource-col-name { width: 36%; }.resource-col-meta { width: 64px; } }
+
+.resource-browser.sk-bg, .resource-browser.kb-bg { background: #fff; }
+.resource-browser .resource-toolbar { background: #fff; }
+.resource-browser .tree-node--create .tree-badge { color: #a0aec2; background: #fff; }
+.resource-browser .tree-node--active { box-shadow: none; border-color: transparent; }

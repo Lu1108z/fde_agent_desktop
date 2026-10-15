@@ -1,0 +1,57 @@
+{
+  "stage3": {
+    "agentDesign": {
+      "indexDocument": "stage3/agent-design.md",
+      "agents": [
+        {
+          "id": "",
+          "name": "",
+          "document": "stage3/agents/agent-id.md",
+          "purpose": "",
+          "user": "",
+          "requirementIds": [],
+          "featureIds": [],
+          "successCriterionId": "",
+          "workflow": [
+            {
+              "id": "",
+              "input": "",
+              "action": "",
+              "output": ""
+            }
+          ],
+          "playbook": "",
+          "boundaries": "",
+          "exceptions": "",
+          "components": {
+            "expert": "",
+            "prompt": "",
+            "knowledge": [],
+            "knowledgeDecision": "",
+            "skills": [],
+            "skillsDecision": "",
+            "connectors": [],
+            "connectorsDecision": "",
+            "memory": ""
+          },
+          "upstreamIds": [],
+          "downstreamIds": [],
+          "abTest": {
+            "status": "",
+            "evidence": "",
+            "reason": ""
+          },
+          "eval": {
+            "criterionId": "",
+            "result": "",
+            "passed": false,
+            "evidence": ""
+          },
+          "expertApprovalEvidence": ""
+        }
+      ],
+      "excludedRequirementReasons": {},
+      "excludedFeatureReasons": {}
+    }
+  }
+}

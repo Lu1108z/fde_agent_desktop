@@ -1,25 +1,7 @@
 <template>
-  <div class="flex h-full min-h-0 kb-bg">
-    <!-- ── 左侧:五阶段分类树 ────────────────────────── -->
-    <aside class="kb-tree shrink-0 flex flex-col border-r">
-      <div class="px-3 pt-3.5 pb-2.5 border-b border-slate-100">
-        <div class="flex items-center gap-2 mb-2.5">
-          <span class="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-            <i class="fa-solid fa-book-open text-white text-[11px]"></i>
-          </span>
-          <span class="text-[12.5px] font-semibold text-slate-700">FDE 作战手册</span>
-        </div>
-        <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300 text-[10px]"></i>
-          <input
-            v-model="keyword"
-            type="text"
-            placeholder="搜索交付物 / 知识…"
-            class="w-full text-[12px] bg-slate-50 border border-transparent focus:bg-white focus:border-blue-400 rounded-md pl-7 pr-2.5 py-1.5 focus:outline-none transition"
-          />
-        </div>
-      </div>
-
+  <div class="resource-browser kb-bg">
+    <aside class="resource-sidebar flex flex-col">
+      <div class="resource-sidebar-heading">知识体系</div>
       <div class="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
         <!-- 全部 -->
         <button
@@ -28,18 +10,18 @@
           @click="active = 'all'"
         >
           <span class="tree-badge tree-badge--all"><i class="fa-solid fa-layer-group text-[10px]"></i></span>
-          <span class="flex-1 text-left truncate">全部交付物</span>
+          <span class="flex-1 text-left truncate">全部知识</span>
           <span class="tree-count">{{ allItems.length }}</span>
         </button>
 
-        <!-- 本项目产物(扫描各项目目录里 agent 生成的文档,可一键归档) -->
+        <!-- 项目产物(扫描各项目目录里 agent 生成的文档,可一键归档) -->
         <button
           class="tree-node"
           :class="active === 'projects' ? 'tree-node--active' : ''"
           @click="selectProjects"
         >
           <span class="tree-badge" style="background:var(--ui-cyan)"><i class="fa-solid fa-wand-magic-sparkles text-[10px]"></i></span>
-          <span class="flex-1 text-left truncate">本项目产物</span>
+          <span class="flex-1 text-left truncate">项目产物</span>
           <span class="tree-count">{{ projectItemCount }}</span>
         </button>
 
@@ -62,212 +44,53 @@
       </div>
     </aside>
 
-    <!-- ── 右侧:卡片区 ────────────────────────── -->
-    <div class="flex-1 min-w-0 overflow-y-auto">
-      <div class="px-6 py-6 lg:px-8">
-        <!-- 统一产品页 Hero：知识库场景 + 页面专属插图 -->
-        <PageHero
-          :title="activeName"
-          :count="active !== 'projects' ? filtered.length : projectItemCount"
-          description="按 FDE 五阶段作战链沉淀真实交付物与知识模板"
-          icon="fa-solid fa-book-open"
-          :image="heroImage"
-          image-class="page-hero__image--center"
-        >
-          <template #actions>
-            <button v-if="active !== 'projects'" @click="openUpload" class="btn-sm-pri shrink-0"><i class="fa-solid fa-cloud-arrow-up"></i>上传归档</button>
-            <button v-else @click="loadProjects" :disabled="scanningProjects" class="btn-sm shrink-0"><i class="fa-solid fa-rotate" :class="scanningProjects ? 'fa-spin' : ''"></i>重新扫描</button>
-          </template>
-        </PageHero>
-
-        <!-- 统计条(仅阶段视图) -->
-        <div v-if="active === 'all'" class="grid grid-cols-4 gap-4 mb-5">
-          <div v-for="s in statCards" :key="s.label" class="stat-card">
-            <div class="stat-icon" :style="{ background: s.bg, boxShadow: `0 6px 16px color-mix(in srgb, ${s.bg} 33%, transparent)` }">
-              <i :class="'fa-solid ' + s.icon"></i>
-            </div>
-            <div>
-              <div class="text-[22px] font-bold text-slate-800 leading-none tracking-tight">{{ s.value }}</div>
-              <div class="text-[11px] text-slate-400 mt-1.5">{{ s.label }}</div>
-            </div>
+    <div class="resource-workspace">
+      <div class="resource-toolbar">
+        <label class="resource-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input v-model="keyword" aria-label="搜索知识文档" placeholder="搜索文档、知识或文件名…" /></label>
+        <div class="resource-toolbar-actions"><button @click="active === 'projects' ? loadProjects() : loadManifest()" :disabled="scanningProjects" class="btn-sm" title="刷新知识"><i class="fa-solid fa-rotate" :class="{ 'fa-spin': scanningProjects }"></i></button><button v-if="active !== 'projects'" @click="openUpload" class="btn-sm-pri"><i class="fa-solid fa-plus"></i>上传归档</button><button v-else @click="openUpload" class="btn-sm-pri"><i class="fa-solid fa-cloud-arrow-up"></i>上传知识</button></div>
+      </div>
+      <div class="resource-body">
+        <main class="resource-center">
+          <div class="resource-title"><span class="resource-title-icon"><i class="fa-solid fa-book-open"></i></span><div><h1>{{ active === 'projects' ? '项目产物' : activeName }}<span>共 {{ browserItems.length }} 份</span></h1><p>按 FDE 五阶段沉淀交付物、知识模板与项目资料</p></div></div>
+          <div class="resource-filters">
+            <template v-if="active !== 'projects'"><button v-for="c in categories" :key="c.key" class="resource-filter" :class="{ 'is-active': catFilter === c.key }" @click="catFilter = c.key">{{ c.label }}<span>{{ categoryCount(c.key) }}</span></button></template>
+            <div class="resource-view-controls"><UiSelect field v-model="sortOrder" aria-label="文档排序" :options="[{ value: 'name', label: '名称排序' }, { value: 'category', label: '分类排序' }, { value: 'stage', label: '阶段排序' }]" /><div class="resource-view-toggle"><button :class="{ 'is-active': viewMode === 'list' }" @click="viewMode = 'list'"><i class="fa-solid fa-list mr-1"></i>列表</button><button :class="{ 'is-active': viewMode === 'group' }" @click="viewMode = 'group'"><i class="fa-solid fa-layer-group mr-1"></i>分组</button></div></div>
           </div>
-        </div>
-
-        <!-- 筛选 chips(仅阶段视图) -->
-        <div v-if="active !== 'projects'" class="flex flex-wrap items-center gap-2 mb-4">
-          <div class="flex items-center gap-1.5">
-            <button
-              v-for="c in categories"
-              :key="c.key"
-              @click="catFilter = c.key"
-              class="filter-chip"
-              :class="catFilter === c.key ? 'filter-chip--active' : ''"
-            >{{ c.label }}</button>
+          <div v-if="showKnowledgeTypeFilter && catFilter !== 'deliverable' && catFilter !== 'spec'" class="mb-4 flex flex-wrap gap-2"><button v-for="c in knowledgeTypeFilters" :key="c.key" class="resource-filter" :class="{ 'is-active': knowledgeTypeFilter === c.key }" @click="knowledgeTypeFilter = c.key">{{ c.label }}</button></div>
+          <div v-if="scanningProjects && active === 'projects'" class="resource-empty"><i class="fa-solid fa-circle-notch fa-spin"></i><p>正在扫描项目产物…</p></div>
+          <ResourceList v-else :items="knowledgeRows" :selected-key="selectedDocumentKey" :grouped="viewMode === 'group'" name-label="文档名称" meta-label="格式" @select="chooseDocument" @action="openDocumentActions" />
+          <div v-if="totalPages > 1" class="resource-pagination"><button class="pgn" :disabled="currentPage <= 1" @click="currentPage--"><i class="fa-solid fa-chevron-left"></i></button><button v-for="p in totalPages" :key="p" class="pgn" :class="{ 'pgn--cur': currentPage === p }" @click="currentPage = p">{{ p }}</button><button class="pgn" :disabled="currentPage >= totalPages" @click="currentPage++"><i class="fa-solid fa-chevron-right"></i></button></div>
+        </main>
+        <aside class="resource-detail" aria-label="知识文档详情">
+          <div v-if="selected" class="resource-detail-scroll" :class="{ 'resource-document-preview': detailTab === 'preview' }">
+            <div class="resource-detail-heading"><span class="resource-icon" :style="{ background: fmtColor(selected.type) }"><i :class="documentIcon(selected.type)"></i></span><div class="min-w-0"><h2>{{ selected.title }}</h2><span class="resource-tag mt-1">{{ catLabel(selected.category) }}</span></div></div>
+            <p class="resource-detail-description">{{ selected.description || selected.summary || (selectedProjectSlug ? '来自 ' + (selected._project?.name || '当前项目') + ' 的交付资料' : stageShort(selected.stageIndex) + ' · ' + (selected.knowledgeType ? selected.knowledgeType + '知识' : catLabel(selected.category))) }}</p>
+            <div class="resource-detail-actions"><button class="btn-sm-pri" @click="previewOpen = true"><i class="fa-regular fa-file-lines"></i>查看完整文档</button><div class="resource-detail-menu"><button class="btn-sm" aria-label="更多文档操作" :aria-expanded="detailMenuOpen" @click="detailMenuOpen = !detailMenuOpen"><i class="fa-solid fa-ellipsis"></i></button><div v-if="detailMenuOpen" class="resource-detail-menu-popover"><button @click="detailMenuOpen = false; detailTab = 'preview'">文档预览</button><button v-if="selectedProjectSlug && selected._project" @click="detailMenuOpen = false; openArchive(selected._project, selected)">归档到知识库</button><button v-else @click="detailMenuOpen = false; deleteDoc(selected)" class="text-red-600">删除文档</button></div></div></div>
+            <div class="resource-detail-tabs" role="tablist" aria-label="知识详情分类"><button v-for="tab in knowledgeDetailTabs" :key="tab.key" role="tab" :aria-selected="detailTab === tab.key" :class="{ 'is-active': detailTab === tab.key }" @click="detailTab = tab.key">{{ tab.label }}</button></div>
+            <template v-if="detailTab === 'info'">
+              <dl class="resource-detail-info"><dt><i class="fa-regular fa-file"></i>文件名称</dt><dd>{{ selected.file }}</dd><dt><i class="fa-regular fa-folder"></i>分类</dt><dd><span class="resource-tag">{{ catLabel(selected.category) }}</span></dd><dt><i class="fa-solid fa-layer-group"></i>所属阶段</dt><dd>{{ selectedProjectSlug ? selected.dir || '项目目录' : stageShort(selected.stageIndex) }}</dd><dt><i class="fa-solid fa-box"></i>来源</dt><dd>{{ selectedProjectSlug ? '项目生成' : selected.uploaded ? '上传归档' : '内置知识' }}</dd><dt><i class="fa-solid fa-file-code"></i>格式</dt><dd>{{ selected.type.toUpperCase() }}</dd><template v-if="selected.mtime"><dt><i class="fa-regular fa-clock"></i>更新时间</dt><dd>{{ formatResourceDate(selected.mtime) }}</dd></template></dl>
+              <div class="resource-detail-section"><h3>分类标签</h3><div class="resource-detail-tags"><span class="resource-tag">{{ catLabel(selected.category) }}</span><span v-if="selected.knowledgeType" class="resource-tag">{{ selected.knowledgeType }}</span><span class="resource-tag">{{ selected.type.toUpperCase() }}</span></div></div>
+              <div class="resource-detail-section"><h3>相关资料</h3><button class="resource-detail-file" @click="detailTab = 'preview'"><i class="fa-regular fa-file-lines text-blue-600"></i><span class="min-w-0 truncate">{{ selected.title }}</span><i class="fa-solid fa-chevron-right ml-auto text-[10px]"></i></button></div>
+            </template>
+            <div v-else-if="detailTab === 'related'" class="mt-5 space-y-2"><button v-for="doc in relatedDocuments" :key="documentKey(doc)" class="resource-detail-file" @click="chooseDocument(doc)"><i :class="documentIcon(doc.type)" class="text-blue-600"></i><span class="min-w-0 truncate">{{ doc.title }}</span></button><p v-if="!relatedDocuments.length" class="resource-empty">暂无同分类资料</p></div>
+            <div v-else class="resource-inline-preview"><DocViewer :stage="selected.stageDir || ''" :item="selected" :project-slug="selectedProjectSlug" @close="detailTab = 'info'" @navigate="navigateToDoc" /></div>
           </div>
-          <div v-if="showKnowledgeTypeFilter" class="filter-divider"></div>
-          <div v-if="showKnowledgeTypeFilter" class="flex items-center gap-1.5">
-            <button
-              v-for="c in knowledgeTypeFilters"
-              :key="c.key"
-              @click="knowledgeTypeFilter = c.key"
-              class="filter-chip filter-chip--soft"
-              :class="knowledgeTypeFilter === c.key ? 'filter-chip--active' : ''"
-            >{{ c.label }}</button>
-          </div>
-        </div>
-
-        <!-- ═══ 本项目产物视图 ═══ -->
-        <template v-if="active === 'projects'">
-          <div v-if="scanningProjects" class="text-center py-20 text-slate-300">
-            <div class="w-8 h-8 rounded-full border-2 border-blue-100 border-t-blue-500 animate-spin mx-auto mb-3"></div>
-            <p class="text-[13px]">正在扫描项目产物…</p>
-          </div>
-          <div v-else-if="!projects.length" class="text-center py-20 text-slate-300">
-            <i class="fa-solid fa-folder-open text-5xl mb-3"></i>
-            <p class="text-[13px]">各项目里还没有可归档的产物文档</p>
-          </div>
-          <div v-else class="space-y-6">
-            <div v-for="pj in projects" :key="pj.slug">
-              <div class="flex items-center gap-2 mb-3">
-                <span class="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-sm">
-                  <i class="fa-solid fa-diagram-project text-white text-[10px]"></i>
-                </span>
-                <span class="text-[13.5px] font-semibold text-slate-700">{{ pj.name }}</span>
-                <span class="text-[11px] text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">{{ pj.items.length }} 份</span>
-              </div>
-              <div class="kb-grid">
-                <div v-for="item in pj.items" :key="item.relPath" class="kb-card text-left group">
-                  <div class="kb-card__accent" :style="{ background: fmtColor(item.type) }"></div>
-                  <button class="block w-full text-left" @click="openProjectDoc(pj, item)">
-                    <div class="flex items-start gap-3">
-                      <span class="fmt-badge" :style="{ background: fmtColor(item.type) }">{{ item.type.toUpperCase() }}</span>
-                      <div class="flex-1 min-w-0">
-                        <h3 class="text-[13.5px] font-semibold text-slate-800 leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors">{{ item.title }}</h3>
-                        <div class="flex items-center gap-1.5 mt-1.5">
-                          <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-mono truncate">{{ item.dir }}/{{ item.file }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                  <div class="kb-card__footer mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                    <button @click.stop="openProjectDoc(pj, item)" class="card-action card-action--primary"><i class="fa-solid fa-eye"></i>查看</button>
-                    <button
-                      @click.stop="openArchive(pj, item)"
-                      class="card-action card-action--primary"
-                    >
-                      <i class="fa-solid fa-inbox"></i>归档到知识库
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <!-- ═══ 阶段/全部视图卡片网格 ═══ -->
-        <template v-else>
-        <!-- 知识子类型分区(调研/技术/产品):仅当 filtered 里存在带 knowledgeType 的知识项时显示 -->
-        <div v-for="grp in knowledgeGroups" :key="grp.type" class="mb-7">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="ktype-dot" :class="'ktype-dot--' + grp.type"><i :class="grp.icon" class="text-[11px]"></i></span>
-            <h3 class="text-[14px] font-bold text-slate-700">{{ grp.label }}</h3>
-            <span class="text-[11px] text-slate-400 font-medium">{{ grp.items.length }} 篇</span>
-          </div>
-          <div class="kb-grid">
-            <div
-              v-for="item in grp.items"
-              :key="item.stageDir + '/' + item.file"
-              class="kb-card text-left group"
-            >
-              <div class="kb-card__accent" :style="{ background: fmtColor(item.type) }"></div>
-              <button class="block w-full text-left" @click="openDoc(item)">
-                <div class="flex items-start gap-3">
-                  <span class="fmt-badge" :style="{ background: fmtColor(item.type) }">{{ item.type.toUpperCase() }}</span>
-                  <div class="flex-1 min-w-0">
-                    <h3 class="text-[13.5px] font-semibold text-slate-800 leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors">{{ item.title }}</h3>
-                    <div class="flex items-center gap-1.5 mt-1.5">
-                      <span class="cat-chip cat-chip--kn">{{ grp.label }}</span>
-                      <span class="text-[11px] text-slate-400">阶段{{ CN_NUM[item.stageIndex] }}</span>
-                      <span v-if="item.uploaded" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">已归档</span>
-                    </div>
-                  </div>
-                </div>
-              </button>
-              <div class="kb-card__footer mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                <span class="min-w-0 truncate">{{ stageShort(item.stageIndex) }}</span>
-                <div class="kb-card__actions flex items-center gap-2 shrink-0">
-                  <button @click.stop="openDoc(item)" class="card-action card-action--primary"><i class="fa-solid fa-eye"></i>查看</button>
-                  <button @click.stop="deleteDoc(item)" class="card-action card-action--danger"><i class="fa-solid fa-trash"></i>删除</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 其余项(交付物/规范/无子类型知识)普通网格 + 分页 -->
-        <div v-if="pagedItems.length" class="kb-grid">
-          <div
-            v-for="item in pagedItems"
-            :key="item.stageDir + '/' + item.file"
-            class="kb-card text-left group"
-          >
-            <div class="kb-card__accent" :style="{ background: fmtColor(item.type) }"></div>
-            <button class="block w-full text-left" @click="openDoc(item)">
-              <div class="flex items-start gap-3">
-                <span class="fmt-badge" :style="{ background: fmtColor(item.type) }">{{ item.type.toUpperCase() }}</span>
-                <div class="flex-1 min-w-0">
-                  <h3 class="text-[13.5px] font-semibold text-slate-800 leading-snug line-clamp-2 group-hover:text-blue-700 transition-colors">{{ item.title }}</h3>
-                  <div class="flex items-center gap-1.5 mt-1.5">
-                    <span class="cat-chip" :class="catChipCls(item.category)">{{ catLabel(item.category) }}</span>
-                    <span class="text-[11px] text-slate-400">阶段{{ CN_NUM[item.stageIndex] }}</span>
-                    <span v-if="item.uploaded" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">已归档</span>
-                  </div>
-                </div>
-              </div>
-            </button>
-            <div class="kb-card__footer mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-              <span class="min-w-0 truncate">{{ stageShort(item.stageIndex) }}</span>
-              <div class="kb-card__actions flex items-center gap-2 shrink-0">
-                <button @click.stop="openDoc(item)" class="card-action card-action--primary"><i class="fa-solid fa-eye"></i>查看</button>
-                <button @click.stop="deleteDoc(item)" class="card-action card-action--danger"><i class="fa-solid fa-trash"></i>删除</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-if="!filtered.length" class="text-center py-20 text-slate-300">
-          <i class="fa-solid fa-box-open text-5xl mb-3"></i>
-          <p class="text-[13px]">该分类下暂无文档</p>
-        </div>
-
-        <!-- 分页条 -->
-        <div v-if="totalPages > 1" class="flex items-center justify-center gap-1 mt-6">
-          <button class="pgn" :disabled="currentPage <= 1" @click="currentPage--">
-            <i class="fa-solid fa-chevron-left text-[10px]"></i>
-          </button>
-          <button
-            v-for="p in totalPages" :key="p"
-            class="pgn" :class="p === currentPage ? 'pgn--cur' : ''"
-            @click="currentPage = p"
-          >{{ p }}</button>
-          <button class="pgn" :disabled="currentPage >= totalPages" @click="currentPage++">
-            <i class="fa-solid fa-chevron-right text-[10px]"></i>
-          </button>
-        </div>
-        </template>
+          <div v-else class="resource-empty"><i class="fa-regular fa-file-lines"></i><p>选择一份文档查看详情</p></div>
+        </aside>
       </div>
     </div>
 
     <!-- ── 文档预览抽屉(复用 DocViewer) ────────── -->
     <transition name="drawer">
-      <div v-if="selected" class="fixed inset-0 z-50" @keydown.esc="selected = null">
-        <div class="absolute inset-0 bg-slate-900/40" @click="selected = null"></div>
+      <div v-if="selected && previewOpen" class="fixed inset-0 z-50" @keydown.esc="previewOpen = false">
+        <div class="absolute inset-0 bg-slate-900/40" @click="previewOpen = false"></div>
         <aside
           class="drawer-resizable absolute right-0 top-0 bottom-0 glass-card shadow-2xl flex flex-col"
           :class="{ 'is-resizing': resizing }"
           :style="{ width: drawerWidth + 'px' }"
         >
           <div class="drawer-resizer" @mousedown.prevent="startResize" title="拖动调整宽度"></div>
-          <DocViewer :stage="selected.stageDir || ''" :item="selected" :project-slug="selectedProjectSlug" @close="selected = null" @navigate="navigateToDoc" />
+          <DocViewer :stage="selected.stageDir || ''" :item="selected" :project-slug="selectedProjectSlug" @close="previewOpen = false" @navigate="navigateToDoc" />
         </aside>
       </div>
     </transition>
@@ -286,9 +109,7 @@
             选择本地文档,归档到指定作战阶段的知识库目录。支持 md / docx / pdf / pptx / xlsx / html。
           </p>
           <label class="block text-[12.5px] font-medium text-slate-600 mb-1.5">归档到阶段</label>
-          <select v-model="uploadStage" class="w-full mb-4 border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-blue-400">
-            <option v-for="(st, i) in stages" :key="st.dir" :value="st.dir">阶段{{ CN_NUM[i] }} · {{ st.name }}</option>
-          </select>
+          <UiSelect field v-model="uploadStage" class="w-full mb-4 border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-blue-400" :options="[...(stages).map((st, i) => ({ value: st.dir, label: '阶段' + String(CN_NUM[i]) + ' · ' + String(st.name) }))]" />
           <label class="block text-[12.5px] font-medium text-slate-600 mb-1.5">文档类型</label>
           <div class="flex gap-2 mb-6">
             <button
@@ -325,9 +146,7 @@
             (来自项目「{{ archiveTarget?.pj?.name }}」)复制归档到指定作战阶段的知识库。
           </p>
           <label class="block text-[12.5px] font-medium text-slate-600 mb-1.5">归档到阶段</label>
-          <select v-model="archiveStage" class="w-full mb-4 border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-blue-400">
-            <option v-for="(st, i) in stages" :key="st.dir" :value="st.dir">阶段{{ CN_NUM[i] }} · {{ st.name }}</option>
-          </select>
+          <UiSelect field v-model="archiveStage" class="w-full mb-4 border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-blue-400" :options="[...(stages).map((st, i) => ({ value: st.dir, label: '阶段' + String(CN_NUM[i]) + ' · ' + String(st.name) }))]" />
           <label class="block text-[12.5px] font-medium text-slate-600 mb-1.5">文档类型</label>
           <div class="flex gap-2 mb-6">
             <button
@@ -361,10 +180,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import DocViewer from '@/components/workbench/DocViewer.vue';
-import PageHero from '@/components/common/PageHero.vue';
-import { useHeroImage } from '@/composables/useHeroImage.js';
+import { uniqueHandbookDocuments } from '@/data/handbook-documents';
+import ResourceList from '@/components/common/ResourceList.vue';
 import { useDrawerResize } from '@/composables/useDrawerResize.js';
-const heroImage = useHeroImage('knowledge');
 const { width: drawerWidth, resizing, startResize } = useDrawerResize('kb.drawerWidth');
 
 const CN_NUM = ['一', '二', '三', '四', '五'];
@@ -373,6 +191,12 @@ const STAGE_COLORS = ['var(--ui-brand)', 'var(--ui-brand-dark)', 'var(--ui-brand
 const stages = ref([]);       // manifest.stages,并给每个 item 注入 stageDir/stageIndex
 const active = ref('all');    // 'all' | stage.dir
 const keyword = ref('');
+const sortOrder = ref('name');
+const viewMode = ref('list');
+const detailTab = ref('info');
+const detailMenuOpen = ref(false);
+const previewOpen = ref(false);
+const knowledgeDetailTabs = [{ key: 'info', label: '基础信息' }, { key: 'preview', label: '文档预览' }, { key: 'related', label: '相关资料' }];
 const catFilter = ref('all'); // all | deliverable | knowledge | spec
 const knowledgeTypeFilter = ref('all'); // all | 调研 | 技术 | 产品
 const currentPage = ref(1);
@@ -423,7 +247,7 @@ async function loadManifest() {
     if (res && res.success && res.data?.stages) {
       stages.value = res.data.stages.map((st, i) => ({
         ...st,
-        items: (st.items || []).map((it) => ({ ...it, stageDir: st.dir, stageIndex: i })),
+        items: uniqueHandbookDocuments(st.items || []).map((it) => ({ ...it, stageDir: st.dir, stageIndex: i })),
       }));
     }
   } catch (e) {
@@ -439,7 +263,7 @@ function showToast(msg) {
 }
 
 function openUpload() {
-  uploadStage.value = active.value !== 'all' ? active.value : (stages.value[0]?.dir || '');
+  uploadStage.value = !['all', 'projects'].includes(active.value) ? active.value : (stages.value[0]?.dir || '');
   uploadCat.value = 'deliverable';
   showUpload.value = true;
 }
@@ -544,22 +368,22 @@ async function deleteDoc(item) {
 const allItems = computed(() => stages.value.flatMap((st) => st.items));
 
 const activeName = computed(() => {
-  if (active.value === 'all') return '全部交付物';
+  if (active.value === 'all') return '全部知识';
   const st = stages.value.find((s) => s.dir === active.value);
-  return st ? st.name : '全部交付物';
+  return st ? st.name : '全部知识';
 });
 
 const filtered = computed(() => {
   let list = active.value === 'all'
-    ? allItems.value.filter((it) => !it.knowledgeType)
+    ? allItems.value
     : (stages.value.find((s) => s.dir === active.value)?.items || []);
   if (catFilter.value !== 'all') list = list.filter((it) => it.category === catFilter.value);
   if (showKnowledgeTypeFilter.value && knowledgeTypeFilter.value !== 'all') {
     list = list.filter((it) => it.knowledgeType === knowledgeTypeFilter.value);
   }
   if (keyword.value.trim()) {
-    const kw = keyword.value.trim();
-    list = list.filter((it) => it.title.includes(kw));
+    const kw = keyword.value.trim().toLowerCase();
+    list = list.filter((it) => (it.title + ' ' + it.file).toLowerCase().includes(kw));
   }
   return list;
 });
@@ -582,14 +406,44 @@ const ungroupedItems = computed(() => {
   return filtered.value.filter((it) => !it.knowledgeType);
 });
 
+function documentKey(item) { return item ? `${item._project?.slug || item.stageDir || ''}/${item.relPath || item.file}` : ''; }
+const selectedDocumentKey = computed(() => documentKey(selected.value));
+const projectDocuments = computed(() => projects.value.flatMap(pj => pj.items.map(item => ({ ...item, _project: pj, category: item.category || 'deliverable' }))));
+const browserItems = computed(() => {
+  let list = active.value === 'projects' ? projectDocuments.value : filtered.value;
+  if (active.value === 'projects' && keyword.value.trim()) {
+    const kw = keyword.value.trim().toLowerCase();
+    list = list.filter(item => `${item.title} ${item.file} ${item._project.name}`.toLowerCase().includes(kw));
+  }
+  return [...list].sort((a, b) => (viewMode.value === 'group' || sortOrder.value === 'category' ? catLabel(a.category).localeCompare(catLabel(b.category), 'zh-CN') : sortOrder.value === 'stage' ? (a.stageIndex ?? 0) - (b.stageIndex ?? 0) : 0) || a.title.localeCompare(b.title, 'zh-CN'));
+});
+function documentIcon(type) { return ({ md: 'fa-solid fa-file-lines', docx: 'fa-solid fa-file-word', doc: 'fa-solid fa-file-word', html: 'fa-solid fa-code', pdf: 'fa-solid fa-file-pdf', xlsx: 'fa-solid fa-file-excel', pptx: 'fa-solid fa-file-powerpoint' })[type] || 'fa-regular fa-file'; }
+const knowledgeRows = computed(() => pagedItems.value.map(item => ({ key: documentKey(item), name: item.title, category: catLabel(item.category), summary: item.description || item.summary || (item._project ? item._project.name : stageShort(item.stageIndex)) + (item.knowledgeType ? ' · ' + item.knowledgeType + '知识' : ''), meta: item.type.toUpperCase(), icon: documentIcon(item.type), color: fmtColor(item.type), raw: item })));
+function chooseDocument(item) { detailMenuOpen.value = false; if (item._project) openProjectDoc(item._project, item); else openDoc(item); }
+function openDocumentActions(item) { chooseDocument(item); detailMenuOpen.value = true; }
+function categoryCount(category) {
+  const list = active.value === 'all' ? allItems.value : stages.value.find(st => st.dir === active.value)?.items || [];
+  return category === 'all' ? list.length : list.filter(item => item.category === category).length;
+}
+function formatResourceDate(value) { return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value)); }
+const relatedDocuments = computed(() => {
+  if (!selected.value) return [];
+  return (selectedProjectSlug.value ? projectDocuments.value.filter(item => item._project.slug === selectedProjectSlug.value) : allItems.value.filter(item => item.stageDir === selected.value.stageDir && item.category === selected.value.category)).filter(item => documentKey(item) !== selectedDocumentKey.value).slice(0, 8);
+});
+watch(browserItems, (list) => {
+  if (!list.length) { selected.value = null; return; }
+  if (!list.some(item => documentKey(item) === selectedDocumentKey.value)) chooseDocument(list[0]);
+});
+watch(active, () => { detailMenuOpen.value = false; detailTab.value = 'info'; });
+
 // ── 分页(仅作用于 ungroupedItems) ──
-const totalPages = computed(() => Math.max(1, Math.ceil(ungroupedItems.value.length / pageSize.value)));
+const totalPages = computed(() => Math.max(1, Math.ceil(browserItems.value.length / pageSize.value)));
 const pagedItems = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value;
-  return ungroupedItems.value.slice(start, start + pageSize.value);
+  return browserItems.value.slice(start, start + pageSize.value);
 });
 // 筛选条件变化 / 切换分类 / 搜索时,回到第 1 页
-watch([active, catFilter, keyword, knowledgeTypeFilter], () => { currentPage.value = 1; });
+watch([active, catFilter, keyword, knowledgeTypeFilter, sortOrder, viewMode], () => { currentPage.value = 1; });
 watch(showKnowledgeTypeFilter, (visible) => { if (!visible) knowledgeTypeFilter.value = 'all'; });
 // 当前页超出范围(如删除后)自动回退
 watch(totalPages, (tp) => { if (currentPage.value > tp) currentPage.value = tp; });
@@ -990,4 +844,13 @@ function openProjectDoc(pj, item) {
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.18s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
+
+<style src="../../styles/resource-browser.css"></style>
+<style scoped>
+.resource-inline-preview { height: 540px; margin: 16px -12px 0; }
+.resource-inline-preview :deep(.handbook-md) { font-size: 12px; }
+.resource-inline-preview :deep(.px-5) { padding-left: 8px; padding-right: 8px; }
+.resource-inline-preview :deep(.p-6) { padding: 12px 8px; }
+.resource-inline-preview :deep(button) { padding-left: 5px; padding-right: 5px; font-size: 10px; }
 </style>

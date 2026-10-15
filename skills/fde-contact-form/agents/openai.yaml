@@ -1,0 +1,3 @@
+interface:
+  display_name: "FDE 需求与数据对接确认表"
+  short_description: "按阶段二规范逐轮整理并核查需求与数据对接"

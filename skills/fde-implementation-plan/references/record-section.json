@@ -1,0 +1,32 @@
+{
+  "stage3": {
+    "implementationPlan": {
+      "document": "stage3/impl-plan.md",
+      "tasks": [
+        {
+          "id": "",
+          "name": "",
+          "phase": "",
+          "owner": "",
+          "start": "",
+          "end": "",
+          "durationDays": 0,
+          "dependencyIds": [],
+          "deliverable": "",
+          "status": ""
+        }
+      ],
+      "milestones": [
+        {
+          "id": "",
+          "name": "",
+          "date": "",
+          "owner": "",
+          "deliverable": "",
+          "acceptance": ""
+        }
+      ],
+      "reviewEvidence": ""
+    }
+  }
+}

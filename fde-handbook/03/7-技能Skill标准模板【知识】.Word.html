@@ -1,0 +1,148 @@
+<h1>技能（Skill）规范</h1>
+<h2>一、Skill 设计原则</h2>
+<table>
+<thead>
+<tr>
+<th>原则</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单一职责</td>
+<td>一个 Skill 只干一件事，不搞大杂烩</td>
+</tr>
+<tr>
+<td>有错误处理</td>
+<td>必须有错误路径和最小样例</td>
+</tr>
+<tr>
+<td>命名规范</td>
+<td>按功能命名，如&quot;招标文件解析skill&quot;、&quot;素材检索skill&quot;</td>
+</tr>
+<tr>
+<td>可复用</td>
+<td>优先使用平台标准 Skill（64 个 = api-* 32 + vben-* 32），减少自研成本</td>
+</tr>
+</tbody></table>
+<h2>二、Skill 开发步骤</h2>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>步骤一：定义职责</td>
+<td>明确这个 Skill 干什么、单一职责</td>
+</tr>
+<tr>
+<td>步骤二：定义输入输出</td>
+<td>输入参数、输出格式、异常返回值</td>
+</tr>
+<tr>
+<td>步骤三：编写核心逻辑</td>
+<td>使用 Python/Go 实现核心功能</td>
+</tr>
+<tr>
+<td>步骤四：编写单元测试</td>
+<td>覆盖正常路径、边界情况、异常情况</td>
+</tr>
+<tr>
+<td>步骤五：编写使用文档</td>
+<td>YAML Front Matter + Markdown 文档</td>
+</tr>
+<tr>
+<td>步骤六：性能测试</td>
+<td>响应时间 ≤3秒（简单调用），≤10秒（复杂计算）</td>
+</tr>
+</tbody></table>
+<h2>三、Skill 清单模板</h2>
+<table>
+<thead>
+<tr>
+<th>Skill 名称</th>
+<th>所属智能体</th>
+<th>干什么</th>
+<th>单一职责？</th>
+<th>有错误处理？</th>
+<th>状态</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>招标文件解析skill</td>
+<td>招投标智能体</td>
+<td>解析招标 PDF/Word，提取结构化要求</td>
+<td>是</td>
+<td>是</td>
+<td>已上线</td>
+</tr>
+<tr>
+<td>素材检索skill</td>
+<td>招投标智能体</td>
+<td>从知识库检索匹配的资质/案例</td>
+<td>是</td>
+<td>是</td>
+<td>已上线</td>
+</tr>
+</tbody></table>
+<h2>四、Markdown 文档编写规范</h2>
+<p>每个 Skill 必须有一个完整的 Markdown 文档，包含 YAML Front Matter 和标准章节：</p>
+<pre><code class="language-yaml">name: &quot;biddocument-parser&quot;
+description: &quot;解析招标文件（PDF/Word），提取评分点、资格要求、废标项。支持自动OCR、智能分类、结构化输出。&quot;
+version: 1.2.0
+</code></pre>
+<h2>五、完整示例：招标文件解析 Skill</h2>
+<pre><code class="language-python">class BidDocumentParser:
+    &quot;&quot;&quot;招标文件解析Skill&quot;&quot;&quot;
+
+    def parse(self, file_path: str) -&gt; dict:
+        &quot;&quot;&quot;
+        解析招标文件
+        Args:
+            file_path: 文件路径
+        Returns:
+            {
+                &quot;success&quot;: bool,
+                &quot;data&quot;: {
+                    &quot;scoring_points&quot;: [...],
+                    &quot;qualification_req&quot;: [...],
+                    &quot;disqualification_items&quot;: [...]
+                }
+            }
+        &quot;&quot;&quot;
+        try:
+            # 解析逻辑
+            return {&quot;success&quot;: True, &quot;data&quot;: {...}}
+        except Exception as e:
+            return {&quot;success&quot;: False, &quot;error&quot;: str(e)}
+</code></pre>
+<h2>六、验收标准</h2>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>达标标准</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>单一职责</td>
+<td>一个 Skill 只干一件事</td>
+</tr>
+<tr>
+<td>有错误处理</td>
+<td>异常情况有兜底策略</td>
+</tr>
+<tr>
+<td>有单元测试</td>
+<td>覆盖正常/边界/异常三种情况</td>
+</tr>
+<tr>
+<td>有文档</td>
+<td>使用说明、调用示例、错误码</td>
+</tr>
+<tr>
+<td>性能达标</td>
+<td>响应时间符合要求</td>
+</tr>
+</tbody></table>

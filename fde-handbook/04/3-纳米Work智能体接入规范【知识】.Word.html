@@ -1,0 +1,96 @@
+<h1>360 纳米 Work 行业 AI 工作台 · 智能体接入规范</h1>
+<blockquote>
+<p>阶段四【知识】。项目系统里的智能体怎么接、怎么管、怎么用，定一套统一规范。核心一句：<strong>智能体和引擎解耦——一个智能体可以同时挂多个引擎，项目里用一套标配页面统一管理和调用。</strong></p>
+<p>定位说明：这份讲的是<strong>行业智能体层</strong>（业务智能体挂哪个引擎、三个标配页面），跟真实仓库 <code>ai-work-platform</code> README 讲的<strong>平台底座层</strong>（多租户/调度/审计的通用后台）是两层，各管一段。技术落地口径（配置中心、日志落表、SSE 流式）以真实仓库为准。</p>
+</blockquote>
+<h2>一、智能体管理：一个智能体，多个引擎</h2>
+<h3>核心设计：解耦</h3>
+<p>智能体（业务层，定义&quot;这个智能体是干嘛的&quot;）和执行引擎（能力层，实际跑智能体的平台）<strong>分开</strong>。一个智能体不绑死在某个引擎上，可以同时对接多个引擎。</p>
+<pre><code>          ┌─────────────────┐
+          │   智能体（业务定义）  │  ← 名称、说明、能力、挂哪些引擎
+          └────────┬────────┘
+                   │ 一对多
+        ┌──────────┼──────────┐
+        ▼                     ▼
+  ┌───────────┐        ┌───────────┐
+  │ SeaFactory │        │   Dify    │   ← 执行引擎（可扩展）
+  │ 360智能体平台 │        │           │
+  └───────────┘        └───────────┘
+</code></pre>
+<h3>为什么要一对多</h3>
+<ul>
+<li><strong>不被单一引擎绑死</strong>：SeaFactory 挂了能切 Dify，换引擎不用重配智能体</li>
+<li><strong>按场景选引擎</strong>：同一个智能体，某些场景走 SeaFactory、某些走 Dify，各取所长</li>
+<li><strong>平滑迁移/对比</strong>：同一智能体挂两个引擎，可以 A/B 对比效果，再决定主用哪个</li>
+</ul>
+<h2>二、支持的执行引擎</h2>
+<table>
+<thead>
+<tr>
+<th>引擎</th>
+<th>说明</th>
+<th>接入方式</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SeaFactory（360 智能体平台）</td>
+<td>主力引擎，360 自研</td>
+<td>平台 API / 连接器</td>
+</tr>
+<tr>
+<td>Dify</td>
+<td>开源 LLM 应用平台</td>
+<td>Dify API</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>引擎可扩展。新增引擎时，按统一的引擎适配接口接入，不改上层智能体定义。</p>
+</blockquote>
+<h2>三、接入规范</h2>
+<ol>
+<li>智能体定义与引擎配置分离——智能体表存业务定义，引擎配置单独存，多对多关联</li>
+<li>每个引擎一个适配器（adapter），统一接口（发起对话、流式返回、工具调用），上层不感知引擎差异</li>
+<li>引擎的 base_url / api_key / 模型名走<strong>配置中心优先</strong>（数据库配置中心 A/B 档加载，<code>.env</code> 仅作兜底），禁止硬编码；不裸 <code>os.getenv()</code>，走 <code>core/config.py</code> 的 Settings</li>
+<li>调用必须记录：走了哪个引擎、token 用量、耗时——落库便于计费和排查。落到 LLM 网关查询日志（<code>log_mcp_queries</code> 表，对应 <code>/api/admin/mcp-query-logs</code> 可检索/详情/导出/重跑）</li>
+<li>一个智能体挂多引擎时，要有默认引擎 + 可指定引擎调用</li>
+<li>引擎调用失败要有兜底：超时、重试、降级到备用引擎</li>
+</ol>
+<h2>四、标配页面（项目必须有的三个页面）</h2>
+<p>每个行业工作台项目都要标配下面三个智能体页面，作为统一入口。</p>
+<table>
+<thead>
+<tr>
+<th>页面</th>
+<th>干什么</th>
+<th>关键功能</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>① 智能体管理页</strong></td>
+<td>列出项目里所有智能体，能配置、挂引擎</td>
+<td>智能体增删改查、给智能体挂/换引擎、启用停用、查看状态</td>
+</tr>
+<tr>
+<td><strong>② 智能体调用/测试页</strong></td>
+<td>选一个智能体，输入问题，看它回什么</td>
+<td>选智能体、选引擎、输入对话、看实时返回（SSE 流式）、对比不同引擎效果</td>
+</tr>
+<tr>
+<td><strong>③ 智能体工具箱页</strong></td>
+<td>一堆现成智能体工具，点开就能用</td>
+<td>智能体工具卡片墙，按场景分类，点开直接用，业务人员自助</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>三个页面是标配，不是选配。管理页给管理员配、测试页给开发调、工具箱页给业务用——三类人各有入口。</p>
+</blockquote>
+<h2>五、验收标准</h2>
+<ul>
+<li><input disabled="" type="checkbox"> 智能体和引擎解耦，一个智能体能挂多个引擎</li>
+<li><input disabled="" type="checkbox"> SeaFactory、Dify 两个引擎都接通、能切换</li>
+<li><input disabled="" type="checkbox"> 三个标配页面（管理/测试/工具箱）都有、都能用</li>
+<li><input disabled="" type="checkbox"> 引擎配置走配置中心（数据库 A/B 档，.env 兜底），没硬编码 key</li>
+<li><input disabled="" type="checkbox"> 调用有日志（引擎/token/耗时）落 <code>log_mcp_queries</code> 表，有失败兜底</li>
+<li><input disabled="" type="checkbox"> 流式返回走 SSE（text/event-stream），不卡死页面</li>
+<li><input disabled="" type="checkbox"> 换引擎不用改智能体定义</li>
+</ul>

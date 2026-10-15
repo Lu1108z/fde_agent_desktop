@@ -3,6 +3,7 @@
     <!-- 顶部:返回 + 阶段标题 -->
     <div class="flex items-center gap-3 px-6 py-4 glass-card border-b border-slate-200/80 shrink-0">
       <button
+        :disabled="documentEditing"
         @click="$emit('back')"
         class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
         title="返回工作台"
@@ -50,59 +51,18 @@
           </div>
         </div>
 
-        <!-- 知识库(按子类型分区:调研/技术/产品) -->
-        <div v-for="grp in knowledgeGroups" :key="grp.type || 'general'" class="p-4 pb-2">
-          <div class="text-[12px] font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
-            <i :class="[grp.icon, knColor(grp.color).icon, 'text-[11px]']"></i>{{ grp.label }}
-            <span class="text-[10px] text-slate-400 font-normal">{{ grp.items.length }} 份</span>
-          </div>
-          <button
-            v-for="it in grp.items"
-            :key="it.file"
-            @click="select(it)"
-            class="w-full text-left px-3 py-2 rounded-lg mb-1 flex items-center gap-2.5 transition-colors cursor-pointer"
-            :class="isActive(it) ? knColor(grp.color).active : 'hover:bg-slate-50'"
-          >
-            <i :class="[it.type === 'docx' ? 'fa-solid fa-file-word text-blue-400' : ['fa-solid fa-file-lines', knColor(grp.color).icon], 'text-[12px] shrink-0']"></i>
-            <span class="text-[12px] text-slate-700 flex-1 min-w-0 truncate">{{ it.title }}</span>
-            <span v-if="!it.previewable" class="text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-400 shrink-0">Word</span>
+        <!-- 分组独立展开；同一文档的不同格式合并成一个入口。 -->
+        <div v-for="group in navigationGroups" :key="group.key" class="px-4 pt-3 pb-1">
+          <button type="button" class="flex min-h-9 w-full items-center gap-2 rounded-lg px-1 text-left text-[12px] font-semibold text-slate-700 hover:bg-slate-50" :aria-expanded="!collapsedGroups.has(group.key)" @click="toggleGroup(group.key)">
+            <i class="fa-solid w-3 text-[10px] text-slate-400" :class="collapsedGroups.has(group.key) ? 'fa-chevron-right' : 'fa-chevron-down'" aria-hidden="true"></i>
+            <i :class="[group.icon, knColor(group.color).icon, 'text-[11px]']" aria-hidden="true"></i>
+            <span>{{ group.label }}</span><span class="text-[10px] font-normal text-slate-400">{{ group.items.length }} 份</span>
           </button>
-        </div>
-
-        <!-- 交付物 -->
-        <div v-if="deliverableItems.length" class="p-4 pt-2">
-          <div class="text-[12px] font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
-            <i class="fa-solid fa-box-open text-blue-500 text-[11px]"></i>交付物
-            <span class="text-[10px] text-slate-400 font-normal">= 下一阶段输入</span>
+          <div v-if="!collapsedGroups.has(group.key)" class="ml-3 mt-1">
+            <button v-for="item in group.items" :key="item.file" type="button" :disabled="documentEditing" @click="select(item)" class="mb-1 flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors disabled:cursor-default disabled:opacity-60" :class="isActive(item) ? knColor(group.color).active : 'hover:bg-slate-50'">
+              <i class="fa-solid fa-file-lines shrink-0 text-[12px]" :class="knColor(group.color).icon" aria-hidden="true"></i><span class="min-w-0 flex-1 truncate text-[12px] text-slate-700">{{ item.title }}</span>
+            </button>
           </div>
-          <button
-            v-for="it in deliverableItems"
-            :key="it.file"
-            @click="select(it)"
-            class="w-full text-left px-3 py-2 rounded-lg mb-1 flex items-center gap-2.5 transition-colors cursor-pointer"
-            :class="isActive(it) ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-slate-50'"
-          >
-            <i :class="[it.type === 'docx' ? 'fa-solid fa-file-word text-blue-400' : 'fa-solid fa-file-lines text-emerald-500', 'text-[12px] shrink-0']"></i>
-            <span class="text-[12px] text-slate-700 flex-1 min-w-0 truncate">{{ it.title }}</span>
-            <span v-if="!it.previewable" class="text-[9px] px-1 py-0.5 rounded bg-slate-100 text-slate-400 shrink-0">Word</span>
-          </button>
-        </div>
-
-        <!-- 规范说明 -->
-        <div v-if="specItems.length" class="p-4 pt-2">
-          <div class="text-[12px] font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
-            <i class="fa-solid fa-scroll text-slate-400 text-[11px]"></i>规范说明
-          </div>
-          <button
-            v-for="it in specItems"
-            :key="it.file"
-            @click="select(it)"
-            class="w-full text-left px-3 py-2 rounded-lg mb-1 flex items-center gap-2.5 transition-colors cursor-pointer"
-            :class="isActive(it) ? 'bg-slate-100 ring-1 ring-slate-200' : 'hover:bg-slate-50'"
-          >
-            <i class="fa-solid fa-file-lines text-slate-400 text-[12px] shrink-0"></i>
-            <span class="text-[12px] text-slate-700 flex-1 min-w-0 truncate">{{ it.title }}</span>
-          </button>
         </div>
 
         <div v-if="!items.length" class="p-8 text-center text-slate-400">
@@ -113,7 +73,7 @@
 
       <!-- 右侧:预览 -->
       <div class="flex-1 min-w-0 min-h-0">
-        <DocViewer v-if="activeItem" :stage="stage.dir" :item="activeItem" :key="activeItem.file" />
+        <DocViewer v-if="activeItem" :stage="stage.dir" :item="activeItem" :key="activeItem.file" @editing-change="documentEditing = $event" @close="activeItem = null" />
         <div v-else class="h-full flex flex-col items-center justify-center text-slate-300">
           <i class="fa-solid fa-hand-pointer text-3xl mb-3"></i>
           <p class="text-[13px] text-slate-400">从左侧选择一份文档查看</p>
@@ -126,13 +86,15 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import DocViewer from './DocViewer.vue';
+import { uniqueHandbookDocuments } from '@/data/handbook-documents';
 
 const props = defineProps({
+  initialFile: {type:String, default:''},
   stage: { type: Object, required: true },        // 合并了 fde-stages + manifest 的阶段对象
 });
 defineEmits(['back', 'coach']);
 
-const items = computed(() => props.stage.items || []);
+const items = computed(() => uniqueHandbookDocuments(props.stage.items || []));
 const knowledgeItems = computed(() => items.value.filter((i) => i.category === 'knowledge'));
 const deliverableItems = computed(() => items.value.filter((i) => i.category === 'deliverable'));
 const specItems = computed(() => items.value.filter((i) => i.category === 'spec' || i.category === 'other'));
@@ -159,6 +121,18 @@ const knowledgeGroups = computed(() => {
     .filter((g) => g.items.length);
 });
 
+const navigationGroups = computed(() => [
+  ...knowledgeGroups.value.map(group => ({...group, key:`knowledge:${group.type}`})),
+  {key:'deliverables', label:'交付物', icon:'fa-solid fa-box-open', color:'blue', items:deliverableItems.value},
+  {key:'spec', label:'规范说明', icon:'fa-solid fa-scroll', color:'indigo', items:specItems.value},
+].filter(group => group.items.length));
+const collapsedGroups = ref(new Set());
+const documentEditing = ref(false);
+function toggleGroup(key) {
+  const next = new Set(collapsedGroups.value);
+  if (next.has(key)) next.delete(key); else next.add(key);
+  collapsedGroups.value = next;
+}
 const activeItem = ref(null);
 const select = (it) => { activeItem.value = it; };
 const isActive = (it) => activeItem.value && activeItem.value.file === it.file;
@@ -173,8 +147,8 @@ const knColor = (c) => KN_COLOR[c] || KN_COLOR.emerald;
 
 // 默认选中第一个可预览的文档
 const pickDefault = () => {
-  const first = items.value.find((i) => i.previewable) || items.value[0] || null;
+  const first = items.value.find(i => [i.file, i.sourceMarkdown, ...(i.originalFiles || []).map(v => v.file)].includes(props.initialFile)) || items.value.find((i) => i.previewable) || items.value[0] || null;
   activeItem.value = first;
 };
-watch(() => props.stage, pickDefault, { immediate: true });
+watch([() => props.stage, () => props.initialFile], pickDefault, { immediate: true });
 </script>

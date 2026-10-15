@@ -1,0 +1,423 @@
+<h1>业务数据口径模板</h1>
+<p>FDE 阶段③ 交付物模板（通用）。用于把一个数据产品里每一个指标的取数出处、计算逻辑、去重/过滤/优先级规则一次性定死，作为阶段④建模、阶段⑤验收的对账依据。</p>
+<p>适用形态：看板（实时 / 大屏指标）、报告（日 / 周 / 月 / 季 / 年周期汇总）、推送报告（阈值 / 告警 / 事件触发）。</p>
+<p>核心要求：每个指标必须写清从哪个库、哪张表、哪些字段取数，并把信息科提供的 SQL 原样贴到「取数SQL」列——这是本交付物的价值所在，阶段④建模直接照此对齐物理表。</p>
+<p>使用方法：删掉下面所有 示意 行，按本项目实际业务逐条填写。无法确定的口径 / 未拿到 SQL 的先置空、标记「待信息科提供」，不要编造表名或 SQL。</p>
+<h2>一、全局口径约定（本次交付统一遵循）</h2>
+<p>先把跨所有指标的通用规则定死，指标明细表里就不必逐条重复。按项目实际填写，用不到的整条删除。</p>
+<p>数据集作用：数据集是一套可复用的业务数据资产，由取数SQL和最终输出字段组成，供看板、报告、推送和指标统一引用；数据集把客户物理库与业务指标隔离开，保证口径可复用、可追溯。</p>
+<p>项目阶段：0–1 指新客户或新场景的首次交付，优先复制 SDR 标准库，客户存在额外数据库、字段或取数逻辑时新增数据集；1–2 指在已验证标品上的复制交付，直接复用 SDR 标准库数据集。两类项目都要登记数据集，并在“数据集类型”列标注“标准库”或“新增”。</p>
+<p>数据源清单：本项目涉及哪些库 / schema（如 his、emr、埋点库 dwd），各自的连接方 / 责任人（信息科对接人），哪些必备、哪些可选。</p>
+<p>命名与血缘：明细表「数据来源表」列统一写成 库.表(关键字段)，多表 join 的写主表并在「取数SQL」列体现关联；确保每个指标可追溯到物理字段。</p>
+<p>过滤逻辑：全局默认过滤掉哪些数据（如：测试数据、status 无效、软删除 is_deleted=1、低于某等级）。</p>
+<p>去重逻辑：同一实体多条记录时按什么唯一键去重、保留哪一条（最新 / 最早 / 优先级最高）。</p>
+<p>优先级 / 归并：同一实体在多源命中或多条记录合并时，以哪一条为准。</p>
+<p>时间口径：统计周期按什么时间字段切（创建时间 / 发生时间 / 完成时间），时区与截断到日/时的规则。</p>
+<p>单位与精度：金额单位、百分比小数位、计数是否含 0 等展示口径。</p>
+<p>标记约定：模型自动生成的内容与需人工补全的内容各用什么方式标记（如生成标绿、待补标紫），交付前待补项须清零。</p>
+<h2>二、数据集处理方式</h2>
+<p>数据集优先从 SDR 标准库复制。所有项目都要在数据集清单中登记使用的数据集；客户存在额外数据库、字段或取数逻辑时，在标准库基础上新增数据集或扩展数据集。</p>
+<h3>2.1 项目阶段与数据集策略</h3>
+<p>所有项目均需填写数据集清单，并在“数据集类型”列明确标注“标准库”或“新增”。新增数据库、字段或取数SQL时，才需要补充新增数据集的字段明细。</p>
+<table>
+<thead>
+<tr>
+<th>项目阶段</th>
+<th>数据集处理方式</th>
+<th>本模板填写要求</th>
+<th>验收重点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0–1 新产品 / 新场景</td>
+<td>优先复制 SDR 标准库；客户差异时在标准库基础上新增或扩展数据集。</td>
+<td>登记标准库数据集；新增部分标注“新增”，填写取数SQL和字段明细。</td>
+<td>标准库版本可用；新增内容可追溯到客户库、字段与取数SQL。</td>
+</tr>
+<tr>
+<td>1–2 标品复制 / 增量交付</td>
+<td>复制 SDR 标准库已有数据集；默认不新增。</td>
+<td>也需填写数据集清单，标明“标准库”或“新增”；新增时补齐SQL与字段。</td>
+<td>确认标品版本、数据集可用性、字段覆盖度和访问权限。</td>
+</tr>
+</tbody></table>
+<h3>2.2 数据集清单</h3>
+<p>所有项目均需登记数据集。数据集类型为“标准库”时，填写 SDR 标准库编码和版本；数据集类型为“新增”时，说明相对标准库新增的客户库、字段或取数SQL。</p>
+<table>
+<thead>
+<tr>
+<th>数据集编码</th>
+<th>数据集名称</th>
+<th>业务用途</th>
+<th>数据粒度 / 主键</th>
+<th>更新频率</th>
+<th>来源系统 / 标品版本</th>
+<th>负责人</th>
+<th>数据集SQL / 复用说明</th>
+<th>数据集类型标准库 / 新增</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ds_customer_profile</td>
+<td>客户画像数据集</td>
+<td>统一提供客户基本信息与分层标签</td>
+<td>一客一行 / customer_id</td>
+<td>T+1</td>
+<td>crm.customer、crm.customer_tag</td>
+<td>示意 · 数据平台主管</td>
+<td>select  from</td>
+<td>示意 · 标准库</td>
+</tr>
+<tr>
+<td>ds_work_order_detail</td>
+<td>工单明细数据集</td>
+<td>支撑工单看板、报告与告警分析</td>
+<td>一工单一行 / work_order_id</td>
+<td>实时</td>
+<td>ticket.work_order</td>
+<td>示意 · 运营数据负责人</td>
+<td>select  from</td>
+<td>示意 · 新增</td>
+</tr>
+</tbody></table>
+<h3>2.3 数据集字段明细</h3>
+<p>标准库数据集不重复梳理已有字段；仅新增数据集或新增字段补充字段明细，且必须与对应取数SQL最终 SELECT 输出列一致。</p>
+<table>
+<thead>
+<tr>
+<th>数据集编码</th>
+<th>字段编码</th>
+<th>业务名称</th>
+<th>数据类型</th>
+<th>敏感级别</th>
+<th>默认访问策略</th>
+<th>字段类型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ds_customer_profile</td>
+<td>customer_id</td>
+<td>客户唯一标识</td>
+<td>string</td>
+<td>L2 内部</td>
+<td>已授权业务角色可读；禁止导出</td>
+<td>示意 · 标准字段</td>
+</tr>
+<tr>
+<td>ds_customer_profile</td>
+<td>customer_name</td>
+<td>客户名称</td>
+<td>string</td>
+<td>L2 内部</td>
+<td>已授权业务角色可读；禁止公开分享</td>
+<td>示意 · 新增字段</td>
+</tr>
+<tr>
+<td>ds_customer_profile</td>
+<td>mobile</td>
+<td>手机号</td>
+<td>string</td>
+<td>L3 敏感</td>
+<td>默认脱敏展示；仅获批角色可查看明文；禁止导出</td>
+<td></td>
+</tr>
+<tr>
+<td>ds_work_order_detail</td>
+<td>work_order_id</td>
+<td>工单编号</td>
+<td>string</td>
+<td>L2 内部</td>
+<td>已授权业务角色可读</td>
+<td></td>
+</tr>
+<tr>
+<td>ds_work_order_detail</td>
+<td>created_at</td>
+<td>工单创建时间</td>
+<td>datetime</td>
+<td>L2 内部</td>
+<td>已授权业务角色可读</td>
+<td></td>
+</tr>
+</tbody></table>
+<p>填写约定：</p>
+<p>字段编码：使用英文小写加下划线，例如 order_amount；禁止同义字段重复命名。</p>
+<p>填写约定：</p>
+<p>敏感级别：L1 公开、L2 内部、L3 敏感、L4 高敏。项目如有既定分级标准，以既定标准为准。</p>
+<p>默认访问策略：必须写清默认可访问角色、是否脱敏、是否允许导出，以及访问 L3/L4 字段时是否需要审批。未填写时默认“拒绝访问”。</p>
+<p>来源字段 / 计算说明：基础字段写 库.表.字段；衍生字段写计算规则和依赖字段，确保可追溯。</p>
+<h2>三、指标口径明细表</h2>
+<p>按 章 / 节 分组，逐行填清。指标类型分「基础指标」（直接取字段）与「衍生指标」（需按逻辑二次计算）。「数据来源表」写 <code>库.表(字段)</code>，「取数SQL」贴信息科给的可执行 SQL。 下方 示意 行仅示范格式与颗粒度，交付时删除、换成本项目真实指标与真实 SQL。</p>
+<table>
+<thead>
+<tr>
+<th>章</th>
+<th>节</th>
+<th>指标</th>
+<th>指标类型</th>
+<th>指标计算口径</th>
+<th>数据来源表</th>
+<th>取数SQL</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>概览</td>
+<td>基本信息</td>
+<td>客户名称</td>
+<td>基础指标</td>
+<td>直接取客户主数据名称</td>
+<td>crm.customer(name)</td>
+<td>SELECT name FROM crm.customer WHERE id = :cid</td>
+<td>示意 · XX 公司</td>
+</tr>
+<tr>
+<td>概览</td>
+<td>基本信息</td>
+<td>统计周期</td>
+<td>基础指标</td>
+<td>按任务配置取起止日期</td>
+<td>job.report_task(begin_date,end_date)</td>
+<td>SELECT begin_date, end_date FROM job.report_task WHERE task_id = :tid</td>
+<td>示意 · 2026-08-01 ~ 2026-08-31</td>
+</tr>
+<tr>
+<td>— 看板（实时 / 大屏指标） —</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>看板</td>
+<td>核心指标卡</td>
+<td>今日活跃数</td>
+<td>衍生指标</td>
+<td>当日去重后的活跃实体数</td>
+<td>dwd.user_action(uid,action_time)</td>
+<td>SELECT count(DISTINCT uid) FROM dwd.user_action WHERE action_time &gt;= CURRENT_DATE</td>
+<td>示意 · 1,240</td>
+</tr>
+<tr>
+<td>看板</td>
+<td>核心指标卡</td>
+<td>实时处理率</td>
+<td>衍生指标</td>
+<td>已处理 / 总量</td>
+<td>ticket.work_order(status)</td>
+<td>SELECT sum(status=&#39;done&#39;)/count(*)::numeric FROM ticket.work_order WHERE created_at &gt;= CURRENT_DATE</td>
+<td>示意 · 92.4%</td>
+</tr>
+<tr>
+<td>看板</td>
+<td>趋势图</td>
+<td>近 7 日走势</td>
+<td>衍生指标</td>
+<td>按天聚合的核心指标序列</td>
+<td>dwd.user_action(action_time)</td>
+<td>SELECT date(action_time) d, count(*) FROM dwd.user_action WHERE action_time &gt;= CURRENT_DATE-6 GROUP BY d</td>
+<td>示意 · 折线 7 点</td>
+</tr>
+<tr>
+<td>— 报告（周期汇总） —</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>报告</td>
+<td>汇总头</td>
+<td>本期总量</td>
+<td>衍生指标</td>
+<td>报告周期内的总计数</td>
+<td>ticket.work_order(id,created_at)</td>
+<td>SELECT count(DISTINCT id) FROM ticket.work_order WHERE created_at BETWEEN :begin AND :end</td>
+<td>示意 · 8,610</td>
+</tr>
+<tr>
+<td>报告</td>
+<td>汇总头</td>
+<td>环比变化</td>
+<td>衍生指标</td>
+<td>本期相对上期的增减幅度</td>
+<td>同上（本期 / 上期两次取数）</td>
+<td>-- 本期与上期各跑一次总量，(本期−上期)/上期</td>
+<td>示意 · +12.3%</td>
+</tr>
+<tr>
+<td>报告</td>
+<td>评级</td>
+<td>综合评级</td>
+<td>衍生指标</td>
+<td>按评分规则得出的等级</td>
+<td>多指标汇总（见各指标 SQL）</td>
+<td>-- 汇总各扣分项后按分档映射：优≥90/良≥80/一般≥70…</td>
+<td>示意 · 良好</td>
+</tr>
+<tr>
+<td>— 推送报告（告警 / 事件触发） —</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>推送</td>
+<td>触发条件</td>
+<td>触发阈值</td>
+<td>衍生指标</td>
+<td>指标达到条件时触发推送</td>
+<td>event.alarm(level,tag,occur_time)</td>
+<td>SELECT * FROM event.alarm WHERE level=&#39;high&#39; AND occur_time &gt;= :since</td>
+<td>示意 · 高危事件 ≥ 1</td>
+</tr>
+<tr>
+<td>推送</td>
+<td>推送内容</td>
+<td>事件明细</td>
+<td>基础指标</td>
+<td>触发时携带的关键字段</td>
+<td>event.alarm(occur_time,object,level,advice)</td>
+<td>SELECT occur_time,object,level,advice FROM event.alarm WHERE id = :aid</td>
+<td>示意 · 5 条</td>
+</tr>
+<tr>
+<td>推送</td>
+<td>推送对象</td>
+<td>接收人</td>
+<td>基础指标</td>
+<td>按规则确定接收人</td>
+<td>sys.route_rule(role,owner)</td>
+<td>SELECT receiver FROM sys.route_rule WHERE biz_type = :bt</td>
+<td>示意 · 运维组</td>
+</tr>
+<tr>
+<td>— 医疗行业示意（看板 / 报告 / 推送，可整组删除或替换） —</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>看板</td>
+<td>门诊运营</td>
+<td>当日门诊量</td>
+<td>衍生指标</td>
+<td>当日实际就诊人次</td>
+<td>his.outp_regist(visit_id,visit_date,status)</td>
+<td>SELECT count(DISTINCT visit_id) FROM his.outp_regist WHERE visit_date = CURRENT_DATE AND status = 1</td>
+<td>示意 · 3,820 人次</td>
+</tr>
+<tr>
+<td>看板</td>
+<td>住院运营</td>
+<td>床位使用率</td>
+<td>衍生指标</td>
+<td>实际占用床日 / 开放床日</td>
+<td>his.inp_bed_day(occupied_days,open_days)</td>
+<td>SELECT sum(occupied_days)/sum(open_days)::numeric FROM his.inp_bed_day WHERE stat_date = CURRENT_DATE</td>
+<td>示意 · 96.2%</td>
+</tr>
+<tr>
+<td>看板</td>
+<td>急诊</td>
+<td>急诊留观人数</td>
+<td>基础指标</td>
+<td>当前留观区在观患者数</td>
+<td>his.emerg_observe(patient_id,obs_status)</td>
+<td>SELECT count(*) FROM his.emerg_observe WHERE obs_status = &#39;in&#39;</td>
+<td>示意 · 42 人</td>
+</tr>
+<tr>
+<td>报告</td>
+<td>医疗质量</td>
+<td>平均住院日</td>
+<td>衍生指标</td>
+<td>出院者占用总床日 / 出院人数</td>
+<td>his.inp_discharge(los_days,discharge_date)</td>
+<td>SELECT sum(los_days)/count(*)::numeric FROM his.inp_discharge WHERE discharge_date BETWEEN :begin AND :end</td>
+<td>示意 · 7.8 天</td>
+</tr>
+<tr>
+<td>报告</td>
+<td>医疗质量</td>
+<td>药占比</td>
+<td>衍生指标</td>
+<td>药品收入 / 医疗总收入</td>
+<td>his.income_detail(item_type,amount)</td>
+<td>SELECT sum(amount) FILTER(WHERE item_type=&#39;drug&#39;)/sum(amount)::numeric FROM his.income_detail WHERE stat_month = :ym</td>
+<td>示意 · 28.6%</td>
+</tr>
+<tr>
+<td>报告</td>
+<td>病案</td>
+<td>DRG 入组率</td>
+<td>衍生指标</td>
+<td>成功入组病例 / 应入组病例</td>
+<td>emr.mr_home(drg_code,discharge_date)</td>
+<td>SELECT count(<em>) FILTER(WHERE drg_code IS NOT NULL)/count(</em>)::numeric FROM emr.mr_home WHERE discharge_date BETWEEN :begin AND :end</td>
+<td>示意 · 99.1%</td>
+</tr>
+<tr>
+<td>报告</td>
+<td>患者服务</td>
+<td>患者满意度</td>
+<td>衍生指标</td>
+<td>满意问卷数 / 有效回收问卷数</td>
+<td>svc.satisfaction(score,valid,submit_date)</td>
+<td>SELECT count(<em>) FILTER(WHERE score&gt;=4)/count(</em>) FILTER(WHERE valid=1)::numeric FROM svc.satisfaction WHERE submit_date BETWEEN :begin AND :end</td>
+<td>示意 · 94.5%</td>
+</tr>
+<tr>
+<td>推送</td>
+<td>临床预警</td>
+<td>危急值触发</td>
+<td>衍生指标</td>
+<td>检验结果命中危急值区间时推送</td>
+<td>lis.test_result(item_code,result_value,report_time)</td>
+<td>SELECT * FROM lis.test_result WHERE item_code=:code AND result_value &gt;= :crit_high AND report_time &gt;= :since</td>
+<td>示意 · 血钾 ≥ 6.5</td>
+</tr>
+<tr>
+<td>推送</td>
+<td>感控</td>
+<td>院感事件</td>
+<td>衍生指标</td>
+<td>疑似院内感染达标即推送</td>
+<td>nis.infection_event(ward_id,source,occur_time)</td>
+<td>SELECT ward_id, count(<em>) FROM nis.infection_event WHERE occur_time &gt;= :since GROUP BY ward_id HAVING count(</em>) &gt;= 3</td>
+<td>示意 · 同病区 ≥ 3 例</td>
+</tr>
+<tr>
+<td>推送</td>
+<td>药事</td>
+<td>高危医嘱拦截</td>
+<td>基础指标</td>
+<td>触发拦截时携带的关键字段</td>
+<td>cpoe.order_intercept(patient_id,order_id,rule,doctor)</td>
+<td>SELECT patient_id,order_id,rule,doctor FROM cpoe.order_intercept WHERE intercept_time &gt;= :since</td>
+<td>示意 · 3 条</td>
+</tr>
+</tbody></table>
+<h2>四、指标类型说明</h2>
+<p>基础指标：直接来源于配置或单表原始字段，无需二次计算（如客户名称、报告周期、接收人）。</p>
+<p>衍生指标：需按「取数SQL」+「逻辑」二次计算得出（如活跃数、环比、平均住院日、DRG 入组率、触发阈值）。</p>
+<h2>五、填写与验收要求</h2>
+<p>每个指标必须写清「数据来源表」（<code>库.表(字段)</code>）与「取数SQL」；SQL 直接采用信息科提供的版本，参数用 :begin、:tid 等占位便于阶段④套用。</p>
+<p>「示例」列填本项目真实样例值，供业务方核对，不留占位符。</p>
+<p>数据集清单必须标明“标准库”或“新增”。标准库数据集需标注 SDR 版本；新增数据集需完成取数SQL、字段明细及指标引用的对账。</p>
+<p>表中所有 示意、—…— 分隔行在交付前全部删除；未拿到 SQL / 待补的口径按全局约定标记，交付前清零。</p>
+<p>阶段④按 SDR 标准库复制并适配数据集；新增内容按本表补充建设。阶段⑤同时验收标品复用内容和新增内容，并按指标逐项对账。</p>

@@ -1,0 +1,391 @@
+<h1>智能体设计表【交付】</h1>
+<blockquote>
+<p>定位：本表定义智能体设计的标准规范，确保智能体设计有章可循。<strong>一个智能体填一份。</strong>
+适用场景：需要设计单个智能体的场景。
+一条铁律：以智能体设计为主，平台为辅。</p>
+</blockquote>
+<h2>怎么填（先看这段，省得来回翻）</h2>
+<p>八个部分对应智能体设计的八个环节，从上到下填一遍即可。有三处内容会&quot;看着像重复&quot;，规矩定死，别填两遍：</p>
+<table>
+<thead>
+<tr>
+<th>内容</th>
+<th>正式填写处</th>
+<th>别的地方怎么处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>提示词 Prompt 全文</td>
+<td><strong>第四部分</strong></td>
+<td>第三部分六组件里只写&quot;见第四部分&quot;</td>
+</tr>
+<tr>
+<td>知识库</td>
+<td><strong>第五部分</strong>（配置明细）</td>
+<td>第三部分六组件里只写挂哪几个的名字</td>
+</tr>
+<tr>
+<td>技能 Skill</td>
+<td><strong>第六部分</strong>（清单明细）</td>
+<td>第三部分六组件里只写挂哪几个的名字</td>
+</tr>
+</tbody></table>
+<p>一句话：<strong>第三部分六组件是&quot;一览索引&quot;，明细在第四/五/六部分填。</strong> 边界和异常在第二部分五层拆解里定，写提示词【规则】时从那儿搬。</p>
+<h2>第一部分：智能体身份卡</h2>
+<table>
+<thead>
+<tr>
+<th>项</th>
+<th>填什么</th>
+<th>示例（运营决策智能体）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>智能体名称</td>
+<td>一句话能听懂的名字</td>
+<td>运营决策智能体</td>
+</tr>
+<tr>
+<td>一句话定位</td>
+<td>它是干什么的、替谁干活</td>
+<td>替院长/运营部做门诊量异动的归因分析</td>
+</tr>
+<tr>
+<td>目标用户</td>
+<td>谁会用它、什么场景下用</td>
+<td>运营部主任，每次发现指标异常时</td>
+</tr>
+<tr>
+<td>它替代了什么</td>
+<td>原来这活谁干、怎么干、多久</td>
+<td>运营助理手工跑数据，一次归因 3 天</td>
+</tr>
+<tr>
+<td>成功标准</td>
+<td>什么算做对了（可量化）</td>
+<td>归因准确率 ≥90%，出结果 ≤15 分钟</td>
+</tr>
+<tr>
+<td>边界（不干什么）</td>
+<td>明确它不管的事，防止过度承诺</td>
+<td>只做归因分析，不下运营决策指令</td>
+</tr>
+</tbody></table>
+<h2>第二部分：五层拆解（核心）</h2>
+<p>这是核心。把业务专家脑子里的活，一层层拆成智能体能执行的结构。</p>
+<p><strong>① Workflow（整个活儿的流程）</strong> —— 用一句话或几步，描述这个智能体接到任务后从头到尾走几步。</p>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>这一步做什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>示例：接到&quot;某科门诊量异动&quot;任务，取该科近 30 天到诊数据</td>
+</tr>
+<tr>
+<td>2</td>
+<td>示例：扣除停诊/节假日因素，跟上月同期比，判断是否真异动</td>
+</tr>
+<tr>
+<td>3</td>
+<td>示例：定位主因（医生/病人/外部），出归因结论 + 建议</td>
+</tr>
+</tbody></table>
+<p><strong>② 节点（每一步的细节）</strong> —— 节点是&quot;每一步接什么、吐什么&quot;（数据流向）；Playbook 是&quot;这一步内部按什么规则判断&quot;（怎么做）。两张表别填重了。</p>
+<table>
+<thead>
+<tr>
+<th>节点</th>
+<th>输入从哪来</th>
+<th>做什么处理</th>
+<th>输出什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>示例：取数</td>
+<td>HIS 到诊表</td>
+<td>拉近 30 天门诊量、按科室聚合</td>
+<td>门诊量时间序列</td>
+</tr>
+<tr>
+<td>示例：归因</td>
+<td>上一步序列 + 停诊表</td>
+<td>扣除停诊因素、跟上月同期比</td>
+<td>异动原因清单</td>
+</tr>
+</tbody></table>
+<p><strong>③ Playbook（每一步怎么做、规则是什么）</strong> —— 关键节点的执行策略、判断规则、话术。这是业务专家的隐性经验，最值钱。</p>
+<table>
+<thead>
+<tr>
+<th>节点</th>
+<th>判断规则 / 执行策略</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>示例：归因</td>
+<td>判断医生原因还是病人原因——扣除停诊因素后看实际门诊量跟上月比，跌幅 &gt;15% 且非节假日才算异动</td>
+</tr>
+</tbody></table>
+<p><strong>④ 边界（管到哪儿为止）</strong></p>
+<table>
+<thead>
+<tr>
+<th>情况</th>
+<th>智能体怎么处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>常规情况</td>
+<td>自动执行</td>
+</tr>
+<tr>
+<td>涉及决策/高风险</td>
+<td>转人工确认</td>
+</tr>
+<tr>
+<td>超出能力范围</td>
+<td>明确告知&quot;这个我不确定&quot;，不硬编</td>
+</tr>
+</tbody></table>
+<p><strong>⑤ 异常（出岔子怎么办）</strong></p>
+<table>
+<thead>
+<tr>
+<th>异常场景</th>
+<th>兜底策略</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>数据缺失</td>
+<td>示例：某层数据取不到时，标注&quot;数据不全&quot;并给出已有部分的结论</td>
+</tr>
+<tr>
+<td>输入歧义</td>
+<td>示例：用户只说&quot;最近门诊掉了&quot;没给时间范围，默认按近 30 天，并在结论里说明口径</td>
+</tr>
+<tr>
+<td>特殊情况</td>
+<td>示例：春节国庆前后的异常不算，法定节假日排除</td>
+</tr>
+</tbody></table>
+<h2>第三部分：Agent 六组件（配置一览索引）</h2>
+<blockquote>
+<p>这是一张<strong>一览表</strong>——快速看清这个智能体挂了什么。提示词全文填第四部分、知识库明细填第五部分、技能明细填第六部分，这里只写指向和名字，不重复填。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>组件</th>
+<th>填什么</th>
+<th>示例（运营决策智能体）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>① 角色（Expert）</td>
+<td>智能体扮演什么专家、什么口吻</td>
+<td>资深医院运营分析专家，客观、就数说话</td>
+</tr>
+<tr>
+<td>② 提示词（Prompt）</td>
+<td>一句话概括，<strong>全文见第四部分</strong></td>
+<td>门诊量异动归因（全文见第四部分）</td>
+</tr>
+<tr>
+<td>③ 知识库</td>
+<td>只列挂哪几个的名字，<strong>明细见第五部分</strong></td>
+<td>国考指标库、科室数据字典</td>
+</tr>
+<tr>
+<td>④ 技能（Skill）</td>
+<td>只列挂哪几个的名字，<strong>明细见第六部分</strong></td>
+<td>归因分析 skill、图表生成 skill</td>
+</tr>
+<tr>
+<td>⑤ 工具/连接器</td>
+<td>接哪些数据源、调哪些 API</td>
+<td>HIS 到诊表、EMR 病历</td>
+</tr>
+<tr>
+<td>⑥ 记忆（Memory）</td>
+<td>要不要记项目上下文、记什么</td>
+<td>记住历史归因结论、客户关注的科室</td>
+</tr>
+</tbody></table>
+<h2>第四部分：提示词（Prompt）设计</h2>
+<p>提示词单独拉出来写，这是智能体的灵魂。<strong>这里是提示词的唯一正式填写处。</strong></p>
+<pre><code>【角色】
+你是……（专家身份、经验背景）
+【任务】
+你要……（具体干什么、分几步）
+【输入】
+你会收到……（数据格式、字段说明）
+【规则】
+1. （业务判断规则，从第二部分 Playbook 搬）
+2. （边界规则：什么该做、什么转人工，从第二部分边界搬）
+3. （异常处理：数据缺失/歧义怎么办，从第二部分异常搬）
+【输出格式】
+按……格式输出（结构、字段、语气）
+【约束】
+- 只用企业内部数据，不编造
+- 不确定的明确说&quot;不确定&quot;，不硬答
+</code></pre>
+<h2>第五部分：知识库配置</h2>
+<p><strong>这里是知识库的唯一正式填写处</strong>（第三部分只列名字）。</p>
+<table>
+<thead>
+<tr>
+<th>知识库名称</th>
+<th>来源（内部/外部）</th>
+<th>内容</th>
+<th>更新频率</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>示例：国考指标库</td>
+<td>外部</td>
+<td>三级公立医院绩效考核指标定义、口径</td>
+<td>年度</td>
+</tr>
+<tr>
+<td>示例：科室数据字典</td>
+<td>内部</td>
+<td>各科室编码、门诊/住院口径映射</td>
+<td>季度</td>
+</tr>
+</tbody></table>
+<p>要点：</p>
+<ul>
+<li>数据权限——智能体只能看它该看的（科室 Agent 不能看全院）</li>
+<li>数据时效——引用的制度是最新版，不是去年的</li>
+<li>数据结构——表格层级、条款结构、段落语义，不能按纯文本切片</li>
+</ul>
+<h2>第六部分：技能（Skill）清单</h2>
+<p><strong>这里是技能的唯一正式填写处</strong>（第三部分只列名字）。</p>
+<table>
+<thead>
+<tr>
+<th>Skill 名称</th>
+<th>干什么</th>
+<th>单一职责？</th>
+<th>有错误处理？</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>示例：归因分析 skill</td>
+<td>输入时间序列，输出异动主因</td>
+<td>是</td>
+<td>数据不全时返回&quot;数据不全&quot;，不硬算</td>
+</tr>
+<tr>
+<td>示例：图表生成 skill</td>
+<td>把归因结果画成趋势图</td>
+<td>是</td>
+<td>无数据时返回占位图 + 提示</td>
+</tr>
+</tbody></table>
+<p>要点：每个 Skill 只调 CLI/API、单一职责、有错误路径和最小样例、命名规范。</p>
+<h2>第七部分：A/B 测试与调优</h2>
+<p>上线门禁：用真实业务数据评测，准确率达验收线（通常 ≥90%）才能上线。</p>
+<blockquote>
+<p>第一版没做 A/B 的可留空，但<strong>上线门禁那条准确率必须过</strong>。做了 A/B 的按下表记录，方便复盘为什么这么定。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>测试项</th>
+<th>方案 A</th>
+<th>方案 B</th>
+<th>哪个好、为什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>提示词写法</td>
+<td>示例：只给规则</td>
+<td>示例：规则+2 个范例</td>
+<td>B——带范例后归因准确率 85%→92%</td>
+</tr>
+<tr>
+<td>工作流编排</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>知识库范围</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<h2>第八部分：验收与上线检查表</h2>
+<table>
+<thead>
+<tr>
+<th>检查项</th>
+<th>达标标准</th>
+<th>通过？</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>端到端能跑通</td>
+<td>从输入到输出全流程无断点</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>准确率达标</td>
+<td>≥90%（或场景约定值）</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>边界处理正确</td>
+<td>高风险场景正确转人工</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>异常兜底到位</td>
+<td>数据缺失/歧义有兜底，不崩</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>Trace 可追踪</td>
+<td>每一步可回放定位</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>业务专家签字</td>
+<td>业务方确认&quot;达到生产可用&quot;</td>
+<td>☐</td>
+</tr>
+<tr>
+<td>SOP 已写</td>
+<td>有操作手册、运营负责人就位</td>
+<td>☐</td>
+</tr>
+</tbody></table>
+<p><strong>签字确认</strong>：以上检查项全部通过，本智能体达到生产可用。</p>
+<table>
+<thead>
+<tr>
+<th>角色</th>
+<th>姓名</th>
+<th>签字</th>
+<th>日期</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>设计负责人（FDE）</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>业务专家</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>

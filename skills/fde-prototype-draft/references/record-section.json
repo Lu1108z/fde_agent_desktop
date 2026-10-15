@@ -1,0 +1,34 @@
+{
+  "stage2": {
+    "prototypePackage": {
+      "prototypeEntry": "prototype/index.html",
+      "version": "",
+      "excludedFeatureIds": [],
+      "features": [
+        {
+          "id": "",
+          "name": "",
+          "page": "",
+          "description": "",
+          "priority": "",
+          "requirementIds": [],
+          "agent": {
+            "value": "",
+            "status": "",
+            "owner": ""
+          },
+          "dataDependencies": [
+            {
+              "value": "",
+              "status": "",
+              "owner": ""
+            }
+          ]
+        }
+      ],
+      "demoEvidence": "",
+      "businessApprovalEvidence": "",
+      "excludedRequirementReasons": {}
+    }
+  }
+}

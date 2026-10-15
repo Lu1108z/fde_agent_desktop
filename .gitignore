@@ -39,3 +39,17 @@ npm-debug.log*
 __pycache__/
 *.pyc
 .venv/
+
+# Local distribution build cache
+.local-release/
+.local-update/
+
+# Local validation artifacts and recipient data
+/tasks/
+/发布包/
+/.product-lobster/
+/.env.*
+*.lic
+*.sqlite
+*.sqlite3
+*.db

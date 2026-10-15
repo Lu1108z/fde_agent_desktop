@@ -19,16 +19,10 @@
       </div>
     </div>
 
-    <!-- 极简顶条:仅可拖拽区 + 窗口控制(Electron frameless 必需),高 36px -->
+    <!-- 窗口控制保留在独立的拖拽栏，避免顶部导航占用原生窗口操作区域。 -->
     <header class="app-titlebar drag-region">
-      <div class="titlebar-left no-drag">
-        <button class="rail-collapse-top" :title="collapsed ? '展开侧栏' : '收起侧栏'" @click="collapsed = !collapsed">
-          <i class="fa-solid" :class="collapsed ? 'fa-angles-right' : 'fa-angles-left'"></i>
-        </button>
-      </div>
+      <span class="titlebar-caption">FDE 产品设计</span>
       <div class="titlebar-right no-drag">
-        <span class="titlebar-clock font-mono">{{ clock }}</span>
-        <div class="titlebar-divider"></div>
         <button @click="minimizeWindow" class="win-btn" title="最小化">
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
         </button>
@@ -42,70 +36,61 @@
       </div>
     </header>
 
-    <!-- 主体:深色左侧栏 + 浅色内容区 -->
-    <div class="app-body">
-      <!-- 深色左侧导航栏(可折叠) -->
-      <aside class="rail" :class="{ 'rail--collapsed': collapsed }">
-        <!-- 品牌 -->
-        <div class="rail-brand">
-          <img src="../../assets/logo.png" alt="Logo" class="rail-logo" />
-          <div v-if="!collapsed" class="rail-brand-text">
-            <span class="rail-brand-name">FDE 产品设计</span>
-            <span class="rail-brand-sub">五阶段作战工作台</span>
-          </div>
-        </div>
+    <header class="app-header">
+      <RouterLink to="/" class="header-brand" aria-label="返回工作台">
+        <img src="../../assets/logo.png" alt="" class="header-logo" />
+        <span>FDE 产品设计</span>
+      </RouterLink>
 
-        <!-- 导航(分组) -->
-        <nav class="rail-nav scrollbar-thin">
-          <div v-for="group in navGroups" :key="group.label" class="rail-group">
-            <div v-if="!collapsed" class="rail-group-label">{{ group.label }}</div>
-            <RouterLink
-              v-for="item in group.items"
-              :key="item.to"
-              :to="item.to"
-              class="rail-link"
-              :class="item.match(route.path) ? 'rail-link--active' : ''"
-              :title="collapsed ? item.label : ''"
-            >
-              <i :class="item.icon" class="rail-ico"></i>
-              <span v-if="!collapsed" class="rail-label">{{ item.label }}</span>
+      <nav ref="navElement" class="header-nav" aria-label="主要导航" @keydown.esc.stop.prevent="closeNav">
+        <div v-for="item in primaryNav" :key="item.to" class="header-nav-group" :class="{ 'header-nav-group--open': openNav === item.to }" @mouseenter="enterNav(item)" @mouseleave="leaveNav(item)" @focusin="focusNav(item, $event)" @focusout="leaveNavFocus(item, $event)" @click="closeNav" @contextmenu.prevent="closeNav">
+          <RouterLink
+            :to="item.to"
+            class="header-nav-link"
+            :class="item.match(route.path) ? 'header-nav-link--active' : ''"
+            :aria-current="item.match(route.path) ? 'page' : undefined"
+            :aria-expanded="item.children?.length ? openNav === item.to : undefined"
+            :aria-controls="item.children?.length ? 'header-subnav-' + item.to.slice(1) : undefined"
+          >
+            <i :class="item.icon" aria-hidden="true"></i>
+            <span>{{ item.label }}</span>
+          </RouterLink>
+          <div v-if="item.children?.length" :id="'header-subnav-' + item.to.slice(1)" class="header-subnav" :aria-hidden="openNav !== item.to" :inert="openNav !== item.to">
+            <RouterLink v-for="child in item.children" :key="child.to" :to="child.to" class="header-subnav-link" :class="child.match(route.path) ? 'header-subnav-link--active' : ''">
+              <i :class="child.icon" aria-hidden="true"></i>
+              <span>{{ child.label }}</span>
             </RouterLink>
           </div>
-        </nav>
-
-        <!-- 底部:引擎状态 + 授权 + 设置 -->
-        <div class="rail-footer">
-          <div class="rail-status" :class="collapsed ? 'rail-status--mini' : ''" :title="engineTitle">
-            <span class="status-dot" :class="engineDotCls"></span>
-            <span v-if="!collapsed" class="rail-status-text">{{ engineText }}</span>
-          </div>
-          <div v-if="!collapsed && licenseChip" class="rail-license" :class="licenseChip.cls" :title="licenseChip.title">
-            <i class="fa-solid fa-shield-halved text-[9px]"></i>
-            <span class="truncate">{{ licenseChip.text }}</span>
-          </div>
-          <RouterLink
-            to="/settings"
-            class="rail-link rail-link--settings"
-            :class="isSettingsRoute ? 'rail-link--active' : ''"
-            :title="collapsed ? '设置' : ''"
-          >
-            <i class="fa-solid fa-gear rail-ico"></i>
-            <span v-if="!collapsed" class="rail-label">设置</span>
-            <span v-if="!collapsed" class="rail-version font-mono">{{ appVersionShort }}</span>
-          </RouterLink>
         </div>
-      </aside>
+      </nav>
 
-      <!-- 浅色内容区 -->
-      <main class="app-content">
-        <RouterView />
-      </main>
-    </div>
+      <div class="header-actions">
+        <div class="header-status" :title="engineTitle">
+          <span class="status-dot" :class="engineDotCls"></span>
+          <span>{{ engineText }}</span>
+        </div>
+        <span v-if="licenseChip" class="header-license" :class="licenseChip.cls" :title="licenseChip.title">
+          <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+          {{ licenseChip.text }}
+        </span>
+        <RouterLink to="/settings" class="header-settings" :class="isSettingsRoute ? 'header-settings--active' : ''" :title="`设置 · ${appVersionShort}`" aria-label="设置">
+          <i class="fa-solid fa-gear" aria-hidden="true"></i>
+        </RouterLink>
+      </div>
+    </header>
+
+    <main class="app-content">
+      <RouterView v-slot="{ Component, route: pageRoute }">
+        <KeepAlive include="AgentHome,Coach">
+          <component :is="Component" :key="pageRoute.path" />
+        </KeepAlive>
+      </RouterView>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -115,10 +100,8 @@ const licenseInfo = ref(null);
 const importing = ref(false);
 const importError = ref('');
 
-// 顶栏状态条:实时时钟 + AI 引擎就绪状态
-const clock = ref('--:--:--');
+// AI 引擎就绪状态
 const engineReady = ref(null); // null=检测中, true=就绪, false=未就绪
-let clockTimer = null;
 let licenseTimer = null;
 
 // 版本号去掉前缀 v,状态条里用 5.7.0 这样的纯数字胶囊
@@ -142,37 +125,29 @@ const engineTitle = computed(() =>
 
 const isSettingsRoute = computed(() => route.path === '/settings');
 
-// 侧栏折叠状态(持久化到 localStorage,重开保留用户偏好)
-const collapsed = ref(false);
-try { collapsed.value = localStorage.getItem('rail-collapsed') === '1'; } catch { /* ignore */ }
-watch(collapsed, (v) => { try { localStorage.setItem('rail-collapsed', v ? '1' : '0'); } catch { /* ignore */ } });
-
-// 左侧导航:分三组。match 决定高亮(startsWith 处理 /code/:id、/projects/:slug 等子路由)。
-const navGroups = [
-  {
-    label: '工作台',
-    items: [
-      { to: '/', label: 'FDE 工作台', icon: 'fa-solid fa-table-columns', match: (p) => p === '/' },
-      { to: '/project-spec', label: 'FDE 项目规范', icon: 'fa-solid fa-clipboard-list', match: (p) => p === '/project-spec' },
-      { to: '/training', label: 'FDE 培训教程', icon: 'fa-solid fa-graduation-cap', match: (p) => p === '/training' },
-    ],
-  },
-  {
-    label: 'AI 助手',
-    items: [
-      { to: '/chat', label: 'AI 智能对话', icon: 'fa-solid fa-comments', match: (p) => p === '/chat' },
-      { to: '/code', label: 'AI 代码模式', icon: 'fa-solid fa-code', match: (p) => p.startsWith('/code') },
-      { to: '/apps', label: 'AI 应用广场', icon: 'fa-solid fa-store', match: (p) => p === '/apps' || p === '/experts' },
-    ],
-  },
-  {
-    label: '资源',
-    items: [
-      { to: '/projects', label: '项目列表', icon: 'fa-solid fa-folder-open', match: (p) => p.startsWith('/projects') },
-      { to: '/knowledge', label: '知识中心', icon: 'fa-solid fa-book-open', match: (p) => p === '/knowledge' },
-      { to: '/skills', label: '技能中心', icon: 'fa-solid fa-brain', match: (p) => p === '/skills' },
-    ],
-  },
+// 项目入口默认进入第一项项目进度，次级页面通过悬停/键盘聚焦菜单访问。
+const primaryNav = [
+  { to: '/', label: '工作台', icon: 'fa-solid fa-table-columns', match: (p) => p === '/' },
+  { to: '/project-management', label: '项目', icon: 'fa-solid fa-folder-open', match: (p) => p.startsWith('/projects') || p === '/project-spec' || p.startsWith('/project-management'), children: [
+    { to: '/project-management', label: '项目进度', icon: 'fa-solid fa-chart-simple', match: (p) => p === '/project-management' },
+    { to: '/projects', label: '项目与交付物', icon: 'fa-solid fa-folder-open', match: (p) => p.startsWith('/projects') },
+    { to: '/project-spec', label: 'FDE 项目规范', icon: 'fa-solid fa-clipboard-list', match: (p) => p === '/project-spec' },
+  ] },
+  { to: '/coach', label: '培训', icon: 'fa-solid fa-graduation-cap', match: (p) => p === '/training' || p === '/coach', children: [
+    { to: '/coach', label: 'FDE 教练陪练', icon: 'fa-solid fa-headset', match: (p) => p === '/coach' },
+    { to: '/training', label: '培训教程', icon: 'fa-solid fa-graduation-cap', match: (p) => p === '/training' },
+  ] },
+  { to: '/chat', label: 'AI 助手', icon: 'fa-solid fa-comments', match: (p) => p === '/chat' || p.startsWith('/code') || p === '/apps' || p === '/experts', children: [
+    { to: '/chat', label: 'AI 智能对话', icon: 'fa-solid fa-comments', match: (p) => p === '/chat' },
+    { to: '/code', label: 'AI 代码模式', icon: 'fa-solid fa-code', match: (p) => p.startsWith('/code') },
+    { to: '/apps', label: 'AI 应用广场', icon: 'fa-solid fa-store', match: (p) => p === '/apps' || p === '/experts' },
+  ] },
+  { to: '/library/team', label: '资源', icon: 'fa-solid fa-book-open', match: (p) => p.startsWith('/library') || p === '/knowledge' || p === '/skills', children: [
+    { to: '/library/team', label: '团队资料库', icon: 'fa-solid fa-folder-open', match: p => p === '/library/team' },
+    { to: '/library/repository', label: '代码仓', icon: 'fa-solid fa-code-branch', match: p => p === '/library/repository' },
+    { to: '/knowledge', label: '知识中心', icon: 'fa-solid fa-book-open', match: (p) => p === '/knowledge' },
+    { to: '/skills', label: '技能中心', icon: 'fa-solid fa-brain', match: (p) => p === '/skills' },
+  ] },
 ];
 
 // 顶栏授权徽章:客户名 + 有效期(永久/剩余天数/缓冲期)
@@ -228,6 +203,29 @@ const licenseBlock = computed(() => {
   }
 });
 
+// One menu owns the dropdown; a previously clicked link must not keep another menu open.
+const navElement = ref(null), openNav = ref('');
+function closeNav() { openNav.value = ''; }
+function enterNav(item) { openNav.value = item.children?.length ? item.to : ''; }
+function leaveNav(item) { if (openNav.value === item.to) closeNav(); }
+function focusNav(item, event) {
+  if (event.target.matches?.(':focus-visible')) enterNav(item);
+}
+function leaveNavFocus(item, event) {
+  if (!event.currentTarget.contains(event.relatedTarget) && openNav.value === item.to) closeNav();
+}
+function dismissNav(event) { if (!navElement.value?.contains(event.target)) closeNav(); }
+watch(() => route.fullPath, closeNav);
+function obscureOnlinePages(payload) {
+  window.api?.feishuOnline?.obscured(payload);
+  window.api?.geelibOnline?.obscured(payload);
+}
+watch(() => !!openNav.value, value => obscureOnlinePages({ reason: 'navigation', value }), { immediate: true });
+onMounted(() => { window.addEventListener('pointerdown', dismissNav); window.addEventListener('blur', closeNav); });
+onUnmounted(() => { window.removeEventListener('pointerdown', dismissNav); window.removeEventListener('blur', closeNav); });
+watch(licenseBlock, value => obscureOnlinePages({ reason: 'license', value: !!value }), { immediate: true });
+onUnmounted(() => obscureOnlinePages({ reason: 'navigation', value: false }));
+
 const loadLicense = async () => {
   try {
     if (window.api?.license?.status) {
@@ -275,13 +273,6 @@ const reasonText = (r) => {
   }
 };
 
-// 实时时钟(HH:MM:SS)
-const tickClock = () => {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  clock.value = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-};
-
 // 检测 AI 引擎就绪状态(引擎可执行 + 密钥已配 + ACP 就绪)
 const checkEngine = async () => {
   try {
@@ -310,13 +301,10 @@ onMounted(async () => {
   // 每 60s 复查一次授权,修掉“开着不动就永不复查”的问题:缓冲期跨进硬过期、时钟异常等都能及时挡住
   licenseTimer = setInterval(loadLicense, 60000);
 
-  tickClock();
-  clockTimer = setInterval(tickClock, 1000);
   checkEngine();
 });
 
 onUnmounted(() => {
-  if (clockTimer) clearInterval(clockTimer);
   if (licenseTimer) clearInterval(licenseTimer);
 });
 
@@ -427,162 +415,110 @@ const closeWindow = () => {
   -webkit-app-region: no-drag;
 }
 
-/* ===================================================================
-   新布局:深色左侧栏 + 浅色内容区(Codex/Linear 式)
-   =================================================================== */
+/* 浅蓝灰的桌面框架：独立窗口栏 + 横向主导航 + 页面内容。 */
 .app-root {
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: var(--color-content-bg);
   color: var(--ui-ink-2);
+  background: #fff;
   font-family: Inter, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-
-/* 极简顶条:36px,承载窗口拖拽 + 控制按钮 + 时钟(浅色,与侧栏同底) */
 .app-titlebar {
-  height: 36px;
+  height: 29px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 6px 0 10px;
-  /* 顶栏毛玻璃：chrome-bg + blur(14px) saturate(1.4)（skill 只许顶栏/侧栏加 blur） */
-  background: var(--chrome-bg);
-  backdrop-filter: blur(14px) saturate(1.4);
-  border-bottom: 1px solid hsl(var(--primary) / 12%);
-  position: relative;
-  z-index: 30;
+  padding: 0 6px 0 18px;
+  background: #fff;
+  border-bottom: 1px solid #e9eef8;
 }
-.titlebar-left, .titlebar-right { display: inline-flex; align-items: center; gap: 4px; }
-.rail-collapse-top {
-  width: 26px; height: 26px;
+.titlebar-caption { color: #8a99b3; font-size: 10px; font-weight: 600; letter-spacing: 0.02em; }
+.titlebar-right { display: inline-flex; align-items: center; gap: 3px; }
+.win-btn {
+  width: 28px; height: 23px;
   display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 6px; color: var(--color-sidebar-text); font-size: 11px;
-  transition: background 0.15s, color 0.15s;
+  border-radius: 6px; color: #8190aa;
+  transition: background 0.16s, color 0.16s;
 }
-.rail-collapse-top:hover { background: var(--color-sidebar-elevated); color: var(--color-sidebar-text-strong); }
-.titlebar-clock {
-  font-size: 11.5px; color: var(--color-sidebar-muted); letter-spacing: 0.02em; padding: 0 6px;
-}
-.titlebar-divider { width: 1px; height: 14px; background: var(--color-sidebar-border); margin: 0 2px; }
+.win-btn:hover { background: #eef3fc; color: #28416b; }
+.win-btn--close:hover { background: #ef4444; color: white; }
 
-/* 主体两栏 */
-.app-body { flex: 1; display: flex; min-height: 0; overflow: hidden; }
-
-/* 浅灰白左侧栏 */
-.rail {
-  width: 236px;
+.app-header {
+  height: 61px;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  /* 侧栏毛玻璃：玻璃感最明显的区域 */
-  background: var(--chrome-bg);
-  backdrop-filter: blur(14px) saturate(1.35);
-  border-right: 1px solid hsl(var(--primary) / 12%);
-  transition: width 0.18s ease;
-  overflow: hidden;
+  align-items: center;
+  gap: 32px;
+  padding: 0 30px;
+  position: relative;
+  z-index: 30;
+  background: #fff;
+  border-bottom: 1px solid #e8eef8;
+  box-shadow: 0 2px 16px rgba(47, 89, 170, 0.04);
 }
-.rail--collapsed { width: 60px; }
-
-/* 品牌 */
-.rail-brand {
+.header-brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+  color: #172642; font-size: 18px; font-weight: 750; letter-spacing: -0.02em; white-space: nowrap;
+}
+.header-logo { width: 34px; height: 34px; object-fit: contain; }
+.header-nav { height: 100%; display: flex; align-items: stretch; gap: 7px; }
+.header-nav-group { position: relative; display: flex; align-items: center; }
+.header-nav-link {
+  min-width: 88px; height: 40px; padding: 0 13px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  position: relative; border-radius: 10px;
+  color: #7183a4; font-size: 14px; font-weight: 600; white-space: nowrap;
+  transition: background 0.16s, color 0.16s;
+}
+.header-nav-link i { font-size: 15px; }
+.header-nav-link:hover, .header-nav-link:focus-visible { background: #f0f5ff; color: #2866e9; }
+.header-nav-link--active { color: #2563eb; background: #eef4ff; }
+.header-nav-link--active::after {
+  content: ''; position: absolute; height: 3px; left: 15px; right: 15px; bottom: -11px;
+  border-radius: 3px 3px 0 0; background: #2563eb;
+}
+.header-subnav {
+  position: absolute; top: 100%; left: 0; min-width: 188px;
+  padding: 8px; background: #fff; border: 1px solid #e2eafb;
+  border-radius: 12px; box-shadow: 0 14px 36px rgba(33, 69, 129, 0.13);
+  opacity: 0; visibility: hidden; transform: translateY(5px);
+  pointer-events: none;
+}
+.header-nav-group--open .header-subnav { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); transition: opacity 0.15s, transform 0.15s; }
+.header-subnav-link {
   display: flex; align-items: center; gap: 10px;
-  padding: 14px 16px 12px;
-  min-height: 56px;
+  min-height: 36px; padding: 0 10px; border-radius: 7px;
+  color: #576a89; font-size: 13px; white-space: nowrap;
 }
-.rail--collapsed .rail-brand { padding: 14px 0 12px; justify-content: center; }
-.rail-logo {
-  width: 30px; height: 30px; border-radius: 9px; object-fit: cover; flex-shrink: 0;
-  box-shadow: 0 2px 8px hsl(var(--primary) / 20%);
+.header-subnav-link i { width: 17px; text-align: center; color: #8597b6; }
+.header-subnav-link:hover, .header-subnav-link:focus-visible, .header-subnav-link--active { background: #eef4ff; color: #2563eb; }
+.header-subnav-link:hover i, .header-subnav-link--active i { color: #2563eb; }
+.header-actions { display: flex; align-items: center; gap: 16px; margin-left: auto; white-space: nowrap; }
+.header-status { display: flex; align-items: center; gap: 8px; color: #7183a4; font-size: 12px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-blue { background: #3b82f6; box-shadow: 0 0 0 3px #dbeafe; }
+.dot-amber { background: #f59e0b; box-shadow: 0 0 0 3px #fef3c7; }
+.dot-gray { background: #a8b5c9; box-shadow: 0 0 0 3px #edf1f7; }
+.header-license { padding: 6px 9px; border-radius: 8px; font-size: 11px; font-weight: 600; }
+.header-license i { margin-right: 4px; }
+.header-license.lic-gray { color: #6f809c; background: #f0f3f9; }
+.header-license.lic-amber { color: #a9670b; background: #fffbeb; }
+.header-license.lic-red { color: #b91c1c; background: #fef2f2; }
+.header-settings {
+  width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px; color: #7183a4; font-size: 16px;
 }
-.rail-brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
-.rail-brand-name { font-size: 13.5px; font-weight: 600; color: var(--color-sidebar-text-strong); white-space: nowrap; }
-.rail-brand-sub { font-size: 10px; color: var(--color-sidebar-muted); margin-top: 2px; white-space: nowrap; }
-
-/* 导航 */
-.rail-nav { flex: 1; overflow-y: auto; padding: 6px 10px; }
-.rail--collapsed .rail-nav { padding: 6px 8px; }
-.rail-group { margin-bottom: 12px; }
-.rail-group-label {
-  font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--color-sidebar-muted); padding: 6px 10px 4px;
-}
-.rail-link {
-  display: flex; align-items: center; gap: 11px;
-  padding: 8px 11px; margin-bottom: 1px;
-  border-radius: 8px; position: relative;
-  font-size: 13px; color: var(--color-sidebar-text);
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
-}
-.rail--collapsed .rail-link { justify-content: center; padding: 9px 0; }
-.rail-ico { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; color: var(--color-sidebar-muted); transition: color 0.15s; }
-.rail-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-.rail-link:hover { background: var(--color-sidebar-elevated); color: var(--color-sidebar-text-strong); }
-.rail-link:hover .rail-ico { color: var(--color-sidebar-text); }
-/* 选中态:淡灰底块(Codex 式,无蓝、无竖条) */
-.rail-link--active {
-  background: var(--color-sidebar-elevated);
-  color: var(--color-sidebar-text-strong); font-weight: 500;
-}
-.rail-link--active .rail-ico { color: var(--color-sidebar-active); }
-
-/* 底部区 */
-.rail-footer {
-  border-top: 1px solid var(--color-sidebar-border);
-  padding: 8px 10px;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.rail--collapsed .rail-footer { padding: 8px; align-items: center; }
-.rail-status {
-  display: flex; align-items: center; gap: 8px;
-  padding: 6px 11px; font-size: 12px; color: var(--color-sidebar-text);
-}
-.rail-status--mini { padding: 6px 0; justify-content: center; }
-.rail-status-text { white-space: nowrap; }
-.rail-license {
-  display: flex; align-items: center; gap: 5px;
-  margin: 0 4px 2px; padding: 4px 10px; border-radius: 7px;
-  font-size: 11px; font-weight: 500;
-}
-.rail-license .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
-.rail-license.lic-gray { color: var(--ui-text-2); background: rgba(148, 163, 184, 0.14); }
-.rail-license.lic-amber { color: #b45309; background: #fffbeb; }
-.rail-license.lic-red { color: #b91c1c; background: #fef2f2; }
-.rail-link--settings { margin-bottom: 0; }
-.rail-version {
-  font-size: 10px; color: var(--color-sidebar-muted); margin-left: auto;
-}
-
-/* 纯白内容区 */
+.header-settings:hover, .header-settings:focus-visible, .header-settings--active { background: #eef4ff; color: #2563eb; }
 .app-content {
-  flex: 1;
-  /* 透明：让 body 的蓝色光晕渐变透上来，各页面不再自带死板底色 */
-  background: transparent;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--color-content-bg);
+  flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column;
+  overflow: hidden; background: #fff;
 }
-
-/* 状态点(rail-status 复用) */
-.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; position: relative; }
-.dot-blue { background: var(--ui-brand-light); box-shadow: 0 0 0 3px hsl(var(--primary) / 16%); }
-.dot-amber { background: #f59e0b; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.16); }
-.dot-gray { background: var(--ui-line); box-shadow: 0 0 0 3px rgba(203, 213, 225, 0.16); }
-
-/* Window controls(顶条内,浅底深字) */
-.win-btn {
-  width: 28px; height: 26px;
-  display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 6px; color: var(--color-sidebar-text);
-  transition: background 0.18s ease, color 0.18s ease;
+@media (prefers-reduced-motion: reduce) {
+  .header-nav-link, .header-subnav, .win-btn { transition: none; }
 }
-.win-btn:hover { background: var(--color-sidebar-elevated); color: var(--color-sidebar-text-strong); }
-.win-btn--close:hover { background: #ef4444; color: #ffffff; }
 </style>

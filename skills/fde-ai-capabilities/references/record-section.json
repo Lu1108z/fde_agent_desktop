@@ -1,0 +1,31 @@
+{
+  "stage2": {
+    "aiCapabilities": {
+      "document": "stage2/ai-capability.md",
+      "items": [
+        {
+          "id": "",
+          "name": "",
+          "description": "",
+          "requirementIds": [],
+          "input": "",
+          "output": "",
+          "dataDependencies": [],
+          "metric": {
+            "name": "",
+            "target": "",
+            "method": ""
+          },
+          "judge": "",
+          "priority": "",
+          "fallback": "",
+          "aiRole": "",
+          "dataDependencyLevel": "",
+          "testDataset": ""
+        }
+      ],
+      "reviewEvidence": "",
+      "excludedRequirementReasons": {}
+    }
+  }
+}

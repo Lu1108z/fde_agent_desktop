@@ -160,9 +160,10 @@ const api = {
   hermes: {
     listProjects(options) { return invoke('hermes:list-projects', options); },
     createProject(params) { return invoke('hermes:create-project', params); },
-    loadProject(slug) { return invoke('hermes:load-project', slug); },
+    loadProject(slug, options) { return invoke('hermes:load-project', options?.readOnly ? { slug, readOnly: true } : slug); },
     deleteProject(slug) { return invoke('hermes:delete-project', slug); },
-    prompt(slug, text, attachments) {
+    conversationAction(params) { return invoke('hermes:conversation-action', params); },
+    prompt(slug, text, attachments, options = {}) {
       // 与桌面版一致:摊平 attachments 为纯对象(网关侧走 JSON,不涉及 structured clone,
       // 但保持同样清洗逻辑以对齐后端期望的形状)
       const clean = Array.isArray(attachments)
@@ -174,12 +175,12 @@ const api = {
             ...(a && a.data ? { data: a.data } : {}),
           }))
         : attachments;
-      return invoke('hermes:prompt', { slug, text, attachments: clean });
+      return invoke('hermes:prompt', { slug, text, attachments: clean, channel: options.channel || 'main', requestId: options.requestId || '' });
     },
     transcribe(audioBase64, mimeType) { return invoke('hermes:transcribe', { audioBase64, mimeType }); },
     saveRecording(slug, audioBase64, ext) { return invoke('hermes:save-recording', { slug, audioBase64, ext }); },
     saveAttachment(payload) { return invoke('hermes:save-attachment', payload); },
-    cancel(slug) { return invoke('hermes:cancel', slug); },
+    cancel(slug, options) { return invoke('hermes:cancel', options?.channel ? { slug, channel: options.channel, requestId: options.requestId } : slug); },
     readFile(slug, relativePath) { return invoke('hermes:read-file', { slug, relativePath }); },
     readFileDataUri(slug, relativePath) { return invoke('hermes:read-file-data-uri', { slug, relativePath }); },
     writeFile(slug, relativePath, content) { return invoke('hermes:write-file', { slug, relativePath, content }); },

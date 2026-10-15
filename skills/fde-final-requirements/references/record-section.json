@@ -1,0 +1,24 @@
+{
+  "stage3": {
+    "finalRequirements": {
+      "document": "stage3/final-req.md",
+      "version": "",
+      "requirementIds": [],
+      "excludedRequirementIds": [],
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "name": "",
+          "target": "",
+          "method": ""
+        }
+      ],
+      "approval": {
+        "status": "",
+        "evidence": "",
+        "roles": []
+      },
+      "excludedRequirementReasons": {}
+    }
+  }
+}

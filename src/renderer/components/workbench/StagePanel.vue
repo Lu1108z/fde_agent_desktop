@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 flex flex-col min-h-0 overflow-y-auto">
+  <div class="stage-panel flex-1 flex flex-col min-h-0 overflow-y-auto" :class="{ 'stage-panel-compact': compact }">
     <!-- 阶段头部:名称 + 目标 -->
     <div class="px-6 pt-5 pb-3">
       <div class="flex items-center gap-2 mb-1">
@@ -77,6 +77,7 @@
 const props = defineProps({
   stage: { type: Object, required: true },
   hasWorkspace: { type: Boolean, default: false },
+  compact: { type: Boolean, default: false },
 });
 
 function formIcon(form) {
@@ -90,3 +91,13 @@ function formIcon(form) {
   }[form] || 'fa-solid fa-file';
 }
 </script>
+
+<style scoped>
+.stage-panel-compact > div:first-child { padding:24px 28px 20px; border-bottom:1px solid #edf1f7; }
+.stage-panel-compact > div:first-child h2 { font-size:17px; font-weight:600; }
+.stage-panel-compact > div:first-child p { margin-top:10px; font-size:13px; line-height:1.8; }
+.stage-panel-compact > div:nth-child(2) { padding:20px 28px; }
+.stage-panel-compact > div:nth-child(2) > div { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.stage-panel-compact > div:nth-child(3) { padding:0 28px 28px; }
+.stage-panel-compact .glass-card { background:#fafcff; box-shadow:none; }
+</style>

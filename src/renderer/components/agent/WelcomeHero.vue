@@ -1,76 +1,53 @@
 <template>
-  <div class="flex flex-col h-full min-h-0">
-    <!-- Scrollable content area -->
-    <div class="flex-1 overflow-y-auto">
-      <div class="flex flex-col items-center px-6 py-6 max-w-4xl mx-auto">
-        <!-- Header: avatar + title -->
-        <div class="flex items-center gap-3 mb-3">
-          <img src="../../assets/logo.png" alt="Logo" class="w-11 h-11 rounded-full object-cover border border-blue-100" />
-          <h2 class="text-lg font-bold text-slate-800">你好，我是 FDE产品设计</h2>
-        </div>
-
-        <!-- Capability description lines -->
-        <p class="text-xs text-slate-500 text-center mb-2">FDE 项目经理的五阶段作战工作台 —— 从客户一句话到上线定稿:</p>
-        <div class="text-center space-y-1 mb-2 max-w-2xl">
-          <p class="text-[11px] text-slate-500 leading-relaxed">
-            <span class="text-amber-500">①</span> <b class="text-slate-700">调研备弹</b> ·
-            <span class="text-blue-500">②</span> <b class="text-slate-700">需求沟通+原型</b>(对接确认表→PRD→可交互原型) ·
-            <span class="text-blue-500">③</span> <b class="text-slate-700">需求确认+智能体设计</b>
-          </p>
-          <p class="text-[11px] text-slate-500 leading-relaxed">
-            <span class="text-blue-400">④</span> <b class="text-slate-700">纳米Work 工作台上线</b> ·
-            <span class="text-danger">⑤</span> <b class="text-slate-700">客户试用+定稿</b> —— 每阶段输出即交付物,一环扣一环
-          </p>
-        </div>
-        <p class="text-[10px] text-slate-400 mb-5">新建 FDE 项目按阶段推进,或在下方直接提问:</p>
-
-        <!-- Feature cards: 4 cols x 2 rows -->
-        <div class="w-full grid grid-cols-4 gap-3">
-          <div
-            v-for="card in featureCards"
-            :key="card.key"
-            class="glass-card rounded-xl border border-slate-200/80 hover:shadow-lg hover:border-blue-300 transition-all px-4 py-3 group"
-          >
-            <!-- Card header -->
-            <div class="flex items-center gap-2 mb-2.5">
-              <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                <i :class="card.icon" class="text-[11px] text-blue-600"></i>
-              </div>
-              <span class="text-[12px] font-bold text-slate-800">{{ card.label }}</span>
-            </div>
-            <!-- Quick questions -->
-            <div class="space-y-1">
-              <div
-                v-for="(q, qi) in card.quickQuestions"
-                :key="qi"
-                @click="fillInput(q)"
-                class="flex items-center gap-1 text-[11px] text-slate-500 hover:text-blue-600 transition-colors cursor-pointer group/item"
-                :title="q"
-              >
-                <span class="flex-1 truncate">{{ q }}</span>
-                <i class="fa-solid fa-arrow-right text-[8px] text-slate-300 group-hover/item:text-blue-500 shrink-0 transition-colors"></i>
-              </div>
+  <div class="chat-welcome flex flex-col h-full min-h-0" :class="{ 'chat-welcome--branded': branded }">
+    <svg v-if="branded" width="0" height="0" class="welcome-logo-filter" aria-hidden="true"><defs><filter :id="logoFilterId" color-interpolation-filters="sRGB" x="0" y="0" width="100%" height="100%"><feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  -1 0 0 0 1" /><feComposite in2="SourceAlpha" operator="in" /></filter></defs></svg>
+    <div class="welcome-scroll flex-1 min-h-0 overflow-y-auto">
+      <div class="welcome-content">
+        <div class="welcome-hero">
+          <div v-if="branded" class="welcome-decoration" aria-hidden="true"><span class="welcome-orbit"></span><span class="welcome-glass-panel panel-back"></span><span class="welcome-glass-panel panel-middle"></span><span class="welcome-glass-panel panel-front"><img :src="cloudLogo" class="welcome-cloud-logo" :style="{ filter: `url(#${logoFilterId})` }" alt="极库云" /></span></div>
+          <div class="welcome-character"><img :src="coachMascot" alt="FDE 助手" /></div>
+          <div class="welcome-copy">
+            <span class="welcome-label">{{ coachMode ? '你的需求沟通陪练' : '你的项目协作助手' }}</span>
+            <h2>{{ coachMode ? '你好，我是 FDE 教练' : '你好，我是 FDE 助手' }}</h2>
+            <p>{{ coachMode ? '我扮演客户，你来挖需求。可以随时说“复盘”，一起改进沟通方式。' : '一起梳理需求、完善方案，把想法变成清晰的交付物。' }}</p>
+            <div v-if="branded" class="welcome-tags">
+              <span><i class="fa-solid fa-shield-halved"></i>专业可靠</span>
+              <span><i class="fa-regular fa-lightbulb"></i>{{ coachMode ? '懂需求沟通' : '懂产品设计' }}</span>
+              <span><i class="fa-regular fa-folder"></i>支持多种文件</span>
             </div>
           </div>
         </div>
+        <section class="welcome-task-panel">
+        <div class="welcome-section-heading"><span>从一个问题开始</span></div>
+        <div class="welcome-suggestions">
+          <button v-for="card in visibleCards" :key="card.key" @click="fillInput(card.prompt)" class="welcome-suggestion">
+            <span class="welcome-task-icon" :class="'task-' + card.key"><i :class="card.icon"></i></span>
+            <span class="welcome-task-copy"><strong>{{ card.label }}</strong><span>{{ card.description }}</span></span>
+            <i class="fa-solid fa-arrow-right welcome-task-arrow"></i>
+          </button>
+        </div>
+        </section>
       </div>
     </div>
 
     <!-- Fixed bottom input area -->
-    <div class="shrink-0 px-6 pb-3 pt-2 glass-card">
-      <div class="max-w-3xl mx-auto">
-        <div class="glass-card border border-slate-200 rounded-2xl shadow-sm">
+    <div class="welcome-input-dock shrink-0 px-6 pb-3 pt-2">
+      <div class="welcome-input-width mx-auto">
+
+        <div class="fde-composer">
           <textarea
             ref="inputRef"
             v-model="inputText"
-            placeholder="向智能体提问；输入 / 触发提示词；Ctrl+Enter 发送"
-            rows="2"
-            class="w-full resize-none text-[13px] text-slate-700 placeholder-slate-400 bg-transparent focus:outline-none leading-relaxed px-4 pt-3 pb-1"
+            :placeholder="coachMode ? '说说你想练习的场景…' : '向我提问…'"
+            :aria-label="coachMode ? '发送给 FDE 教练的消息' : '发送给 AI 助手的消息'"
+            rows="1"
+            @input="resizeInput"
+            class="welcome-textarea"
             @keydown.ctrl.enter.prevent="handleSend"
             @keydown.meta.enter.prevent="handleSend"
           ></textarea>
           <!-- Attachment preview (images + files) -->
-          <div v-if="attachments.length > 0" class="flex items-center gap-2 px-4 py-1.5 flex-wrap">
+          <div v-if="attachments.length > 0" class="fde-composer-attachments flex items-center gap-2 px-4 py-1.5 flex-wrap">
             <div v-for="(att, ai) in attachments" :key="ai" class="relative group/att">
               <img v-if="att.type === 'image'" :src="'data:' + att.media_type + ';base64,' + att.data" class="w-12 h-12 object-cover rounded-lg border border-slate-200" />
               <div v-else class="flex items-center gap-1.5 h-12 px-2.5 rounded-lg border border-slate-200 glass-card max-w-[160px]">
@@ -82,67 +59,52 @@
               </button>
             </div>
           </div>
-          <div class="flex items-center justify-between px-4 pb-2.5">
-            <div class="flex items-center gap-2">
-              <ModelSelector
-                :models="availableModels"
-                :current="currentModel"
-                @change="(id) => $emit('change-model', id)"
-              />
-              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 cursor-pointer hover:bg-blue-100 transition-colors" style="font-size:10px;line-height:1">
-                <i class="fa-solid fa-robot" style="font-size:9px"></i>
-                AI 产品设计智能体
-                <i class="fa-solid fa-chevron-down ml-0.5" style="font-size:7px"></i>
-              </span>
+          <div class="fde-composer-toolbar">
+            <div class="fde-composer-left">
+              <AttachmentMenu :recording="isRecording" :voice-supported="recordingSupported" @image="pickImage" @file="pickFile" @voice="toggleRecording" />
+              <span v-if="isRecording" class="fde-composer-status">录音中 {{ recordSeconds }}s</span>
+              <span v-else-if="isTranscribing" class="fde-composer-status">识别中…</span>
             </div>
-            <div class="flex items-center gap-2">
-              <button @click="pickImage" class="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors cursor-pointer" title="上传图片">
-                <i class="fa-solid fa-image text-xs"></i>
-              </button>
-              <button @click="pickFile" class="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-blue-600 transition-colors cursor-pointer" title="上传文件">
-                <i class="fa-solid fa-paperclip text-xs"></i>
-              </button>
-              <button
-                @click="toggleRecording"
-                :disabled="!recordingSupported"
-                class="w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                :class="isRecording ? 'text-white bg-danger hover:bg-danger-deep' : 'bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-blue-600'"
-                :title="recordingSupported ? (isRecording ? '停止录音' : '语音输入') : '当前环境不支持录音'"
-              >
-                <i class="fa-solid text-xs" :class="isRecording ? 'fa-stop' : 'fa-microphone'"></i>
-              </button>
-              <span v-if="isRecording" class="text-[10px] text-danger font-medium select-none tabular-nums">{{ recordSeconds }}s</span>
-              <span v-else-if="isTranscribing" class="text-[10px] text-blue-500 font-medium select-none">识别中…</span>
-              <button
-                @click="handleSend"
-                :disabled="!inputText.trim() && attachments.length === 0"
-                class="w-8 h-8 rounded-full flex items-center justify-center transition-all"
-                :class="(inputText.trim() || attachments.length > 0) ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-sm' : 'bg-slate-100 text-slate-300 cursor-not-allowed'"
-              >
-                <i class="fa-solid fa-arrow-up text-xs"></i>
-              </button>
+            <div class="fde-composer-right">
+              <ModelSelector minimal :models="availableModels" :current="currentModel" @change="(id) => $emit('change-model', id)" />
+              <button type="button" class="fde-voice-button" :class="{ 'is-recording': isRecording }" :disabled="!recordingSupported || isTranscribing" @click="toggleRecording" :aria-label="isRecording ? '停止录音' : '语音输入'" :title="isRecording ? '停止录音' : '语音输入'"><i class="fa-solid" :class="isRecording ? 'fa-stop' : 'fa-microphone'" aria-hidden="true"></i></button>
+              <button type="button" class="fde-send-button" @click="handleSend" aria-label="发送消息" :disabled="!inputText.trim() && attachments.length === 0"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
             </div>
           </div>
         </div>
-        <p class="text-center text-[9px] text-slate-400 mt-1.5">内容由 AI 生成，请仔细甄别；Ctrl + Enter 发送，Shift + Enter 换行</p>
+        <div v-if="branded" class="welcome-tools">
+          <button v-if="coachMode" type="button" @click="$emit('start-voice')" class="welcome-voice-entry"><i class="fa-solid fa-headset"></i>语音对话</button>
+          <button type="button" @click="pickFile"><i class="fa-solid fa-paperclip"></i>上传文档</button>
+          <button type="button" @click="pickImage"><i class="fa-regular fa-image"></i>上传图片</button>
+          <button type="button" :aria-pressed="searchEnabled" @click="searchEnabled = !searchEnabled"><i class="fa-solid fa-globe"></i>联网搜索</button>
+          <button type="button" :aria-pressed="codeEnabled" @click="codeEnabled = !codeEnabled"><i class="fa-solid fa-code"></i>代码模式</button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, nextTick, onBeforeUnmount } from 'vue';
+import { ref, computed, nextTick, onBeforeUnmount, useId } from 'vue';
 import ModelSelector from './ModelSelector.vue';
+import AttachmentMenu from './AttachmentMenu.vue';
+import './chat-composer.css';
+import coachMascot from '@/assets/fde-coach-mascot.png';
+import cloudLogo from '@/assets/logo.png';
 import { prepareImage } from '@/composables/imagePrep';
 
 const props = defineProps({
+  coachMode: { type: Boolean, default: false },
+  branded: { type: Boolean, default: false },
   availableModels: { type: Array, default: () => [] },
   currentModel: { type: String, default: '' },
 });
 
-const emit = defineEmits(['send-quick', 'navigate', 'fill-input', 'send-with-attachments', 'change-model']);
+const emit = defineEmits(['start-voice', 'send-quick', 'navigate', 'fill-input', 'send-with-attachments', 'change-model']);
 
+const logoFilterId = useId();
 const inputText = ref('');
+const searchEnabled = ref(false), codeEnabled = ref(false);
 const inputRef = ref(null);
 const attachments = ref([]);
 
@@ -313,14 +275,27 @@ onBeforeUnmount(() => {
   stopTracks();
 });
 
+function resizeInput() {
+  const el = inputRef.value;
+  if (!el) return;
+  el.style.height = props.branded ? '34px' : 'auto';
+  if (!props.branded) el.style.height = Math.min(el.scrollHeight, 132) + 'px';
+}
+
 const fillInput = (text) => {
   inputText.value = text;
-  inputRef.value?.focus();
+  nextTick(() => {
+    const el = inputRef.value;
+    if (!el) return;
+    resizeInput();
+    el.focus();
+  });
 };
 
 const handleSend = () => {
-  const text = inputText.value.trim();
-  if (!text && attachments.value.length === 0) return;
+  const draft = inputText.value.trim();
+  if (!draft && attachments.value.length === 0) return;
+  const text = [searchEnabled.value ? '请联网搜索并提供来源。' : '', codeEnabled.value ? '请以代码任务方式处理，给出可运行的实现。' : '', draft].filter(Boolean).join('\n\n');
   if (attachments.value.length > 0) {
     emit('send-with-attachments', text || '请分析这个附件', [...attachments.value]);
   } else {
@@ -330,85 +305,149 @@ const handleSend = () => {
   attachments.value = [];
 };
 
+const coachCards = [
+  { key:'requirements', label:'医疗客户沟通', description:'练习向科室负责人挖掘需求', icon:'fa-solid fa-stethoscope', prompt:'我想练习医疗行业的需求沟通，请扮演科室负责人，与我进行 SPIN 需求挖掘陪练。' },
+  { key:'document', label:'企业客户沟通', description:'练习业务场景与痛点提问', icon:'fa-solid fa-building', prompt:'我想练习企业客户需求沟通，请扮演业务负责人，让我逐步挖掘你的问题与真实需求。' },
+  { key:'agent', label:'方案沟通演练', description:'练习表达方案、回应客户质疑', icon:'fa-solid fa-comments', prompt:'我想练习方案沟通，请扮演甲方客户，对我的方案提出真实的疑问和顾虑。' },
+  { key:'review', label:'沟通复盘', description:'分析提问方式与改进建议', icon:'fa-solid fa-magnifying-glass', prompt:'帮我复盘一段客户沟通，我会提供对话记录，请按 FDE 教练的六维评分给出建议。' },
+];
+const visibleCards = computed(() => props.coachMode ? coachCards : featureCards);
 const featureCards = [
-  {
-    key: 'stage1',
-    label: '① 调研备弹',
-    icon: 'fa-solid fa-book',
-    quickQuestions: [
-      '这个行业有哪些政策/术语我该先备弹？',
-      '给我一套结构化调研的六项框架',
-      '进场破冰和 SPIN 挖痛点的话术',
-    ],
-  },
-  {
-    key: 'stage2',
-    label: '② 需求·原型',
-    icon: 'fa-solid fa-list-check',
-    quickQuestions: [
-      '根据对接确认表生成六字段功能清单',
-      '按 PRD 三层(目标/功能/交互)整理需求',
-      '基于功能清单生成可交互原型',
-    ],
-  },
-  {
-    key: 'stage3',
-    label: '③ 需求·智能体',
-    icon: 'fa-solid fa-diagram-project',
-    quickQuestions: [
-      '把这条业务链路拆成智能体矩阵',
-      '帮我填一个智能体的设计表(身份卡+五层拆解)',
-      '需求签字后把 PRD 和原型升级为定稿版',
-    ],
-  },
-  {
-    key: 'stage4',
-    label: '④ 工作台上线',
-    icon: 'fa-solid fa-server',
-    quickQuestions: [
-      '从功能清单反推 ER 数据模型',
-      '这个功能该关联哪个智能体、依赖哪些数据表？',
-      '梳理一份项目进度表',
-    ],
-  },
-  {
-    key: 'stage5',
-    label: '⑤ 试用定稿',
-    icon: 'fa-solid fa-clipboard-check',
-    quickQuestions: [
-      '把客户反馈按功能缺失/逻辑不通/体验问题分类',
-      '整理一份三轮迭代记录',
-      '30/60/90 天使用率盯防怎么做',
-    ],
-  },
-  {
-    key: 'export',
-    label: '交付物导出',
-    icon: 'fa-solid fa-download',
-    quickQuestions: [
-      '导出功能清单为 Word',
-      '导出完整项目为 ZIP',
-    ],
-  },
-  {
-    key: 'iterate',
-    label: '原型迭代',
-    icon: 'fa-solid fa-rotate',
-    quickQuestions: [
-      '把导航改成侧边栏布局',
-      '给表格增加搜索和筛选',
-      '调整配色,更专业一些',
-    ],
-  },
-  {
-    key: 'general',
-    label: '通用提问',
-    icon: 'fa-solid fa-message',
-    quickQuestions: [
-      '帮我写一份需求确认表',
-      '这个方案的可行性分析',
-      '给我一些 UI 设计建议',
-    ],
-  },
+  { key:'requirements', label:'梳理需求', description:'把业务问题整理成需求清单', icon:'fa-solid fa-list-check', prompt:'帮我梳理核心需求和业务场景，我会先介绍项目背景。' },
+  { key:'document', label:'生成文档', description:'完善 PRD、方案与汇报材料', icon:'fa-solid fa-file-lines', prompt:'帮我写一份 PRD 初稿，请先确认需要哪些项目资料。' },
+  { key:'agent', label:'设计智能体', description:'拆解能力、数据与业务流程', icon:'fa-solid fa-diagram-project', prompt:'帮我把业务链路拆成智能体方案，我会提供业务流程。' },
+  { key:'review', label:'优化方案', description:'检查遗漏，给出可执行建议', icon:'fa-solid fa-wand-magic-sparkles', prompt:'帮我评审现有方案，检查遗漏、风险和可以改进的地方。' },
 ];
 </script>
+
+<style scoped>
+.chat-welcome { container-type:inline-size; }
+.welcome-scroll { display:flex; flex-direction:column; }
+.welcome-content { width:100%; max-width:740px; margin:auto; padding:28px 24px; }
+.welcome-hero { position:relative; display:flex; align-items:center; min-height:210px; gap:24px; border-radius:20px; background:#edf4ff; padding:0 20px; overflow:hidden; }
+.welcome-character { position:relative; width:150px; height:210px; flex-shrink:0; overflow:hidden; }
+.welcome-character img { position:absolute; width:340px; height:340px; max-width:none; left:-95px; top:4px; object-fit:contain; }
+.welcome-copy { min-width:0; padding:24px 0; position:relative; z-index:1; }
+.welcome-label { color:#2563eb; font-size:11px; }
+.welcome-copy h2 { margin:8px 0; font-size:22px; font-weight:600; color:#172033; line-height:1.5; }
+.welcome-copy p { font-size:13px; line-height:1.8; color:#64748b; max-width:420px; }
+.welcome-section-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 10px; font-size:12px; color:#334155; font-weight:500; }
+.welcome-section-heading span:last-child { font-size:11px; color:#94a3b8; font-weight:400; }
+.welcome-suggestions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+.welcome-suggestion { display:flex; align-items:center; gap:12px; text-align:left; border:1px solid #e5ebf5; border-radius:12px; padding:10px 12px; background:#fff; cursor:pointer; transition:border-color .15s,background .15s; }
+.welcome-suggestion:hover { border-color:#a7c4ff; background:#f8fbff; }
+.welcome-task-icon { display:grid; place-items:center; width:36px; height:36px; border-radius:10px; color:#2563eb; background:#edf3ff; flex-shrink:0; font-size:14px; }
+.task-document { color:#059669; background:#eafaf3; }
+.task-agent { color:#7c3aed; background:#f3edff; }
+.task-review { color:#ea580c; background:#fff3e8; }
+.welcome-task-copy { min-width:0; flex:1; display:flex; flex-direction:column; gap:5px; }
+.welcome-task-copy strong { font-size:13px; font-weight:500; color:#334155; }
+.welcome-task-copy > span { font-size:11px; color:#64748b; line-height:1.6; }
+.welcome-task-arrow { color:#94a3b8; font-size:10px; }
+.welcome-input-dock { background:transparent; }
+.welcome-input-width { max-width:788px; }
+.welcome-composer { background:#fff; border-color:#dce5f3; box-shadow:0 4px 20px rgba(39,71,119,.06); transition:border-color .15s; }
+.welcome-composer:focus-within { border-color:#8aafff; }
+.welcome-toolbar, .welcome-model-tools { flex-wrap:wrap; gap:8px; }
+.chat-welcome button:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+@container (max-width:540px) {
+ .welcome-content { padding:20px 12px; }
+ .welcome-hero { gap:12px; padding-right:12px; }
+ .welcome-character { width:90px; }
+ .welcome-character img { left:-125px; }
+ .welcome-copy h2 { font-size:18px; }
+ .welcome-suggestion { gap:8px; padding:9px; }
+ .welcome-task-copy > span { display:none; }
+ .welcome-section-heading span:last-child { display:none; }
+}
+
+.chat-welcome--branded { padding:38px 42px 14px; overflow-y:auto; scrollbar-width:none; }
+.chat-welcome--branded::-webkit-scrollbar { display:none; }
+.chat-welcome--branded .welcome-scroll { flex:0 0 auto; overflow:visible; }
+.chat-welcome--branded .welcome-content { max-width:none; padding:0; }
+.chat-welcome--branded .welcome-hero { height:clamp(240px, 24vw, 307px); min-height:0; padding:0; border:1px solid #fff; border-radius:22px; background:rgba(255,255,255,.28) url('@/assets/chat-welcome-background.png') center / cover; box-shadow:0 3px 12px #406ac40a; }
+.chat-welcome--branded .welcome-character { position:absolute; inset:0; width:auto; height:auto; }
+.chat-welcome--branded .welcome-character img { width:46%; height:auto; left:-2.5%; top:10%; }
+.chat-welcome--branded .welcome-copy { margin-left:33.7%; padding:20px 18% 20px 0; }
+.chat-welcome--branded .welcome-label { font-size:14px; color:#1762ff; }
+.chat-welcome--branded .welcome-copy h2 { margin:12px 0 10px; font-size:clamp(25px, 2.45vw, 34px); font-weight:600; color:#081932; }
+.chat-welcome--branded .welcome-copy p { font-size:16px; max-width:600px; line-height:1.7; color:#617696; }
+.welcome-logo-filter { position:absolute; pointer-events:none; }
+.welcome-decoration { position:absolute; inset:0; pointer-events:none; }
+.welcome-orbit { position:absolute; width:24%; aspect-ratio:1; border:1px solid #fff; border-radius:50%; left:7.6%; top:12%; background:linear-gradient(145deg,#d4e6ffb3,#adcfff4d); }
+.welcome-glass-panel { position:absolute; width:12.5%; height:73%; border:1px solid #ffffffd9; border-right:5px solid #fff; border-radius:14px; transform:skewY(27deg); background:linear-gradient(130deg,#d1e5ffbf,#a5c8ff82); box-shadow:1px 4px 12px #c9dcfa55; }
+.panel-back { right:6%; top:18%; }
+.panel-middle { right:13%; top:22%; }
+.panel-front { right:9.5%; top:38%; width:11.4%; height:55%; background:linear-gradient(130deg,#e8f2ffbb,#bdd7ffb0); }
+.welcome-tags { display:flex; gap:18px; margin-top:20px; white-space:nowrap; }
+.welcome-tags span { display:flex; align-items:center; gap:9px; padding:12px 16px; border:1px solid #e7efff; border-radius:12px; background:#ffffffa8; font-size:13px; color:#566c8e; }
+.welcome-tags i { color:#203c68; font-size:15px; }
+.welcome-cloud-logo { position:absolute; left:50%; top:50%; width:42%; max-width:52px; aspect-ratio:1; height:auto; object-fit:contain; transform:translate(-50%,-50%);  }
+.chat-welcome--branded .welcome-input-dock { padding:20px 0 0; }
+.chat-welcome--branded .welcome-input-width { max-width:none; }
+.chat-welcome--branded .welcome-task-panel { background:#ffffffed; border-radius:20px; padding:20px 24px; margin-bottom:20px; }
+.chat-welcome--branded .welcome-section-heading { font-size:17px; font-weight:600; color:#0b1833; margin-bottom:12px; }
+.chat-welcome--branded .welcome-section-heading span { font-size:inherit; color:inherit; font-weight:inherit; }
+.chat-welcome--branded .welcome-suggestions { grid-template-columns:repeat(4,minmax(0,1fr)); gap:11px; margin-bottom:0; }
+.chat-welcome--branded .welcome-suggestion { display:flex; flex-direction:column; align-items:flex-start; position:relative; min-height:140px; padding:14px 20px; gap:10px; border-color:#e0eafe; border-radius:13px; background:linear-gradient(148deg,#f9fbff 30%,#eaf2ff91 30%,#fff); }
+.chat-welcome--branded .welcome-suggestion:nth-child(2) { background:linear-gradient(148deg,#f8fffd 30%,#eafaf691 30%,#fff); border-color:#dff3f0; }
+.chat-welcome--branded .welcome-suggestion:nth-child(3) { background:linear-gradient(148deg,#fcfaff 30%,#f2edff91 30%,#fff); border-color:#ebe4ff; }
+.chat-welcome--branded .welcome-suggestion:nth-child(4) { background:linear-gradient(148deg,#fffdfb 30%,#fff2e891 30%,#fff); border-color:#f8eadf; }
+.chat-welcome--branded .welcome-task-icon { width:52px; height:52px; border-radius:14px; font-size:22px; }
+.chat-welcome--branded .welcome-task-copy { gap:5px; }
+.chat-welcome--branded .welcome-task-copy strong { font-size:17px; font-weight:600; color:#0b1833; }
+.chat-welcome--branded .welcome-task-copy > span { font-size:12px; padding-right:24px; color:#647aa0; }
+.chat-welcome--branded .welcome-task-arrow { position:absolute; right:14px; bottom:13px; width:36px; height:36px; display:grid; place-items:center; border:1px solid #e0eafe; border-radius:50%; background:#f3f7ff; color:#357cff; font-size:13px; }
+.chat-welcome--branded .fde-composer { width:calc(100% - 32px); max-width:990px; margin:0 auto; min-height:52px; border-radius:28px; padding:8px 10px; grid-template-columns:36px minmax(0,1fr) auto; column-gap:10px; row-gap:0; border-color:#dbe5f5; box-shadow:0 10px 24px #1f386812; }
+.chat-welcome--branded .fde-composer textarea { font-size:14px; height:34px!important; min-height:34px; max-height:34px; padding:6px 2px; }
+.chat-welcome--branded :deep(.attachment-trigger) { width:34px; height:34px; border:0; font-size:19px; }
+.chat-welcome--branded .fde-send-button { width:32px; height:32px; font-size:15px; background:linear-gradient(135deg,#80c3ff,#246aff); color:white; }
+.chat-welcome--branded .fde-send-button:disabled { opacity:.85; }
+.chat-welcome--branded .fde-voice-button { width:32px; font-size:17px; border-left:1px solid #e2e8f0; border-radius:0; margin-left:12px; }
+.welcome-tools { display:flex; justify-content:center; gap:10px; padding-top:9px; }
+.welcome-tools button { display:flex; gap:10px; align-items:center; padding:10px 17px; border:1px solid #e5edf9; border-radius:22px; color:#5a7196; font-size:12px; background:#ffffffbf; cursor:pointer; }
+.welcome-tools button:hover, .welcome-tools button[aria-pressed=true] { background:#e9f2ff; color:#2563eb; border-color:#a9caff; }
+.welcome-tools i { font-size:14px; }
+@container (max-width:850px) {
+ .chat-welcome--branded { padding:24px 24px 14px; }
+ .chat-welcome--branded .welcome-hero { height:240px; }
+ .chat-welcome--branded .welcome-copy { padding-right:16px; }
+ .chat-welcome--branded .welcome-copy p { font-size:13px; }
+ .welcome-tags { gap:8px; margin-top:12px; }
+ .welcome-tags span { padding:8px; font-size:11px; }
+ .chat-welcome--branded .welcome-suggestion { padding:12px; }
+ .chat-welcome--branded .welcome-task-copy strong { font-size:14px; }
+ .chat-welcome--branded .welcome-cloud-logo { display:none; }
+ .welcome-tools { flex-wrap:wrap; }
+}
+@container (max-width:600px) {
+ .chat-welcome--branded .welcome-suggestions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .chat-welcome--branded .welcome-hero { height:210px; }
+ .chat-welcome--branded .welcome-copy { margin-left:31%; }
+ .chat-welcome--branded .welcome-copy h2 { font-size:20px; }
+ .welcome-tags { flex-wrap:wrap; }
+ .welcome-tags span:last-child { display:none; }
+ .chat-welcome--branded .fde-composer { margin:0; column-gap:8px; row-gap:0; grid-template-columns:34px minmax(0,1fr) auto; }
+ .chat-welcome--branded :deep(.attachment-trigger) { width:34px; height:34px; }
+ .chat-welcome--branded .fde-composer textarea { font-size:14px; height:34px!important; min-height:34px; max-height:34px; padding:6px 2px; }
+}
+
+/* Compact quick questions shared by coaching and AI conversations. */
+.chat-welcome.chat-welcome--branded .welcome-task-panel{padding:14px 18px;border-radius:14px;margin-bottom:14px}
+.chat-welcome.chat-welcome--branded .welcome-section-heading{font-size:13px;font-weight:500;margin-bottom:10px;line-height:20px}
+.chat-welcome.chat-welcome--branded .welcome-suggestions{gap:10px}
+.chat-welcome.chat-welcome--branded .welcome-suggestion{flex-direction:row;align-items:center;min-height:82px;padding:12px;gap:10px;border-radius:10px}
+.chat-welcome.chat-welcome--branded .welcome-task-icon{width:32px;height:32px;border-radius:9px;font-size:16px}
+.chat-welcome.chat-welcome--branded .welcome-task-copy{gap:4px}
+.chat-welcome.chat-welcome--branded .welcome-task-copy strong{font-size:14px;font-weight:500;line-height:20px}
+.chat-welcome.chat-welcome--branded .welcome-task-copy>span{font-size:12px;line-height:18px;padding-right:0}
+.chat-welcome.chat-welcome--branded .welcome-task-arrow{position:static;width:16px;height:20px;flex-shrink:0;border:0;border-radius:0;background:transparent;font-size:11px;color:#6c8fca}
+
+/* Keep welcome content scrollable and anchor the composer to the bottom. */
+.chat-welcome.chat-welcome--branded{overflow:hidden}
+.chat-welcome.chat-welcome--branded .welcome-scroll{flex:1 1 0%;min-height:0;overflow-y:auto;overflow-x:hidden}
+.chat-welcome.chat-welcome--branded .welcome-content{margin:0; padding-bottom:8px}
+.chat-welcome.chat-welcome--branded .welcome-task-panel{margin-top:20px;margin-bottom:0}
+.chat-welcome.chat-welcome--branded .welcome-input-dock{flex:0 0 auto;margin-top:auto;padding-top:14px;padding-bottom:0}
+
+</style>

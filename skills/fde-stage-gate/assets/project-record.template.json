@@ -1,0 +1,298 @@
+{
+  "schemaVersion": "0.1",
+  "project": {
+    "id": "",
+    "name": "",
+    "client": ""
+  },
+  "stage2": {
+    "contactForm": {
+      "document": "stage2/contact-form.md",
+      "rounds": [
+        {
+          "id": "",
+          "date": "",
+          "participants": [],
+          "decisionMaker": "",
+          "businessOwner": "",
+          "operator": "",
+          "itContact": "",
+          "businessGoal": "",
+          "scenario": "",
+          "conclusion": "",
+          "requirements": [
+            {
+              "id": "",
+              "description": "",
+              "priority": "",
+              "inScope": true,
+              "involvesAi": true
+            }
+          ],
+          "processNodes": [
+            {
+              "id": "",
+              "role": "",
+              "input": "",
+              "action": "",
+              "output": "",
+              "system": "",
+              "exception": ""
+            }
+          ],
+          "dataItems": [
+            {
+              "id": "",
+              "name": "",
+              "sourceSystem": "",
+              "availability": "",
+              "owner": ""
+            }
+          ],
+          "acceptanceDraft": "",
+          "openItems": [],
+          "confirmation": {
+            "status": "",
+            "evidence": ""
+          }
+        }
+      ]
+    },
+    "aiCapabilities": {
+      "document": "stage2/ai-capability.md",
+      "items": [
+        {
+          "id": "",
+          "name": "",
+          "description": "",
+          "requirementIds": [],
+          "input": "",
+          "output": "",
+          "dataDependencies": [],
+          "metric": {
+            "name": "",
+            "target": "",
+            "method": ""
+          },
+          "judge": "",
+          "priority": "",
+          "fallback": ""
+        }
+      ],
+      "reviewEvidence": "",
+      "excludedRequirementReasons": {}
+    },
+    "prototypePackage": {
+      "prototypeEntry": "prototype/index.html",
+      "version": "",
+      "excludedFeatureIds": [],
+      "features": [
+        {
+          "id": "",
+          "name": "",
+          "page": "",
+          "description": "",
+          "priority": "",
+          "requirementIds": [],
+          "agent": {
+            "value": "",
+            "status": "",
+            "owner": ""
+          },
+          "dataDependencies": [
+            {
+              "value": "",
+              "status": "",
+              "owner": ""
+            }
+          ]
+        }
+      ],
+      "demoEvidence": "",
+      "businessApprovalEvidence": "",
+      "excludedRequirementReasons": {}
+    }
+  },
+  "stage3": {
+    "finalRequirements": {
+      "document": "stage3/final-req.md",
+      "version": "",
+      "requirementIds": [],
+      "excludedRequirementIds": [],
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "name": "",
+          "target": "",
+          "method": ""
+        }
+      ],
+      "approval": {
+        "status": "",
+        "evidence": "",
+        "roles": []
+      },
+      "excludedRequirementReasons": {}
+    },
+    "implementationPlan": {
+      "document": "stage3/impl-plan.md",
+      "tasks": [
+        {
+          "id": "",
+          "name": "",
+          "phase": "",
+          "owner": "",
+          "start": "",
+          "end": "",
+          "durationDays": 0,
+          "dependencyIds": [],
+          "deliverable": "",
+          "status": ""
+        }
+      ],
+      "milestones": [
+        {
+          "id": "",
+          "name": "",
+          "date": "",
+          "owner": "",
+          "deliverable": "",
+          "acceptance": ""
+        }
+      ],
+      "reviewEvidence": ""
+    },
+    "dataMetrics": {
+      "document": "stage3/data-metric.md",
+      "globalRules": {
+        "filter": "",
+        "dedup": "",
+        "time": "",
+        "unitPrecision": "",
+        "access": ""
+      },
+      "datasets": [
+        {
+          "id": "",
+          "name": "",
+          "type": "",
+          "sourceSystem": "",
+          "grainKey": "",
+          "updateFrequency": "",
+          "owner": "",
+          "standardVersion": "",
+          "sql": "",
+          "fieldDetails": [
+            {
+              "code": "",
+              "source": "",
+              "type": "",
+              "sensitivity": "",
+              "access": ""
+            }
+          ]
+        }
+      ],
+      "metrics": [
+        {
+          "id": "",
+          "name": "",
+          "type": "",
+          "datasetIds": [],
+          "calculation": "",
+          "sourceTableFields": "",
+          "sql": "",
+          "exampleValue": "",
+          "owner": ""
+        }
+      ],
+      "reviewEvidence": ""
+    },
+    "agentDesign": {
+      "indexDocument": "stage3/agent-design.md",
+      "agents": [
+        {
+          "id": "",
+          "name": "",
+          "document": "stage3/agents/agent-id.md",
+          "purpose": "",
+          "user": "",
+          "requirementIds": [],
+          "featureIds": [],
+          "successCriterionId": "",
+          "workflow": [
+            {
+              "id": "",
+              "input": "",
+              "action": "",
+              "output": ""
+            }
+          ],
+          "playbook": "",
+          "boundaries": "",
+          "exceptions": "",
+          "components": {
+            "expert": "",
+            "prompt": "",
+            "knowledge": [],
+            "knowledgeDecision": "",
+            "skills": [],
+            "skillsDecision": "",
+            "connectors": [],
+            "connectorsDecision": "",
+            "memory": ""
+          },
+          "upstreamIds": [],
+          "downstreamIds": [],
+          "abTest": {
+            "status": "",
+            "evidence": "",
+            "reason": ""
+          },
+          "eval": {
+            "criterionId": "",
+            "result": "",
+            "passed": false,
+            "evidence": ""
+          },
+          "expertApprovalEvidence": ""
+        }
+      ],
+      "excludedRequirementReasons": {},
+      "excludedFeatureReasons": {}
+    },
+    "prdFinal": {
+      "document": "stage3/prd.md",
+      "version": "",
+      "requirementsVersion": "",
+      "goalLayer": "",
+      "featureLayer": "",
+      "interactionLayer": "",
+      "features": [
+        {
+          "id": "",
+          "name": "",
+          "page": "",
+          "description": "",
+          "priority": "",
+          "requirementIds": [],
+          "agentId": "",
+          "agentNoneReason": "",
+          "dataDatasetIds": [],
+          "noDataReason": ""
+        }
+      ],
+      "reviewEvidence": ""
+    },
+    "prototypeFinal": {
+      "indexDocument": "stage3/prototype-final.md",
+      "entry": "stage3/prototype/index.html",
+      "version": "",
+      "requirementsVersion": "",
+      "prdVersion": "",
+      "featureIds": [],
+      "smokeTestEvidence": "",
+      "businessApprovalEvidence": ""
+    }
+  }
+}

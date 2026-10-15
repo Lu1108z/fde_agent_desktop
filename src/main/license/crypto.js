@@ -14,6 +14,12 @@ const KEYS_DIR = path.join(__dirname, 'keys');
 const SEP = 0x00;
 
 function keysDir() {
+  // 开发版可复用本机已安装应用的授权校验材料，无需把密钥复制进源码。
+  if (process.env.FDE_LICENSE_KEYS_DIR) {
+    const configured = path.resolve(process.env.FDE_LICENSE_KEYS_DIR);
+    if (fs.existsSync(path.join(configured, 'aes.key')) && fs.existsSync(path.join(configured, 'public_key.pem'))) return configured;
+    throw new Error(`FDE_LICENSE_KEYS_DIR 缺少授权校验文件: ${configured}`);
+  }
   // 打包后优先用 resources/license-keys(extraResources,asar 外,二进制读取可靠);
   // 开发或未找到时回退源码目录 src/main/license/keys。
   const candidates = [

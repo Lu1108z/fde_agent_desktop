@@ -1,6 +1,18 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const validInvokeChannels = new Set([
+  'coach:speech', 'coach:speech-cancel', 'coach:reply', 'coach:reply-cancel', 'coach:knowledge',
+  'project-cover:get', 'project-cover:generate',
+  'feishu-online:attach', 'feishu-online:bounds', 'feishu-online:detach', 'feishu-online:action', 'feishu-online:obscured', 'feishu-online:preview-ready',
+  'geelib-online:attach', 'geelib-online:bounds', 'geelib-online:detach', 'geelib-online:action', 'geelib-online:obscured', 'geelib-online:preview-ready',
+  'management:get',
+  'management:preview-import',
+  'management:commit-import',
+  'management:link',
+  'management:template',
+  'activity:list',
+  'library:search','library:history','library:restore-revision','library:associate','library:linked','library:passages','library:backup','library:restore-backup','hermes:backup-project','hermes:restore-project','hermes:file-history','hermes:restore-file-version','hermes:preview-material','hermes:knowledge-passages',
+  'library:rename-space','library:trash-space','library:restore-space','library:list','library:create-space','library:create','library:read','library:write','library:upload','library:open','library:export','library:rename','library:move','library:trash','library:restore',
   'app:get-version',
   'app:get-platform',
   'window:is-maximized',
@@ -62,6 +74,7 @@ const validInvokeChannels = new Set([
   'hermes:save-message',
   'hermes:delete-messages',
   'hermes:update-project-meta',
+  'hermes:conversation-action',
   'hermes:upload-knowledge',
   'hermes:open-in-browser',
   'hermes:save-file',
@@ -89,6 +102,9 @@ const validInvokeChannels = new Set([
   'hermes:resolve-file-ref',
   // FDE 作战手册知识库
   'handbook:get-manifest',
+  'handbook:read-editable',
+  'handbook:write-editable',
+  'handbook:export-edited',
   'handbook:read-md',
   'handbook:read-html',
   'handbook:open',
@@ -148,6 +164,13 @@ const validSendChannels = new Set([
 ]);
 
 const validOnChannels = new Set([
+  'coach:reply-text',
+  'feishu-online:status',
+  'feishu-online:preview',
+  'geelib-online:status',
+  'geelib-online:preview',
+  'management:changed',
+  'activity:changed',
   'window:maximized-changed',
   'app:notify',
   'hermes:session-update',
@@ -183,6 +206,67 @@ function on(channel, handler) {
 }
 
 contextBridge.exposeInMainWorld('api', {
+  projectCover: {
+    get(slug) { return invoke('project-cover:get', { slug }); },
+    generate(slug, force = false) { return invoke('project-cover:generate', { slug, force }); },
+  },
+  feishuOnline: {
+    attach(payload) { return invoke('feishu-online:attach', payload); },
+    bounds(payload) { return invoke('feishu-online:bounds', payload); },
+    detach(payload) { return invoke('feishu-online:detach', payload); },
+    action(payload) { return invoke('feishu-online:action', payload); },
+    obscured(payload) { return invoke('feishu-online:obscured', payload); },
+    previewReady(payload) { return invoke('feishu-online:preview-ready', payload); },
+    onPreview(handler) { return on('feishu-online:preview', handler); },
+    onStatus(handler) { return on('feishu-online:status', handler); },
+  },
+  geelibOnline: {
+    attach(payload) { return invoke('geelib-online:attach', payload); },
+    bounds(payload) { return invoke('geelib-online:bounds', payload); },
+    detach(payload) { return invoke('geelib-online:detach', payload); },
+    action(payload) { return invoke('geelib-online:action', payload); },
+    obscured(payload) { return invoke('geelib-online:obscured', payload); },
+    previewReady(payload) { return invoke('geelib-online:preview-ready', payload); },
+    onPreview(handler) { return on('geelib-online:preview', handler); },
+    onStatus(handler) { return on('geelib-online:status', handler); },
+  },
+  management: {
+    get() { return invoke('management:get'); },
+    previewImport() { return invoke('management:preview-import'); },
+    commitImport(payload) { return invoke('management:commit-import', payload); },
+    link(payload) { return invoke('management:link', payload); },
+    template() { return invoke('management:template'); },
+    onChanged(handler) { return on('management:changed', handler); },
+  },
+  library: {
+    list: () => invoke('library:list'),
+    renameSpace: (id,title) => invoke('library:rename-space',{id,title}),
+    trashSpace: id => invoke('library:trash-space',{id}),
+    restoreSpace: id => invoke('library:restore-space',{id}),
+    createSpace: title => invoke('library:create-space',{title}),
+    create: payload => invoke('library:create',payload),
+    read: id => invoke('library:read',{id}),
+    write: (id,format,content,token) => invoke('library:write',{id,format,content,token}),
+    search: (query,spaceId) => invoke('library:search',{query,spaceId}),
+    history: id => invoke('library:history',{id}),
+    restoreRevision: (id,revisionId,token) => invoke('library:restore-revision',{id,revisionId,token}),
+    associate: (id,slugs) => invoke('library:associate',{id,slugs}),
+    linked: slug => invoke('library:linked',{slug}),
+    passages: (id,query) => invoke('library:passages',{id,query}),
+    backup: () => invoke('library:backup'),
+    restoreBackup: () => invoke('library:restore-backup'),
+    upload: payload => invoke('library:upload',payload),
+    open: id => invoke('library:open',{id}),
+    export: id => invoke('library:export',{id}),
+    rename: (id,title) => invoke('library:rename',{id,title}),
+    move: (id,parentId) => invoke('library:move',{id,parentId}),
+    trash: id => invoke('library:trash',{id}),
+    restore: id => invoke('library:restore',{id}),
+  },
+  activity: {
+    list() { return invoke('activity:list'); },
+    onChanged(handler) { return on('activity:changed', handler); },
+  },
   // Window controls
   window: {
     minimize() { send('window:minimize'); },
@@ -209,9 +293,10 @@ contextBridge.exposeInMainWorld('api', {
   hermes: {
     listProjects(options) { return invoke('hermes:list-projects', options); },
     createProject(params) { return invoke('hermes:create-project', params); },
-    loadProject(slug) { return invoke('hermes:load-project', slug); },
+    loadProject(slug, options) { return invoke('hermes:load-project', options?.readOnly ? { slug, readOnly: true } : slug); },
     deleteProject(slug) { return invoke('hermes:delete-project', slug); },
-    prompt(slug, text, attachments) {
+    conversationAction(params) { return invoke('hermes:conversation-action', params); },
+    prompt(slug, text, attachments, options = {}) {
       // 附件常来自 Vue reactive（元素是 Proxy），structured clone 无法序列化 →
       // ipcRenderer.invoke 抛 "An object could not be cloned"。这里统一摊平成
       // 纯对象，只保留可序列化字段，覆盖所有调用方（各聊天窗口）。
@@ -224,25 +309,38 @@ contextBridge.exposeInMainWorld('api', {
             ...(a && a.data ? { data: a.data } : {}),
           }))
         : attachments;
-      return invoke('hermes:prompt', { slug, text, attachments: clean });
+      return invoke('hermes:prompt', { slug, text, attachments: clean, channel: options.channel || 'main', requestId: options.requestId || '' });
     },
+    coachReply(id, messages, model, mode = 'voice') { return invoke('coach:reply', { id, messages: messages.map(m => ({ role: m.role, content: m.content })), model, mode }); },
+    coachKnowledge(query, history = []) { return invoke('coach:knowledge', { query, history: history.map(m => ({ role: m.role, content: m.content })) }); },
+    cancelCoachReply(id) { return invoke('coach:reply-cancel', { id }); },
+    onCoachReply(handler) { return on('coach:reply-text', handler); },
+    speech(id, text) { return invoke('coach:speech', { id, text }); },
+    cancelSpeech(id) { return invoke('coach:speech-cancel', { id }); },
     transcribe(audioBase64, mimeType) { return invoke('hermes:transcribe', { audioBase64, mimeType }); },
     saveRecording(slug, audioBase64, ext) { return invoke('hermes:save-recording', { slug, audioBase64, ext }); },
     saveAttachment(payload) { return invoke('hermes:save-attachment', payload); },
-    cancel(slug) { return invoke('hermes:cancel', slug); },
+    cancel(slug, options) { return invoke('hermes:cancel', options?.channel ? { slug, channel: options.channel, requestId: options.requestId } : slug); },
     readFile(slug, relativePath) { return invoke('hermes:read-file', { slug, relativePath }); },
     readFileDataUri(slug, relativePath) { return invoke('hermes:read-file-data-uri', { slug, relativePath }); },
-    writeFile(slug, relativePath, content) { return invoke('hermes:write-file', { slug, relativePath, content }); },
+    writeFile(slug, relativePath, content, expectedContent) { return invoke('hermes:write-file', { slug, relativePath, content, expectedContent }); },
+    fileHistory(slug,relativePath) { return invoke('hermes:file-history',{slug,relativePath}); },
+    restoreFileVersion(slug,relativePath,id,token) { return invoke('hermes:restore-file-version',{slug,relativePath,id,token}); },
     deleteFile(slug, relativePath, recursive) { return invoke('hermes:delete-file', { slug, relativePath, recursive }); },
     listFiles(slug, dir, recursive) { return invoke('hermes:list-files', { slug, dir, recursive }); },
     prototypeUrl(slug, file) { return invoke('hermes:prototype-url', { slug, file }); },
+    backupProject(slug) { return invoke('hermes:backup-project',slug); },
+    restoreProject(slug) { return invoke('hermes:restore-project',slug); },
     exportZip(slug) { return invoke('hermes:export-zip', slug); },
     exportWord(slug) { return invoke('hermes:export-word', { slug }); },
     mdToDocx(slug, relativePath) { return invoke('hermes:md-to-docx', { slug, relativePath }); },
+    previewMaterial(slug, relativePath) { return invoke('hermes:preview-material', { slug, relativePath }); },
+    knowledgePassages(slug, relativePath, query) { return invoke('hermes:knowledge-passages', { slug, relativePath, query }); },
     docxPreview(slug, relativePath) { return invoke('hermes:docx-preview', { slug, relativePath }); },
-    saveMessage(slug, message) { return invoke('hermes:save-message', { slug, message }); },
+    saveMessage(slug, message) { return invoke('hermes:save-message', { slug, message: JSON.parse(JSON.stringify(message)) }); },
     deleteMessages(slug, tab) { return invoke('hermes:delete-messages', { slug, tab }); },
     updateProjectMeta(slug, updates) { return invoke('hermes:update-project-meta', { slug, updates }); },
+    uploadKnowledgeFromDrop(slug, files) { return invoke('hermes:upload-knowledge', { slug, paths: files.map(file => webUtils.getPathForFile(file)).filter(Boolean) }); },
     uploadKnowledge(slug) { return invoke('hermes:upload-knowledge', { slug }); },
     openInBrowser(slug, file) { return invoke('hermes:open-in-browser', { slug, file }); },
     saveFile(slug, file) { return invoke('hermes:save-file', { slug, file }); },
@@ -343,6 +441,9 @@ contextBridge.exposeInMainWorld('api', {
 
   // FDE 作战手册知识库(工作台)
   handbook: {
+    readEditable(stage, file) { return invoke('handbook:read-editable', {stage, file}); },
+    writeEditable(stage, file, format, content) { return invoke('handbook:write-editable', {stage, file, format, content}); },
+    exportEdited(stage, file) { return invoke('handbook:export-edited', {stage, file}); },
     getManifest() { return invoke('handbook:get-manifest'); },
     readMd(stage, file) { return invoke('handbook:read-md', { stage, file }); },
     readHtml(stage, file) { return invoke('handbook:read-html', { stage, file }); },

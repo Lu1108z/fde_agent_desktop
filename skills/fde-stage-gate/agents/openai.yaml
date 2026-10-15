@@ -1,0 +1,3 @@
+interface:
+  display_name: "FDE 交付门禁"
+  short_description: "逐件和逐阶段校验交付规范"

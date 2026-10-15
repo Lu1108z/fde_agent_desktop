@@ -4,15 +4,17 @@
          杜绝任何 class 优先级/继承导致的字号偏大。 -->
     <button
       @click.stop="toggleOpen"
-      style="font-size:10px;line-height:1;font-weight:400"
+      :style="{fontSize: minimal ? '12px' : '10px', lineHeight:1, fontWeight:400}"
       class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-colors cursor-pointer max-w-[220px]"
-      :class="open
+      :class="[minimal && 'model-select-minimal', open
         ? 'bg-blue-100 border-blue-200 text-blue-700'
-        : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100'"
+        : 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100']"
       :title="currentLabel"
+      :aria-label="'选择模型：' + (currentShort || '未选择')"
+      :aria-expanded="open"
     >
-      <i class="fa-solid fa-microchip shrink-0" style="font-size:9px"></i>
-      <span class="truncate" style="font-size:10px">{{ currentShort || '选择模型' }}</span>
+      <i v-if="!minimal" class="fa-solid fa-microchip shrink-0" style="font-size:9px"></i>
+      <span class="truncate" :style="{fontSize: minimal ? '12px' : '10px'}">{{ currentShort || '选择模型' }}</span>
       <i class="fa-solid fa-chevron-down ml-0.5 shrink-0 transition-transform duration-200" style="font-size:7px"
         :class="open ? 'rotate-180' : ''"></i>
     </button>
@@ -28,7 +30,8 @@
     >
       <div
         v-if="open"
-        class="absolute z-30 bottom-full mb-2 left-0 w-[280px] max-h-[340px] rounded-2xl border border-slate-200/80 glass-card shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col"
+        :class="minimal ? 'right-0' : 'left-0'"
+        class="model-options-menu absolute z-30 bottom-full mb-2 w-[280px] max-h-[340px] rounded-2xl border border-slate-200/80 glass-card shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col"
       >
         <!-- Search -->
         <div class="p-2.5 border-b border-slate-100">
@@ -54,7 +57,7 @@
             v-for="item in filtered"
             :key="item.id"
             @click="select(item.id)"
-            class="w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-left transition-colors cursor-pointer"
+            class="model-option w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-left transition-colors cursor-pointer"
             :class="isCurrent(item.id) ? 'bg-blue-50' : 'hover:bg-slate-50'"
           >
             <span class="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 text-[10px]"
@@ -80,6 +83,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 
 const props = defineProps({
+  minimal: { type: Boolean, default: false },
   // 每项可为字符串，或 { model_id | id, name, description }
   models: { type: Array, default: () => [] },
   current: { type: String, default: '' },
@@ -193,3 +197,10 @@ function onDocClick(e) {
 onMounted(() => document.addEventListener('click', onDocClick));
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
 </script>
+
+<style scoped>
+.model-select-minimal { height:34px; max-width:190px; border-color:transparent!important; border-radius:8px; background:transparent!important; padding:6px 8px; color:#475569!important; }
+.model-select-minimal:hover { background:#f1f5fb!important; }
+button:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+.model-options-menu{background:var(--color-surface,#fff);border-color:var(--color-border,#e4e9f2);border-radius:12px;box-shadow:0 8px 28px #20365516}.model-option{border-radius:7px}.model-option:hover,.model-option:focus-visible{background:var(--ui-brand-soft,#eff4ff)}
+</style>

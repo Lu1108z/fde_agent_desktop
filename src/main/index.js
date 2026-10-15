@@ -25,6 +25,8 @@ function getPty() {
   return pty;
 }
 const AcpClient = require('./acp-client.js');
+const { conversationSummary } = require('./conversation-summary.js');
+const { createProjectSessions } = require('./project-session.js');
 const licenseVerifier = require('./license/verifier.js');
 const licenseStore = require('./license/store.js');
 const licenseFingerprint = require('./license/fingerprint.js');
@@ -59,10 +61,32 @@ const pendingPermissions = new Map();
 const replayingSessions = new Set();
 // 正在跑 session/prompt 的会话：此时重进项目页不再 session/load，免得打乱进行中的这一轮
 const promptingSessions = new Set();
+const promptOwners = new Map();
+const promptChannels = new Map();
+const cancelledKnowledgeRequests = new Set();
 // 当前 Hermes 进程里已经 load/new 成功的代码会话。应用重启后集合为空，
 // 首次使用会先 session/load，避免拿磁盘里的旧 sessionId 直接 prompt 导致无响应。
 const loadedCodeSessions = new Set();
 const ensuringCodeSessions = new Map();
+const projectSessions = createProjectSessions({
+  readMeta: readProjectMeta, writeMeta: writeProjectMeta, readMessages,
+  projectPath: resolveProjectPath, captureModels: captureModelsFromSession,
+  replaying: replayingSessions,
+  prepareContext: (slug, meta) => {
+    if (meta.aiApp?.id) prepareAiAppProjectContext(slug, meta.aiApp);
+  },
+});
+// Knowledge questions have their own engine history and cancellation target.
+const projectKnowledgeSessions = createProjectSessions({
+  readMeta: slug => {
+    const meta = readProjectMeta(slug);
+    return meta ? { ...meta, sessionId: meta.knowledgeSessionId || '' } : null;
+  },
+  writeMeta: (slug, meta) => updateProjectMeta(slug, { knowledgeSessionId: meta.sessionId }),
+  readMessages: slug => readMessages(slug).filter(message => message.tab === 'knowledge'),
+  projectPath: resolveProjectPath, captureModels: captureModelsFromSession,
+  replaying: replayingSessions, prepareContext: () => {},
+});
 
 // 代码工作区终端：每个 PTY 固定在对应工作区 cwd，避免跨工作区串台。
 const codeTerminals = new Map();
@@ -94,10 +118,34 @@ function findCodeTerminal(id) {
 // Data directories
 // ---------------------------------------------------------------------------
 
-const PRODUCT_LOBSTER_HOME = path.join(os.homedir(), '.product-lobster');
+const PRODUCT_LOBSTER_HOME = process.env.HERMES_HOME ? path.resolve(process.env.HERMES_HOME) : path.join(os.homedir(), '.product-lobster');
 const PROJECTS_DIR = path.join(PRODUCT_LOBSTER_HOME, 'projects');
+require('./project-management').registerManagement({
+  ipcMain, dialog, BrowserWindow, home: PRODUCT_LOBSTER_HOME,
+  projectExists: slug => /^[a-zA-Z0-9_-]+$/.test(slug) && !!readProjectMeta(slug),
+});
+require('./feishu-online').registerFeishuOnline({
+  ...require('electron'), getWindow: () => mainWindow,
+  isAllowed: () => { const status = licenseVerifier.currentStatus(); return status.ok && status.status !== 'GRACE_PERIOD'; },
+});
+
+require('./geelib-online').registerGeelibOnline({
+  ...require('electron'), getWindow: () => mainWindow,
+  isAllowed: () => { const status = licenseVerifier.currentStatus(); return status.ok && status.status !== 'GRACE_PERIOD'; },
+});
 const HANDBOOK_DIR = path.join(PRODUCT_LOBSTER_HOME, 'fde-handbook');
 const SKILLS_DIR = path.join(PRODUCT_LOBSTER_HOME, 'skills');
+const { registerProjectCovers, readImageGeneratorConfig } = require('./project-cover');
+registerProjectCovers({
+  ipcMain, root: PROJECTS_DIR, getWindow: () => mainWindow, readProject: readProjectMeta,
+  isAllowed: () => { const status = licenseVerifier.currentStatus(); return status.ok && status.status !== 'GRACE_PERIOD'; },
+  getConfig: () => readImageGeneratorConfig([
+    path.join(SKILLS_DIR, 'image-generator', 'generate_images.py'),
+    path.join(app.isPackaged ? process.resourcesPath : path.join(__dirname, '..', '..'), 'skills', 'image-generator', 'generate_images.py'),
+  ]),
+  toMediaUrl: readyMediaUrl,
+  decodePng: buffer => { const image = require('electron').nativeImage.createFromBuffer(buffer); return image.isEmpty() ? null : image.toPNG(); },
+});
 const SKILLS_GROUPS_FILE = path.join(SKILLS_DIR, 'groups.json');
 const CONFIG_YAML_PATH = path.join(PRODUCT_LOBSTER_HOME, 'config.yaml');
 const AI_APPS_DIR = path.join(PRODUCT_LOBSTER_HOME, 'ai-apps');
@@ -802,6 +850,13 @@ function registerMediaUrl(filePath) {
   return `http://127.0.0.1:${mediaServerPort}/media?t=${token}`;
 }
 
+// Wait for the listening port before exposing any cached image URL.
+async function readyMediaUrl(filePath) {
+  startMediaServer();
+  if (!mediaServerPort) await new Promise(resolve => mediaServer.once('listening', resolve));
+  return registerMediaUrl(filePath);
+}
+
 // ---------------------------------------------------------------------------
 // Hermes ACP process management
 // ---------------------------------------------------------------------------
@@ -809,10 +864,20 @@ function registerMediaUrl(filePath) {
 function resolveHermesAcpCommand() {
   const exe = process.platform === 'win32' ? 'hermes-acp.exe' : 'hermes-acp';
 
+  // 开发目录与 hermes-agent 不相邻时，可显式指定现有引擎。
+  if (!app.isPackaged && process.env.HERMES_ACP_BIN) {
+    const configured = path.resolve(process.env.HERMES_ACP_BIN);
+    if (fs.existsSync(configured)) return configured;
+    console.error(`[main] HERMES_ACP_BIN 不存在: ${configured}`);
+  }
+
   // 1. Packaged mode: look in resources/hermes-acp/
   if (app.isPackaged) {
     const bundled = path.join(process.resourcesPath, 'hermes-acp', exe);
     if (fs.existsSync(bundled)) return bundled;
+    // Windows release embeds a private CPython runtime; no system Python is required.
+    const python = path.join(process.resourcesPath, 'hermes-acp', 'python.exe');
+    if (process.platform === 'win32' && fs.existsSync(python) && fs.existsSync(path.join(path.dirname(python), 'fde_acp_entry.py'))) return python;
     console.error(`[main] 打包版未找到内置引擎: ${bundled}`);
     console.error('[main] 引擎是 onedir(exe + _internal),重新打包前需确保 extraResources 已把它拷贝进 resources/hermes-acp/');
   }
@@ -834,6 +899,7 @@ function resolveHermesAcpCommand() {
 function resolveGitBashPath() {
   if (process.platform !== 'win32') return '';
   const candidates = [
+    path.join(process.resourcesPath || '', 'git', 'bin', 'bash.exe'),
     path.join('D:', 'Program Files', 'Git', 'bin', 'bash.exe'),
     path.join('C:', 'Program Files', 'Git', 'bin', 'bash.exe'),
     path.join('C:', 'Program Files (x86)', 'Git', 'bin', 'bash.exe'),
@@ -851,12 +917,17 @@ function startHermes() {
 
   // 用局部 proc 持有本次 spawn 的子进程；exit/error 回调里以 `hermesProcess === proc`
   // 守卫，避免「旧进程延迟到达的 exit 事件」误清掉重启后新建的 acp/hermesProcess。
-  const proc = spawn(command, [], {
+  const engineArgs = process.platform === 'win32' && path.basename(command).toLowerCase() === 'python.exe'
+    ? ['-u', '-I', path.join(path.dirname(command), 'fde_acp_entry.py')] : [];
+  const proc = spawn(command, engineArgs, {
     stdio: ['pipe', 'pipe', 'pipe'],
     cwd: PRODUCT_LOBSTER_HOME,
     env: {
       ...process.env,
       HERMES_HOME: PRODUCT_LOBSTER_HOME,
+      PYTHONUTF8: '1',
+      PYTHONIOENCODING: 'utf-8',
+      PATH: engineArgs.length ? `${path.dirname(command)};${process.env.PATH || ''}` : process.env.PATH,
       // 防止系统 Anthropic 环境变量干扰 hermes provider 选择
       ANTHROPIC_API_KEY: '',
       ANTHROPIC_AUTH_TOKEN: '',
@@ -909,6 +980,8 @@ function startHermes() {
         method: notification.method || '',
         sessionId,
         ...params,
+        ...(promptOwners.has(sessionId) ? { slug: promptOwners.get(sessionId) } : {}),
+        ...(promptChannels.get(sessionId) || {}),
       };
       mainWindow.webContents.send('hermes:session-update', payload);
     }
@@ -1109,15 +1182,11 @@ function slugify(name) {
 }
 
 function resolveProjectPath(slug, ...rest) {
-  const projectDir = path.join(PROJECTS_DIR, slug);
-  if (rest.length === 0) return projectDir;
-  const resolved = path.join(projectDir, ...rest);
-  // Path traversal guard
-  const normalized = path.resolve(resolved);
-  if (!normalized.startsWith(path.resolve(projectDir))) {
-    throw new Error('Path traversal detected');
-  }
-  return normalized;
+  if(typeof slug!=='string'||!slug||slug==='.'||slug==='..'||/[\\/\x00]/.test(slug))throw Error('无效项目路径');
+  const projectDir=path.resolve(PROJECTS_DIR,slug),resolved=path.resolve(projectDir,...rest);
+  if(resolved!==projectDir&&!resolved.startsWith(projectDir+path.sep))throw Error('Path traversal detected');
+  if(fs.existsSync(projectDir)){const realRoot=fs.realpathSync(projectDir);let ancestor=resolved;while(!fs.existsSync(ancestor)&&ancestor!==projectDir)ancestor=path.dirname(ancestor);const real=fs.realpathSync(ancestor);if(real!==realRoot&&!real.startsWith(realRoot+path.sep))throw Error('Path traversal detected');}
+  return resolved;
 }
 
 // ---------------------------------------------------------------------------
@@ -1240,8 +1309,8 @@ function conversationKindOf(projectType) {
   return projectType === 'fde-project' ? 'project' : 'chat';
 }
 
-// FDE 五阶段默认落点(新项目落阶段②,过渡友好;与前端 fde-stages.js DEFAULT_STAGE 一致)
-const FDE_DEFAULT_STAGE = 2;
+// 新建项目从调研准备开始；已有项目沿用自己的阶段。
+const FDE_DEFAULT_STAGE = 1;
 
 // 向后兼容:给旧项目 meta 补齐 FDE 五阶段字段。旧项目只有 phase,
 // 没有 stage/stageStatus——读时补默认,不改写磁盘(下次 writeProjectMeta 时落盘)。
@@ -1261,7 +1330,8 @@ function ensureFdeFields(meta) {
 function readProjectMeta(slug) {
   const metaPath = resolveProjectPath(slug, 'meta.json');
   if (!fs.existsSync(metaPath)) return null;
-  return ensureFdeFields(JSON.parse(fs.readFileSync(metaPath, 'utf-8')));
+  const meta = ensureFdeFields(JSON.parse(fs.readFileSync(metaPath, 'utf-8')));
+  return require('./project-start').normalizeProjectStart(meta, resolveProjectPath(slug));
 }
 
 function writeProjectMeta(slug, meta) {
@@ -1322,6 +1392,14 @@ function computeProjectOutputs(slug) {
 function appendMessage(slug, message) {
   const msgPath = resolveProjectPath(slug, 'messages.jsonl');
   fs.appendFileSync(msgPath, JSON.stringify(message) + '\n', 'utf-8');
+  // New messages in a project make its previously deleted conversation visible again.
+  if (message.role === 'user') {
+    const meta = readProjectMeta(slug);
+    if (meta?.conversationDeletedAt) {
+      meta.conversationDeletedAt = null;
+      writeProjectMeta(slug, meta);
+    }
+  }
 }
 
 function readMessages(slug, maxLines = 200) {
@@ -1380,7 +1458,7 @@ function updateSplash(percent, text) {
 }
 
 const isDev = !app.isPackaged;
-const DEV_SERVER_URL = 'http://127.0.0.1:43917';
+const DEV_SERVER_URL = process.env.FDE_DEV_SERVER_URL || 'http://127.0.0.1:43917';
 
 async function loadRenderer(win) {
   if (isDev) {
@@ -1501,11 +1579,22 @@ function createWindow() {
     backgroundColor: '#ffffff',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
+      autoplayPolicy: 'no-user-gesture-required',
+      backgroundThrottling: false,
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false,
     },
   });
+
+  // Development errors are forwarded to the terminal to diagnose stalled page updates.
+  if (!app.isPackaged) {
+    mainWindow.webContents.on('console-message', (details) => {
+      if (details.level === 'error' || details.level === 3) {
+        console.error('[renderer-error]', details.message?.slice(0, 1400), details.sourceId, details.lineNumber);
+      }
+    });
+  }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http') || url.startsWith('https') || url.startsWith('file://')) {
@@ -1863,6 +1952,67 @@ ipcMain.handle('shell:open-external', async (_event, url) => {
 // IPC handlers — FDE 作战手册知识库(工作台)
 // ---------------------------------------------------------------------------
 
+const {createActivityStore} = require('./activity-store');
+const activityStore = createActivityStore(path.join(PRODUCT_LOBSTER_HOME, 'recent-activities.json'));
+function recordActivity(entry) {
+  try {
+    const activity = activityStore.record(entry);
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.webContents.send('activity:changed', activity);
+    }
+  } catch (error) { console.error('[activity] Unable to record update:', error.message); }
+}
+function recordProjectFile(slug, file, action = '修改了文档') {
+  try {
+    const meta = updateProjectMeta(slug, {});
+    recordActivity({kind:'project-file', slug, file, title:path.basename(file), projectName:meta?.name || slug, action, stage:Number(file.match(/^stage([1-5])\//)?.[1]) || meta?.stage});
+  } catch (error) { console.error('[activity] Unable to update project activity:', error.message); }
+}
+ipcMain.handle('activity:list', async () => {
+  try {
+    // 兼容之前已保存的修改，首次使用动态功能时也能看到。
+    const seeds = [];
+    const editsDir = path.join(PRODUCT_LOBSTER_HOME, 'handbook-user-edits');
+    for (const stage of ['01','02','03','04','05']) {
+      const directory = path.join(editsDir, stage);
+      if (!fs.existsSync(directory)) continue;
+      for (const file of fs.readdirSync(directory).filter(name => name.endsWith('.json'))) {
+        try {
+          const edit = JSON.parse(fs.readFileSync(path.join(directory,file),'utf8'));
+          seeds.push({kind:'handbook-file', stage, file:edit.sourceFile, title:edit.title, action:'修改了文档', updatedAt:edit.updatedAt});
+        } catch (error) { console.error('[activity] Unable to read saved edit:', error.message); }
+      }
+    }
+    return {success:true, items:activityStore.list(seeds)};
+  } catch (error) { return {success:false,error:error.message}; }
+});
+
+require('./material-library-ipc').registerMaterialLibrary({ipcMain,dialog,shell,root:path.join(PRODUCT_LOBSTER_HOME,'material-library'),getWindow:()=>mainWindow,recordActivity,registerMediaUrl:readyMediaUrl});
+
+const { createHandbookEditor } = require('./handbook-edits');
+const handbookEditor = createHandbookEditor(HANDBOOK_DIR, path.join(PRODUCT_LOBSTER_HOME, 'handbook-user-edits'));
+ipcMain.handle('handbook:read-editable', async (_event, {stage, file}) => {
+  try { return {success:true, ...await handbookEditor.read(stage, file)}; }
+  catch (err) { return {success:false, error:err.message}; }
+});
+ipcMain.handle('handbook:write-editable', async (_event, {stage, file, format, content}) => {
+  try {
+    const edit = await handbookEditor.write(stage, file, format, content);
+    recordActivity({kind:'handbook-file', stage, file:edit.sourceFile, title:edit.title, action:'修改了文档', updatedAt:edit.updatedAt});
+    return {success:true, ...edit};
+  }
+  catch (err) { return {success:false, error:err.message}; }
+});
+ipcMain.handle('handbook:export-edited', async (_event, {stage, file}) => {
+  try {
+    const name = path.basename(file, path.extname(file)) + '.docx';
+    const result = await dialog.showSaveDialog(mainWindow, {title:'导出 Word 文档', defaultPath:name, filters:[{name:'Word 文档',extensions:['docx']}]});
+    if (result.canceled || !result.filePath) return {success:false, canceled:true};
+    fs.writeFileSync(result.filePath, await handbookEditor.wordBuffer(stage, file));
+    return {success:true, path:result.filePath};
+  } catch (err) { return {success:false, error:err.message}; }
+});
+
 // 安全解析 handbook 内的文件路径,防止越界
 function resolveHandbookPath(stageDir, file) {
   const base = path.join(HANDBOOK_DIR, stageDir);
@@ -1883,6 +2033,10 @@ ipcMain.handle('handbook:get-manifest', async () => {
 
 ipcMain.handle('handbook:read-md', async (_event, { stage, file }) => {
   try {
+    const edit = (() => { try { return handbookEditor.readOverride(stage, file); } catch (_) { return null; } })();
+    if (edit) {
+      return {success:true, content:edit.content, edited:true};
+    }
     const filePath = resolveHandbookPath(stage, file);
     if (!fs.existsSync(filePath)) return { success: false, error: 'file not found' };
     return { success: true, content: fs.readFileSync(filePath, 'utf-8') };
@@ -1893,6 +2047,13 @@ ipcMain.handle('handbook:read-md', async (_event, { stage, file }) => {
 
 ipcMain.handle('handbook:read-html', async (_event, { stage, file }) => {
   try {
+    const edit = (() => { try { return handbookEditor.readOverride(stage, file); } catch (_) { return null; } })();
+    if (edit) {
+      const content = edit.format === 'md'
+        ? (await import('marked')).marked.parse(edit.content)
+        : edit.content;
+      return {success:true, content, edited:true};
+    }
     const filePath = resolveHandbookPath(stage, file);
     if (!fs.existsSync(filePath)) return { success: false, error: 'file not found' };
     return { success: true, content: fs.readFileSync(filePath, 'utf-8') };
@@ -1935,9 +2096,11 @@ ipcMain.handle('handbook:save-as', async (_event, { stage, file }) => {
 
 // 安全解析 skills 内的文件路径,防止越界
 function resolveSkillPath(skillId, file) {
-  const base = path.join(SKILLS_DIR, skillId);
-  const resolved = path.join(base, file);
-  if (!resolved.startsWith(base)) throw new Error('Invalid skill path');
+  const id = String(skillId || '');
+  if (!id || id === '.' || id.includes('..') || /[\\/]/.test(id)) throw new Error('Invalid skill id');
+  const base = path.resolve(SKILLS_DIR, id);
+  const resolved = path.resolve(base, String(file || 'SKILL.md'));
+  if (!resolved.startsWith(base + path.sep)) throw new Error('Invalid skill path');
   return resolved;
 }
 
@@ -2110,7 +2273,7 @@ function scanSkillsManifest(dir) {
   let entries = [];
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true })
-      .filter((d) => d.isDirectory()).map((d) => d.name);
+      .filter((d) => d.isDirectory() && !d.name.startsWith('.')).map((d) => d.name);
   } catch (e) {
     return { groups: [], skills: [] };
   }
@@ -2129,12 +2292,14 @@ function scanSkillsManifest(dir) {
     const fmCat = fm.category && allSkillGroups().some((g) => g.id === fm.category) ? fm.category : null;
     const group = fmCat || skillGroupOf(id);
     const meta = allSkillGroups().find((g) => g.id === group) || SKILLS_GROUPS[SKILLS_GROUPS.length - 1];
-    const generated = !builtin.has(id) && group === 'general';
+    const imported = fs.existsSync(path.join(dir, id, '.imported'));
+    const generated = !builtin.has(id) && !imported && group === 'general';
     skills.push({
       id,
       name: fm.name || id,
       file: path.basename(candidate),
       group,
+      categoryExplicit: !!fmCat,
       icon: fm.icon || SKILL_ICONS[id] || meta.icon,
       color: meta.color,
       version: fm.version || '',
@@ -2150,7 +2315,7 @@ function scanSkillsManifest(dir) {
   const groups = allSkillGroups()
     .map((g) => ({ id: g.id, name: g.name, icon: g.icon, color: g.color, custom: !!g.custom,
       count: skills.filter((s) => s.group === g.id).length }))
-    .filter((g) => g.count > 0);
+    .filter((g) => g.count > 0 || g.custom);
 
   return {
     generatedAt: new Date().toISOString(),
@@ -2178,7 +2343,7 @@ ipcMain.handle('skills:read', async (_event, { skill, file }) => {
   try {
     const filePath = resolveSkillPath(skill, file || 'SKILL.md');
     if (!fs.existsSync(filePath)) return { success: false, error: 'file not found' };
-    return { success: true, content: fs.readFileSync(filePath, 'utf-8') };
+    return { success: true, content: fs.readFileSync(filePath, 'utf-8'), path: filePath };
   } catch (err) {
     return { success: false, error: err.message };
   }
@@ -2186,7 +2351,7 @@ ipcMain.handle('skills:read', async (_event, { skill, file }) => {
 
 ipcMain.handle('skills:open', async (_event, { skill }) => {
   try {
-    const dirPath = path.join(SKILLS_DIR, skill);
+    const dirPath = path.dirname(resolveSkillPath(skill, 'SKILL.md'));
     if (!fs.existsSync(dirPath)) return { success: false, error: 'skill not found' };
     const error = await shell.openPath(dirPath);
     if (error) return { success: false, error };
@@ -2202,6 +2367,7 @@ ipcMain.handle('skills:create-group', async (_event, payload = {}) => {
     if (!name) return { success: false, error: '分组名称不能为空' };
     const id = String(payload.id || `custom-${Date.now()}`).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
     const groups = loadCustomSkillGroups();
+    if (allSkillGroups().some(g => g.name === name)) return { success: false, error: '分组名称已存在' };
     if (!id || allSkillGroups().some((g) => g.id === id)) return { success: false, error: '分组标识已存在或无效' };
     const group = { id, name, icon: String(payload.icon || 'folder'), color: String(payload.color || '#64748b'), custom: true, members: [] };
     writeCustomSkillGroups([...groups, group]);
@@ -2209,14 +2375,34 @@ ipcMain.handle('skills:create-group', async (_event, payload = {}) => {
   } catch (err) { return { success: false, error: err.message }; }
 });
 
+ipcMain.handle('skills:update-group', async (_event, payload = {}) => {
+  try {
+    const groups = loadCustomSkillGroups();
+    const index = groups.findIndex(group => group.id === String(payload.id || ''));
+    if (index < 0) return { success: false, error: '只能编辑已存在的自定义分组' };
+    const name = String(payload.name ?? groups[index].name).trim();
+    if (!name) return { success: false, error: '分组名称不能为空' };
+    if (allSkillGroups().some(group => group.id !== groups[index].id && group.name === name)) return { success: false, error: '分组名称已存在' };
+    groups[index] = { ...groups[index], name, icon: String(payload.icon || groups[index].icon), color: String(payload.color || groups[index].color) };
+    writeCustomSkillGroups(groups);
+    return { success: true, group: groups[index] };
+  } catch (err) { return { success: false, error: err.message }; }
+});
+
 ipcMain.handle('skills:delete-group', async (_event, { id } = {}) => {
   try {
     const groupId = String(id || '');
     if (!groupId || SKILLS_GROUPS.some((g) => g.id === groupId)) return { success: false, error: '内置分组不可删除' };
+    const groups = loadCustomSkillGroups();
+    const group = groups.find(g => g.id === groupId);
+    if (!group) return { success: false, error: '分组不存在，请刷新技能库' };
+    const movedCount = scanSkillsManifest(SKILLS_DIR).skills.filter(s => s.group === groupId).length;
+    // Remove only the group definition. The scanner falls back to each skill's
+    // original category; restoring the same group ID restores its membership.
+    writeCustomSkillGroups(groups.filter(g => g.id !== groupId));
     const data = scanSkillsManifest(SKILLS_DIR);
-    if (data.skills.some((s) => s.group === groupId)) return { success: false, error: '请先将分组内技能移出后再删除' };
-    writeCustomSkillGroups(loadCustomSkillGroups().filter((g) => g.id !== groupId));
-    return { success: true };
+    try { fs.writeFileSync(path.join(SKILLS_DIR, 'manifest.json'), JSON.stringify(data, null, 2) + '\n', 'utf-8'); } catch {}
+    return { success: true, movedCount };
   } catch (err) { return { success: false, error: err.message }; }
 });
 
@@ -2268,7 +2454,12 @@ ipcMain.handle('skills:write', async (_event, payload = {}) => {
     const updates = {};
     if (payload.name !== undefined) updates.name = String(payload.name);
     if (payload.description !== undefined) updates.description = String(payload.description);
-    if (payload.category !== undefined) updates.category = String(payload.category);
+    if (payload.category !== undefined) {
+      if (!allSkillGroups().some(group => group.id === String(payload.category))) return { success: false, error: '分类不存在，请刷新技能库后重试' };
+      updates.category = String(payload.category);
+    }
+    if (payload.name !== undefined && !String(payload.name).trim()) return { success: false, error: '技能名称不能为空' };
+    if (payload.body !== undefined && !String(payload.body).trim()) return { success: false, error: '技能正文不能为空' };
     if (payload.icon !== undefined) updates.icon = String(payload.icon);
     let next = patchSkillFrontmatter(raw, updates);
 
@@ -2359,6 +2550,7 @@ ipcMain.handle('handbook:upload', async (_event, { stage, category }) => {
     }
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
 
+    for (const file of added) recordActivity({kind:'handbook-file', stage:stageDir, file, title:path.basename(file, path.extname(file)), action:'上传了资料'});
     return { success: true, files: added, stage: stageDir };
   } catch (err) {
     return { success: false, error: err.message };
@@ -2375,7 +2567,7 @@ ipcMain.handle('handbook:scan-projects', async () => {
     let slugs = [];
     try {
       slugs = fs.readdirSync(PROJECTS_DIR, { withFileTypes: true })
-        .filter((d) => d.isDirectory()).map((d) => d.name);
+        .filter((d) => d.isDirectory() && !d.name.startsWith('.')).map((d) => d.name);
     } catch (e) { slugs = []; }
 
     const projects = [];
@@ -2440,6 +2632,7 @@ ipcMain.handle('handbook:archive-from-project', async (_event, { slug, relPath, 
     const fileName = registerHandbookFile(manifest, stageDir, srcPath, category);
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
 
+    recordActivity({kind:'handbook-file', stage:stageDir, file:fileName, title:path.basename(fileName, path.extname(fileName)), action:'归档了资料'});
     return { success: true, file: fileName, stage: stageDir };
   } catch (err) {
     return { success: false, error: err.message };
@@ -2478,90 +2671,71 @@ ipcMain.handle('handbook:delete', async (_event, { stage, file }) => {
 // 从内存中的 zip buffer 安装技能：校验 SKILL.md → 推导 id → 解压到 SKILLS_DIR → 重建 manifest。
 // promptOverwrite=true 时重名弹框询问（本地导入用）；false 时静默覆盖（技能中心安装用）。
 async function installSkillFromZipBuffer(buffer, { fallbackId, emit, promptOverwrite = false } = {}) {
-  const noop = () => {};
-  const em = typeof emit === 'function' ? emit : noop;
-  const JSZip = require('jszip');
-  const zip = await JSZip.loadAsync(buffer);
-
-  // 校验:找到 SKILL.md(顶层或单一子目录内),且 frontmatter 含 name
+  const em = typeof emit === 'function' ? emit : () => {};
+  const zip = await require('jszip').loadAsync(buffer);
   em('validate', 35, '校验技能包结构…');
-  const norm = (p) => p.replace(/\\/g, '/');
-  const fileKeys = Object.keys(zip.files).filter((k) => !zip.files[k].dir);
-  let skillMdKey = null;
-  for (const k of fileKeys) {
-    if (/(^|\/)SKILL\.md$/i.test(norm(k))) { skillMdKey = k; break; }
-  }
-  if (!skillMdKey) {
-    return { success: false, error: '无效技能包:缺少 SKILL.md' };
-  }
-  const skillMdPath = norm(skillMdKey);
-  const parts = skillMdPath.split('/');
-  const rootPrefix = parts.length > 1 ? parts.slice(0, -1).join('/') + '/' : '';
+  const norm = value => value.replace(/\\/g, '/');
+  const keys = Object.keys(zip.files).filter(key => !zip.files[key].dir);
+  const candidates = keys.filter(key => /(^|\/)SKILL\.md$/i.test(norm(key)))
+    .sort((a, b) => norm(a).split('/').length - norm(b).split('/').length);
+  if (!candidates.length) return { success: false, error: '无效技能包：缺少 SKILL.md' };
+  const skillMdKey = candidates[0];
+  const parts = norm(skillMdKey).split('/');
+  const prefix = parts.length > 1 ? parts.slice(0, -1).join('/') + '/' : '';
+  const source = await zip.file(skillMdKey).async('string');
+  const fm = parseSkillFrontmatter(source);
+  const body = source.replace(/^---\s*\r?\n[\s\S]*?\r?\n---\s*\r?\n?/, '').trim();
+  if (!String(fm.name || '').trim() || !body) return { success: false, error: '无效技能包：名称或技能正文为空' };
   let skillId = parts.length > 1 ? parts[parts.length - 2] : (fallbackId || 'imported-skill');
   skillId = skillId.replace(/[^A-Za-z0-9._-]/g, '-').replace(/^-+|-+$/g, '') || 'imported-skill';
-
-  const skillMdRaw = await zip.file(skillMdKey).async('string');
-  const fmMatch = skillMdRaw.replace(/\r\n?/g, '\n').match(/^---\s*\n([\s\S]*?)\n---/);
-  if (!fmMatch || !/^name:\s*\S+/m.test(fmMatch[1])) {
-    return { success: false, error: '无效技能包:SKILL.md 缺少 name 字段' };
+  if (skillId === '.' || skillId.includes('..')) return { success: false, error: '无效技能标识' };
+  const destDir = path.dirname(resolveSkillPath(skillId, 'SKILL.md'));
+  if (fs.existsSync(destDir) && promptOverwrite) {
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: 'question', buttons: ['覆盖', '取消'], defaultId: 1, cancelId: 1,
+      title: '技能已存在', message: `技能「${skillId}」已存在，是否覆盖？`,
+    });
+    if (response !== 0) return { success: false, canceled: true };
   }
-
-  const destDir = path.join(SKILLS_DIR, skillId);
-  if (fs.existsSync(destDir)) {
-    if (promptOverwrite) {
-      const { response } = await dialog.showMessageBox(mainWindow, {
-        type: 'question',
-        buttons: ['覆盖', '取消'],
-        defaultId: 1,
-        cancelId: 1,
-        title: '技能已存在',
-        message: `技能「${skillId}」已存在,是否覆盖?`,
-      });
-      if (response !== 0) return { success: false, canceled: true };
-    }
-    fs.rmSync(destDir, { recursive: true, force: true });
-  }
-
-  em('extract', 65, '解压技能文件…');
-  fs.mkdirSync(destDir, { recursive: true });
-  const fileEntries = Object.keys(zip.files).filter((k) => {
-    const n = norm(k);
-    if (zip.files[k].dir) return false;
-    return rootPrefix ? n.startsWith(rootPrefix) : true;
-  });
-  for (const key of fileEntries) {
-    const rel = rootPrefix ? norm(key).slice(rootPrefix.length) : norm(key);
-    if (!rel || rel.includes('..')) continue;
-    const outPath = path.join(destDir, rel);
-    if (!outPath.startsWith(destDir)) continue; // zip-slip 防护
-    fs.mkdirSync(path.dirname(outPath), { recursive: true });
-    fs.writeFileSync(outPath, await zip.file(key).async('nodebuffer'));
-  }
-
-  // 重生 manifest(调用 build 脚本,幂等)
-  em('manifest', 88, '更新技能清单…');
+  fs.mkdirSync(SKILLS_DIR, { recursive: true });
+  const staging = fs.mkdtempSync(path.join(SKILLS_DIR, '.skill-install-'));
+  const backup = staging + '.previous';
+  let backedUp = false;
+  let committed = false;
   try {
-    const { execFileSync } = require('child_process');
-    const scriptPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'scripts', 'build-skills-manifest.js')
-      : path.join(app.getAppPath(), 'scripts', 'build-skills-manifest.js');
-    if (fs.existsSync(scriptPath)) {
-      execFileSync(process.execPath, [scriptPath], {
-        env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
-      });
-      const builtManifest = app.isPackaged
-        ? path.join(process.resourcesPath, 'skills', 'manifest.json')
-        : path.join(app.getAppPath(), 'skills', 'manifest.json');
-      if (fs.existsSync(builtManifest) && builtManifest !== path.join(SKILLS_DIR, 'manifest.json')) {
-        fs.copyFileSync(builtManifest, path.join(SKILLS_DIR, 'manifest.json'));
-      }
+    em('extract', 65, '解压技能文件…');
+    for (const key of keys) {
+      const normalized = norm(key);
+      if (prefix && !normalized.startsWith(prefix)) continue;
+      const rel = prefix ? normalized.slice(prefix.length) : normalized;
+      if (!rel || path.isAbsolute(rel) || rel.split('/').includes('..')) throw new Error('技能包包含无效路径');
+      const output = path.resolve(staging, rel);
+      if (!output.startsWith(staging + path.sep)) throw new Error('技能包包含无效路径');
+      fs.mkdirSync(path.dirname(output), { recursive: true });
+      fs.writeFileSync(output, await zip.file(key).async('nodebuffer'));
     }
-  } catch (e) {
-    console.warn('[installSkillFromZipBuffer] manifest rebuild failed:', e.message);
+    // 统一入口文件名，确保安装后的读取与调用指向真实文件。
+    const entry = path.join(staging, path.basename(norm(skillMdKey)));
+    if (path.basename(entry) !== 'SKILL.md') fs.renameSync(entry, path.join(staging, 'SKILL.md'));
+    if (bundledSkillIds().has(skillId)) fs.writeFileSync(path.join(staging, '.edited'), '');
+    fs.writeFileSync(path.join(staging, '.imported'), '');
+    if (fs.existsSync(destDir)) { fs.renameSync(destDir, backup); backedUp = true; }
+    fs.renameSync(staging, destDir);
+    committed = true;
+    const data = scanSkillsManifest(SKILLS_DIR);
+    if (!data.skills.some(skill => skill.id === skillId)) throw new Error('安装后的技能未能读取');
+    em('manifest', 88, '更新技能清单…');
+    fs.writeFileSync(path.join(SKILLS_DIR, 'manifest.json'), JSON.stringify(data, null, 2) + '\n', 'utf-8');
+    em('done', 100, '导入完成');
+    return { success: true, skillId };
+  } catch (error) {
+    if (committed) fs.rmSync(destDir, { recursive: true, force: true });
+    if (backedUp) { fs.renameSync(backup, destDir); backedUp = false; }
+    throw error;
+  } finally {
+    fs.rmSync(staging, { recursive: true, force: true });
+    if (backedUp) fs.rmSync(backup, { recursive: true, force: true });
   }
-
-  em('done', 100, '导入完成');
-  return { success: true, skillId };
 }
 
 // 下载文件到内存 buffer，跟随 302 重定向（node http/https 不自动跟）。
@@ -2787,6 +2961,12 @@ ipcMain.handle('license:server-url', () => {
 // IPC handlers — Hermes project management
 // ---------------------------------------------------------------------------
 
+require('./conversation-actions').registerConversationActions({
+  ipcMain, readMeta: readProjectMeta, writeMeta: writeProjectMeta, readMessages,
+  isProject: (slug, meta) => !!meta && conversationKindOf(inferProjectType(slug, meta)) === 'project',
+  isBusy: sessionId => promptingSessions.has(sessionId),
+});
+
 ipcMain.handle('hermes:list-projects', async (_event, options) => {
   try {
     if (!fs.existsSync(PROJECTS_DIR)) return [];
@@ -2803,7 +2983,8 @@ ipcMain.handle('hermes:list-projects', async (_event, options) => {
         const outputs = computeProjectOutputs(entry.name);
         const phase = meta.phase || (outputs.hasPrototype ? 'iterating' : outputs.hasSpec ? 'prototype' : 'brainstorming');
         const stage = Math.max(outputs.derivedStage || 0, Number(meta.stage) || 0) || FDE_DEFAULT_STAGE;
-        projects.push({ slug: entry.name, ...meta, projectType, conversationKind, stage, outputs, hasSpec: outputs.hasSpec, hasPrototype: outputs.hasPrototype, deliverables: outputs.deliverables, derivedStage: outputs.derivedStage, phase });
+        const conversation = conversationSummary(readMessages(entry.name));
+        projects.push({ slug: entry.name, ...meta, ...conversation, projectType, conversationKind, stage, outputs, hasSpec: outputs.hasSpec, hasPrototype: outputs.hasPrototype, deliverables: outputs.deliverables, derivedStage: outputs.derivedStage, phase });
       }
     }
     projects.sort((a, b) => (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || ''));
@@ -3212,6 +3393,7 @@ ipcMain.handle('code:prompt', async (_event, { id, conversationId, text, attachm
     // 二进制附件落到工作区的 .uploads/ 目录(与代码分开，方便忽略)。
     const uploadsDir = path.join(workspace.path, '.uploads');
     const promptBlocks = buildPromptBlocks(text, attachments, uploadsDir);
+    promptBlocks.unshift({ type: 'text', text: require('./response-summary-format').RESPONSE_SUMMARY_INSTRUCTION });
 
     // 会话是重建出来的 → 把历史上下文并进这一轮，一次请求搞定，不额外占一轮。
     if (conversation.pendingContext) {
@@ -3230,7 +3412,7 @@ ipcMain.handle('code:prompt', async (_event, { id, conversationId, text, attachm
   } catch (err) {
     codeDebugLog(`code:prompt FAILED: ${err && err.stack || err}`);
     throw new Error(`Prompt failed: ${err.message}`);
-  }
+  } finally { cancelledKnowledgeRequests.delete(`${slug}:${requestId}`); }
 });
 
 // ---- 代码工作区「多会话」IPC -------------------------------------------------
@@ -3344,7 +3526,7 @@ ipcMain.handle('code:save-conversation', async (_event, { id, conversationId, me
 });
 
 ipcMain.handle('hermes:create-project', async (_event, params) => {
-  const { name, requirement, slug: customSlug, projectType: requestedType, expert, aiApp } = params || {};
+  const { name, requirement, slug: customSlug, projectType: requestedType, expert, aiApp, skillId } = params || {};
   try {
     const slug = customSlug || slugify(name);
     const projectDir = resolveProjectPath(slug);
@@ -3369,11 +3551,21 @@ ipcMain.handle('hermes:create-project', async (_event, params) => {
       prepareAiAppProjectContext(slug, aiApp);
     }
 
+    // Persist the selected skill before starting the engine in this directory.
+    let activeSkill = null;
+    if (skillId) {
+      const skill = scanSkillsManifest(SKILLS_DIR).skills.find(item => item.id === skillId);
+      if (!skill) throw new Error('所选技能不存在，请刷新技能中心');
+      const sourcePath = resolveSkillPath(skillId, skill.file || 'SKILL.md');
+      activeSkill = require('./skill-context').prepareSkillProject({ skill, sourcePath, projectDir });
+    }
+
     // Create session via ACP
     let sessionId = null;
-    if (acp) {
+    if (acp && !(params.voiceOnly === true && requestedType === 'fde-coach')) {
       const result = await acp.request('session/new', { cwd: projectDir, mcpServers: [] });
       sessionId = result && result.sessionId ? result.sessionId : null;
+      projectSessions.markLoaded(acp, sessionId);
       captureModelsFromSession(result);
       // Auto-approve all edits — fire-and-forget so we don't block project creation on a second round-trip
       if (sessionId) {
@@ -3391,13 +3583,14 @@ ipcMain.handle('hermes:create-project', async (_event, params) => {
       updatedAt: new Date().toISOString(),
       phase: 'brainstorming',
       projectType,
-      // FDE 五阶段:新项目默认落阶段②(现有能力所在,过渡友好)
+      // FDE 五阶段：先做调研准备，经阶段确认后进入需求沟通。
       stage: FDE_DEFAULT_STAGE,
-      stageStatus: { 1: 'done', 2: 'active', 3: 'todo', 4: 'todo', 5: 'todo' },
+      stageStatus: { 1: 'active', 2: 'todo', 3: 'todo', 4: 'todo', 5: 'todo' },
       outputs: { hasSpec: false, hasPrototype: false, prototypeFileCount: 0 },
       messageCount: 0,
       ...(expert ? { expert } : {}),
       ...(aiApp ? { aiApp } : {}),
+      ...(activeSkill ? { activeSkill } : {}),
     };
     writeProjectMeta(slug, meta);
 
@@ -3407,88 +3600,20 @@ ipcMain.handle('hermes:create-project', async (_event, params) => {
   }
 });
 
-ipcMain.handle('hermes:load-project', async (_event, slug) => {
+ipcMain.handle('hermes:load-project', async (_event, payload) => {
+  const slug = typeof payload === 'string' ? payload : payload?.slug;
+  const readOnly = typeof payload === 'object' && payload?.readOnly === true;
   try {
     const meta = readProjectMeta(slug);
     if (!meta) throw new Error(`Project "${slug}" not found`);
 
-    // AI 应用专家项目：每次打开都用最新的记忆 + 知识刷新 CLAUDE.md，
-    // 这样在应用管理页更新的记忆/知识能立刻在已有项目里生效。
-    if (meta.aiApp && meta.aiApp.id) {
-      prepareAiAppProjectContext(slug, meta.aiApp);
-    }
+    // Reading history on focus must not reload or replay the engine session.
+    if (readOnly) return { slug, ...meta, messages: readMessages(slug) };
 
     const persistedMessages = readMessages(slug);
-    let sessionRecovered = false;
-
-    if (acp && meta.sessionId) {
-      const sid = meta.sessionId;
-      // 这一轮还在生成：引擎里的会话本来就活着，不要 session/load（会重放历史、打乱进行中的回复）
-      if (promptingSessions.has(sid)) {
-        return { slug, ...meta, messages: persistedMessages, prompting: true };
-      }
-      replayingSessions.add(sid);
-      try {
-        const result = await acp.request('session/load', { sessionId: sid, cwd: resolveProjectPath(slug), mcpServers: [] });
-        if (result) {
-          await acp.request('session/set_mode', { sessionId: sid, modeId: 'dont_ask' }).catch(() => {});
-          return { slug, ...meta, messages: persistedMessages, loadResult: result };
-        }
-      } catch (loadErr) {
-        console.log(`[main] Session ${sid} not found, creating new session for ${slug}`);
-      } finally {
-        replayingSessions.delete(sid);
-      }
-    }
-
-    // Create new session if none exists or old one is gone
-    if (acp) {
-      const projectDir = resolveProjectPath(slug);
-      const newSession = await acp.request('session/new', { cwd: projectDir, mcpServers: [] });
-      if (newSession && newSession.sessionId) {
-        captureModelsFromSession(newSession);
-        meta.sessionId = newSession.sessionId;
-        writeProjectMeta(slug, meta);
-        await acp.request('session/set_mode', { sessionId: meta.sessionId, modeId: 'dont_ask' }).catch(() => {});
-        console.log(`[main] New session ${newSession.sessionId} created for project ${slug}`);
-
-        // --- Context recovery: feed existing artifacts to the new session ---
-        const contextParts = [];
-        if (meta.requirement) contextParts.push(`## 原始需求\n${meta.requirement}`);
-
-        const specPath = resolveProjectPath(slug, 'spec.md');
-        if (fs.existsSync(specPath)) {
-          let spec = fs.readFileSync(specPath, 'utf-8');
-          if (spec.length > 3000) spec = spec.slice(0, 3000) + '\n\n...(已截断，完整版在 spec.md)';
-          contextParts.push(`## 功能清单 (spec.md)\n${spec}`);
-        }
-
-        const protoDir = resolveProjectPath(slug, 'prototype');
-        if (fs.existsSync(protoDir)) {
-          const fileList = fs.readdirSync(protoDir).filter(f => f.endsWith('.html')).map(f => `- prototype/${f}`).join('\n');
-          if (fileList) contextParts.push(`## 已有原型文件\n${fileList}`);
-        }
-
-        const recent = readMessages(slug, 20);
-        if (recent.length > 0) {
-          const summary = recent.map(m => `${m.role === 'user' ? '用户' : 'AI'}: ${(m.content || '').slice(0, 200)}`).join('\n');
-          contextParts.push(`## 最近对话记录\n${summary}`);
-        }
-
-        if (contextParts.length > 0) {
-          sessionRecovered = true;
-          const recoveryPrompt = `这是一个产品设计项目，之前的会话已丢失，但以下项目文件仍在。请基于这些上下文继续工作，不要重复这些内容给用户。\n\n${contextParts.join('\n\n')}`;
-          acp.request('session/prompt', {
-            sessionId: meta.sessionId,
-            prompt: [{ type: 'text', text: recoveryPrompt }],
-          }, 60_000).catch(err => {
-            console.log(`[main] Context recovery prompt failed: ${err.message}`);
-          });
-        }
-      }
-    }
-
-    return { slug, ...meta, messages: persistedMessages, sessionRecovered };
+    if (meta.aiApp?.id) prepareAiAppProjectContext(slug, meta.aiApp);
+    const restored = acp ? await projectSessions.ensure(acp, slug) : meta;
+    return { slug, ...restored, messages: persistedMessages };
   } catch (err) {
     throw new Error(`Failed to load project: ${err.message}`);
   }
@@ -3526,6 +3651,16 @@ ipcMain.handle('hermes:delete-messages', async (_event, { slug, tab }) => {
 
 ipcMain.handle('hermes:update-project-meta', async (_event, { slug, updates }) => {
   try {
+    const previous=readProjectMeta(slug);
+    const progressing=updates?.stage!==undefined&&updates.stage!==previous.stage;
+    const completing=updates?.stageStatus?.[5]==='done'&&previous.stageStatus?.[5]!=='done';
+    if(progressing||completing){
+      if(progressing&&updates.stage!==previous.stage+1)throw Error('项目只能按顺序进入下一阶段');
+      const issues=updates.workflowMode==='product-flow-v1' && progressing && updates.stage<=3
+        ? require('./product-flow-gate').gate(resolveProjectPath(slug),previous.stage)
+        : require('./project-integrity').gate(resolveProjectPath(slug),previous,previous.stage);
+      if(issues.length)throw Error('请先完成验收：'+issues.join('；'));
+    }
     const meta = updateProjectMeta(slug, updates);
     return { success: true, meta };
   } catch (err) {
@@ -3533,12 +3668,12 @@ ipcMain.handle('hermes:update-project-meta', async (_event, { slug, updates }) =
   }
 });
 
-ipcMain.handle('hermes:upload-knowledge', async (_event, { slug }) => {
+ipcMain.handle('hermes:upload-knowledge', async (_event, { slug, paths }) => {
   try {
-    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+    const { canceled, filePaths } = Array.isArray(paths) ? { canceled: false, filePaths: paths } : await dialog.showOpenDialog(mainWindow, {
       title: '选择参考文档',
       filters: [
-        { name: '文档', extensions: ['pdf', 'md', 'txt', 'docx', 'doc', 'png', 'jpg', 'jpeg'] },
+        { name: '所有资料', extensions: ['*'] },
         { name: '所有文件', extensions: ['*'] },
       ],
       properties: ['openFile', 'multiSelections'],
@@ -3554,11 +3689,13 @@ ipcMain.handle('hermes:upload-knowledge', async (_event, { slug }) => {
 
     const copied = [];
     for (const srcPath of filePaths) {
+      if (typeof srcPath !== 'string' || !path.isAbsolute(srcPath) || !fs.statSync(srcPath).isFile()) throw new Error('请拖入文件，文件夹请分开上传');
       const fileName = path.basename(srcPath);
       const destPath = path.join(knowledgeDir, fileName);
       fs.copyFileSync(srcPath, destPath);
       copied.push(fileName);
     }
+    for (const file of copied) recordProjectFile(slug, `knowledge/${file}`, '上传了资料');
     return { success: true, files: copied };
   } catch (err) {
     return { success: false, error: err.message };
@@ -3801,32 +3938,33 @@ function buildPromptBlocks(text, attachments, uploadsDir) {
   return promptBlocks;
 }
 
-ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments }) => {
+ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments, channel = 'main', requestId = '' }) => {
+  if (!['main', 'knowledge'].includes(channel)) throw new Error('无效的项目对话类型');
   try {
     let meta = readProjectMeta(slug);
     if (!meta) throw new Error(`Project "${slug}" not found`);
+    const providerEnv = { ...process.env };
+    try {
+      for (const line of fs.readFileSync(ENV_FILE_PATH, 'utf8').split('\n')) {
+        const proxy = /^((?:HTTP|HTTPS|ALL)_PROXY)=(.*)$/i.exec(line.trim());
+        if (proxy) providerEnv[proxy[1]] = proxy[2].trim().replace(/^['"]|['"]$/g, '');
+      }
+    } catch (_) { /* The provider config may not have been created yet. */ }
+    const providerConfig = parseEnvConfig();
+    if (providerConfig.provider !== 'anthropic') await require('./provider-connection').checkProviderDns(providerConfig.baseUrl, { env: providerEnv });
     if (!acp || !hermesReady) {
       if (!(await ensureHermesReady())) throw new Error('Hermes ACP not connected');
     }
 
-    // Auto-recover session if missing
-    if (!meta.sessionId) {
-      const projectDir = resolveProjectPath(slug);
-      // AI 应用专家项目：会话过期重建前，先刷新 CLAUDE.md，
-      // 让新 session 依旧带着专家的记忆与知识上下文。
-      if (meta.aiApp && meta.aiApp.id) {
-        prepareAiAppProjectContext(slug, meta.aiApp);
-      }
-      const newSession = await acp.request('session/new', { cwd: projectDir, mcpServers: [] });
-      captureModelsFromSession(newSession);
-      meta.sessionId = newSession.sessionId;
-      await acp.request('session/set_mode', { sessionId: meta.sessionId, modeId: 'dont_ask' }).catch(() => {});
-      writeProjectMeta(slug, meta);
-    }
-
-    // Build prompt content blocks (text + optional images / files)
-    // 共用 buildPromptBlocks；二进制附件落到项目的 uploads/ 目录。
-    const promptBlocks = buildPromptBlocks(text, attachments, resolveProjectPath(slug, 'uploads'));
+    const client = acp;
+    const sessions = channel === 'knowledge' ? projectKnowledgeSessions : projectSessions;
+    meta = await sessions.ensure(client, slug);
+    if (channel === 'knowledge' && cancelledKnowledgeRequests.delete(`${slug}:${requestId}`)) throw new Error('资料问答已停止');
+    if (promptingSessions.has(meta.sessionId)) throw new Error('当前对话仍在回答，请稍后再试');
+    const recovery = sessions.recoveryPrefix(client, meta.sessionId, text);
+    if (channel === 'knowledge') text = '【独立项目资料问答】只回答资料问题，不生成或修改文件，不执行原型生成任务。其他会话可能正在写入项目文件；不要接续它的任务。\n' + text;
+    const promptBlocks = buildPromptBlocks(recovery + text, attachments, resolveProjectPath(slug, 'uploads'));
+    promptBlocks.unshift({ type: 'text', text: require('./response-summary-format').RESPONSE_SUMMARY_INSTRUCTION });
 
     // [debug] 多模态附件排查：打印附件概况与 block 详情
     if (Array.isArray(attachments) && attachments.length > 0) {
@@ -3839,16 +3977,23 @@ ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments }) => {
 
     const promptSid = meta.sessionId;
     promptingSessions.add(promptSid);
+    promptOwners.set(promptSid, slug);
+    promptChannels.set(promptSid, { channel, requestId });
     let result;
     try {
-      result = await acp.request('session/prompt', {
+      result = await client.request('session/prompt', {
         sessionId: promptSid,
         prompt: promptBlocks,
       }, 3_600_000); // 60 min timeout
     } finally {
       promptingSessions.delete(promptSid);
+      promptOwners.delete(promptSid);
+      promptChannels.delete(promptSid);
+      cancelledKnowledgeRequests.delete(`${slug}:${requestId}`);
     }
 
+
+    sessions.didRespond(client, promptSid);
 
     // Refresh outputs after AI may have written files
     const outputs = computeProjectOutputs(slug);
@@ -3861,6 +4006,9 @@ ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments }) => {
     throw new Error(`Prompt failed: ${err.message}`);
   }
 });
+
+require('./coach-speech').registerCoachSpeech({ ipcMain, app, getConfig: parseEnvConfig });
+require('./coach-reply').registerCoachReply({ ipcMain, app, getConfig: parseEnvConfig, getInstructions: () => { const file = resolveSkillPath('fde-coach', 'SKILL.md'); return fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : ''; } });
 
 // 语音转文字：录音 base64 → 360 ASR（volcengine/asr-turbo）→ 识别文本
 // 360 ASR 接受内联 base64 音频（extra_body.audio.data，无 data: 前缀），无需公网 URL。
@@ -4490,12 +4638,15 @@ ipcMain.handle('hermes:generate-suggestions', async (_event, { userMessage, aiRe
   return { suggestions: lines.slice(0, 3) };
 });
 
-ipcMain.handle('hermes:cancel', async (_event, slug) => {
+ipcMain.handle('hermes:cancel', async (_event, input) => {
   try {
+    const { slug, channel = 'main', requestId } = typeof input === 'string' ? { slug: input } : input || {};
+    if (channel === 'knowledge' && requestId) cancelledKnowledgeRequests.add(`${slug}:${requestId}`);
     const meta = readProjectMeta(slug);
-    if (!meta || !meta.sessionId) return;
-    if (!acp) return;
-    acp.notify('session/cancel', { sessionId: meta.sessionId });
+    const sessionId = channel === 'knowledge' ? meta?.knowledgeSessionId : meta?.sessionId;
+    if (!sessionId || !acp) return;
+    if (requestId && promptChannels.get(sessionId)?.requestId !== requestId) return;
+    acp.notify('session/cancel', { sessionId });
   } catch (err) {
     console.error('[main] Cancel error:', err.message);
   }
@@ -4505,7 +4656,7 @@ ipcMain.handle('hermes:read-file', async (_event, { slug, relativePath }) => {
   try {
     const filePath = resolveProjectPath(slug, relativePath);
     const content = fs.readFileSync(filePath, 'utf-8');
-    return { success: true, content };
+    return { success: true, content, token: require('./project-integrity').digest(content) };
   } catch (err) {
     return { success: false, error: err.message };
   }
@@ -4535,14 +4686,15 @@ ipcMain.handle('hermes:read-file-data-uri', async (_event, { slug, relativePath 
   }
 });
 
-ipcMain.handle('hermes:write-file', async (_event, { slug, relativePath, content }) => {
+ipcMain.handle('hermes:write-file', async (_event, { slug, relativePath, content, expectedContent }) => {
   try {
     const filePath = resolveProjectPath(slug, relativePath);
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(filePath, content, 'utf-8');
+    require('./project-integrity').write(resolveProjectPath(slug),relativePath,content,expectedContent);
+    if (!relativePath.startsWith('.fde-flow/')) recordProjectFile(slug, relativePath);
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
@@ -4597,6 +4749,7 @@ ipcMain.handle('hermes:list-files', async (_event, { slug, dir, recursive }) => 
 
     const files = walk(targetDir, '').map((f) => ({
       ...f,
+      mtimeMs: fs.statSync(path.join(targetDir, f.relPath)).mtimeMs,
       // path 保持相对项目根，兼容既有调用（如 prototype/xxx）
       path: path.join(baseDir, f.relPath).replace(/\\/g, '/'),
     }));
@@ -4851,43 +5004,6 @@ async function markdownToDocxBuffer(mdContent, baseDir) {
   return Packer.toBuffer(doc);
 }
 
-function getMdExportScriptPath() {
-  const candidates = [
-    path.join(SKILLS_DIR, 'md-export', 'export.py'),
-    app.isPackaged
-      ? path.join(process.resourcesPath, 'skills', 'md-export', 'export.py')
-      : path.join(app.getAppPath(), 'skills', 'md-export', 'export.py'),
-  ];
-  return candidates.find((p) => fs.existsSync(p));
-}
-
-function runPythonScript(scriptPath, args, options = {}) {
-  const candidates = process.platform === 'win32' ? ['python', 'py'] : ['python3', 'python'];
-  let lastError = null;
-  const run = (cmd) => new Promise((resolve, reject) => {
-    const proc = spawn(cmd, [scriptPath, ...args], {
-      cwd: options.cwd || path.dirname(scriptPath),
-      env: options.env || process.env,
-      windowsHide: true,
-    });
-    let stdout = '';
-    let stderr = '';
-    proc.stdout?.on('data', (d) => { stdout += d.toString(); });
-    proc.stderr?.on('data', (d) => { stderr += d.toString(); });
-    proc.on('error', reject);
-    proc.on('close', (code) => {
-      if (code === 0) resolve({ stdout, stderr });
-      else reject(new Error((stderr || stdout || `python exited with code ${code}`).trim()));
-    });
-  });
-  return candidates.reduce((promise, cmd) => promise.catch(async (err) => {
-    lastError = err;
-    return run(cmd);
-  }), Promise.reject(new Error('start'))).catch((err) => {
-    throw lastError && lastError.message !== 'start' ? lastError : err;
-  });
-}
-
 // 交付物 md 自动转存同名 .docx（阶段②③工作台：md 是可编辑源，docx 是交付成品）。
 // relativePath 传 md 的项目内相对路径，产出同目录同名 .docx。
 ipcMain.handle('hermes:md-to-docx', async (_event, { slug, relativePath }) => {
@@ -4897,24 +5013,38 @@ ipcMain.handle('hermes:md-to-docx', async (_event, { slug, relativePath }) => {
     const mdContent = fs.readFileSync(mdPath, 'utf-8');
     if (!mdContent.trim()) return { success: false, error: 'empty markdown' };
 
-    // 统一使用内置技能 md-export 生成 Word，保证交付物 Word 样式与技能库一致。
     const docxPath = mdPath.replace(/\.md$/i, '') + '.docx';
-    const scriptPath = getMdExportScriptPath();
-    if (!scriptPath) return { success: false, error: 'md-export skill not found' };
-
-    await runPythonScript(scriptPath, [mdPath, '--to', 'word', '--out', docxPath], {
-      cwd: path.dirname(mdPath),
-      env: { ...process.env, PYTHONUTF8: '1' },
-    });
+    const {markdownHtml, htmlToWord} = require('./handbook-word');
+    fs.writeFileSync(docxPath, await htmlToWord(await markdownHtml(mdContent), path.dirname(mdPath)));
 
     const docxRel = relativePath.replace(/\.md$/i, '') + '.docx';
-    return { success: true, path: docxPath, relativePath: docxRel, exporter: 'md-export' };
+    return { success: true, path: docxPath, relativePath: docxRel, exporter: 'native-word' };
   } catch (err) {
     return { success: false, error: err.message };
   }
 });
 
 // 读取项目内 docx 并转成 HTML 供右侧面板预览（mammoth：Word → HTML 快照）。
+ipcMain.handle('hermes:backup-project',async(_event,slug)=>{try{const selection=await dialog.showSaveDialog(mainWindow,{title:'备份整个项目',defaultPath:slug+'-项目备份.zip',filters:[{name:'项目备份',extensions:['zip']}]});if(selection.canceled)return {success:true,canceled:true};await require('./project-integrity').backup(resolveProjectPath(slug),selection.filePath);return {success:true};}catch(e){return {success:false,error:e.message};}});
+ipcMain.handle('hermes:restore-project',async(_event,slug)=>{try{const selection=await dialog.showOpenDialog(mainWindow,{title:'恢复项目备份',properties:['openFile'],filters:[{name:'项目备份',extensions:['zip']}]});if(selection.canceled)return {success:true,canceled:true};const confirmation=await dialog.showMessageBox(mainWindow,{type:'question',buttons:['取消','恢复'],defaultId:0,cancelId:0,message:'恢复项目到所选备份？',detail:'当前项目将完整保留在恢复前备份中。'});if(confirmation.response!==1)return {success:true,canceled:true};const previousBackup=await require('./project-integrity').restoreBackup(resolveProjectPath(slug),selection.filePaths[0],path.join(PRODUCT_LOBSTER_HOME,'project-backups'));return {success:true,previousBackup};}catch(e){return {success:false,error:e.message};}});
+
+ipcMain.handle('hermes:file-history',async(_event,{slug,relativePath})=>{try{resolveProjectPath(slug,relativePath);return {success:true,versions:require('./project-integrity').versions(resolveProjectPath(slug),relativePath)};}catch(e){return {success:false,error:e.message};}});
+ipcMain.handle('hermes:restore-file-version',async(_event,{slug,relativePath,id,token})=>{try{resolveProjectPath(slug,relativePath);const content=require('./project-integrity').restore(resolveProjectPath(slug),relativePath,id,token);recordProjectFile(slug,relativePath);return {success:true,content};}catch(e){return {success:false,error:e.message};}});
+
+ipcMain.handle('hermes:preview-material', async (_event, {slug,relativePath}) => {
+  try {const target=resolveProjectPath(slug,relativePath),ext=path.extname(target).slice(1).toLowerCase();let document;
+    if(ext==='docx')document={format:'html',content:(await require('mammoth').convertToHtml({path:target})).value};
+    else if(ext==='md')document={format:'html',content:await require('./handbook-word').markdownHtml(fs.readFileSync(target,'utf8'))};
+    else document=await require('./material-preview').previewFile(target,ext,path.join(PRODUCT_LOBSTER_HOME,'material-previews'));
+    if(document.format==='file')document.url=await readyMediaUrl(document.path);
+    return {success:true,document:{...document,ext}};
+  }catch(e){return {success:false,error:e.message};}
+});
+ipcMain.handle('hermes:knowledge-passages', async (_event, {slug,relativePath,query}) => {
+  try {const target=resolveProjectPath(slug,relativePath),ext=path.extname(target).slice(1).toLowerCase();const {extractFileText,retrievePassages}=require('./knowledge-retrieval');const extracted=await extractFileText(target,ext);return {success:true,result:{...extracted,passages:retrievePassages(extracted.text||'',query)}};}
+  catch(e){return {success:false,error:e.message};}
+});
+
 ipcMain.handle('hermes:docx-preview', async (_event, { slug, relativePath }) => {
   try {
     const abs = resolveProjectPath(slug, relativePath);
@@ -4947,13 +5077,9 @@ ipcMain.handle('hermes:export-word', async (_event, { slug }) => {
 
     if (canceled || !filePath) return { success: false, canceled: true };
 
-    const scriptPath = getMdExportScriptPath();
-    if (!scriptPath) return { success: false, error: 'md-export skill not found' };
-    await runPythonScript(scriptPath, [specPath, '--to', 'word', '--out', filePath], {
-      cwd: path.dirname(specPath),
-      env: { ...process.env, PYTHONUTF8: '1' },
-    });
-    return { success: true, path: filePath, exporter: 'md-export' };
+    const {markdownHtml, htmlToWord} = require('./handbook-word');
+    fs.writeFileSync(filePath, await htmlToWord(await markdownHtml(mdContent), path.dirname(specPath)));
+    return { success: true, path: filePath, exporter: 'native-word' };
   } catch (err) {
     return { success: false, error: err.message };
   }

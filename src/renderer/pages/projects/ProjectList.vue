@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-1 overflow-y-auto p-8">
+  <div class="flex-1 overflow-y-auto p-8 bg-white">
     <PageHero
       class="mb-8"
       title="我的 FDE 产品项目"
@@ -10,6 +10,7 @@
       image-class="page-hero__image--center"
     >
       <template #actions>
+        <RouterLink to="/project-management" class="btn-sm-pri"><i class="fa-solid fa-chart-simple"></i>项目管理</RouterLink>
         <RouterLink to="/projects/new" class="btn-sm-pri">
           <i class="fa-solid fa-plus"></i>新建项目
         </RouterLink>

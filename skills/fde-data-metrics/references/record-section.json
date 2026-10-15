@@ -1,0 +1,50 @@
+{
+  "stage3": {
+    "dataMetrics": {
+      "document": "stage3/data-metric.md",
+      "globalRules": {
+        "filter": "",
+        "dedup": "",
+        "time": "",
+        "unitPrecision": "",
+        "access": ""
+      },
+      "datasets": [
+        {
+          "id": "",
+          "name": "",
+          "type": "",
+          "sourceSystem": "",
+          "grainKey": "",
+          "updateFrequency": "",
+          "owner": "",
+          "standardVersion": "",
+          "sql": "",
+          "fieldDetails": [
+            {
+              "code": "",
+              "source": "",
+              "type": "",
+              "sensitivity": "",
+              "access": ""
+            }
+          ]
+        }
+      ],
+      "metrics": [
+        {
+          "id": "",
+          "name": "",
+          "type": "",
+          "datasetIds": [],
+          "calculation": "",
+          "sourceTableFields": "",
+          "sql": "",
+          "exampleValue": "",
+          "owner": ""
+        }
+      ],
+      "reviewEvidence": ""
+    }
+  }
+}

@@ -1,0 +1,153 @@
+<h1>A/B 测试规范</h1>
+<h2>一、A/B 测试目的</h2>
+<p>对比不同方案的效果，挑最优方案，确保智能体准确率达标。</p>
+<h2>二、测试维度</h2>
+<table>
+<thead>
+<tr>
+<th>测试项</th>
+<th>说明</th>
+<th>示例</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>提示词写法</td>
+<td>不同 Prompt 的效果对比</td>
+<td>方案A：整段生成；方案B：逐条应答</td>
+</tr>
+<tr>
+<td>工作流编排</td>
+<td>不同流程的效率对比</td>
+<td>方案A：串行执行；方案B：并行执行</td>
+</tr>
+<tr>
+<td>知识库范围</td>
+<td>不同知识库的准确率对比</td>
+<td>方案A：只查内部库；方案B：查内部+外部库</td>
+</tr>
+<tr>
+<td>Skill 配置</td>
+<td>不同 Skill 的效果对比</td>
+<td>方案A：用标准 Skill；方案B：用自研 Skill</td>
+</tr>
+</tbody></table>
+<h2>三、测试流程</h2>
+<table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>步骤一：定义测试项</td>
+<td>明确要测试哪个维度</td>
+</tr>
+<tr>
+<td>步骤二：设计方案 A/B</td>
+<td>设计两个对比方案</td>
+</tr>
+<tr>
+<td>步骤三：准备测试数据</td>
+<td>准备真实业务数据，至少 10 个测试用例</td>
+</tr>
+<tr>
+<td>步骤四：执行测试</td>
+<td>分别用方案 A/B 执行测试用例</td>
+</tr>
+<tr>
+<td>步骤五：记录结果</td>
+<td>记录准确率、响应时间、优缺点</td>
+</tr>
+<tr>
+<td>步骤六：分析对比</td>
+<td>对比两个方案的效果，选择最优方案</td>
+</tr>
+<tr>
+<td>步骤七：记录决策</td>
+<td>记录选择理由，供后续参考</td>
+</tr>
+</tbody></table>
+<h2>四、测试模板</h2>
+<table>
+<thead>
+<tr>
+<th>测试项</th>
+<th>方案 A</th>
+<th>方案 B</th>
+<th>哪个好、为什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>废标项提取</td>
+<td>只提&quot;废标&quot;字样</td>
+<td>提&quot;应/必须/否则&quot;全部强制词</td>
+<td>B——A漏了很多隐性强制项，B宁多勿漏更安全</td>
+</tr>
+<tr>
+<td>应答生成粒度</td>
+<td>整段生成</td>
+<td>逐条对应评分点生成</td>
+<td>B——评审是逐条打分的，逐条应答不漏分</td>
+</tr>
+<tr>
+<td>案例匹配</td>
+<td>关键词匹配</td>
+<td>语义匹配+相似度标注</td>
+<td>B——语义匹配更准，还能标&quot;需核实相似度&quot;</td>
+</tr>
+</tbody></table>
+<h2>五、测试用例准备</h2>
+<table>
+<thead>
+<tr>
+<th>用例编号</th>
+<th>测试场景</th>
+<th>输入数据</th>
+<th>期望输出</th>
+<th>方案A结果</th>
+<th>方案B结果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>TC001</td>
+<td>招标文件解析-标准格式</td>
+<td>标准招标文件</td>
+<td>提取评分点、资质要求</td>
+<td>通过</td>
+<td>通过</td>
+</tr>
+<tr>
+<td>TC002</td>
+<td>招标文件解析-OCR失败</td>
+<td>模糊扫描件</td>
+<td>提示&quot;OCR失败&quot;</td>
+<td>失败</td>
+<td>通过</td>
+</tr>
+<tr>
+<td>TC003</td>
+<td>招标文件解析-格式错误</td>
+<td>非标准格式</td>
+<td>提示&quot;格式错误&quot;</td>
+<td>失败</td>
+<td>通过</td>
+</tr>
+</tbody></table>
+<h2>六、上线门禁</h2>
+<p>用真实业务数据评测，准确率达标才能上线：</p>
+<ul>
+<li><input disabled="" type="checkbox"> 准确率 ≥90%（或场景约定值）</li>
+<li><input disabled="" type="checkbox"> 边界处理正确（高风险场景转人工）</li>
+<li><input disabled="" type="checkbox"> 异常兜底到位（数据缺失/歧义有兜底）</li>
+<li><input disabled="" type="checkbox"> 业务专家签字确认</li>
+</ul>
+<h2>七、记录要求</h2>
+<p>每次 A/B 测试必须记录：</p>
+<ul>
+<li>测试日期、测试人员</li>
+<li>测试项、方案A、方案B</li>
+<li>测试用例数量、通过率</li>
+<li>最终选择、选择理由</li>
+<li>业务方签字</li>
+</ul>

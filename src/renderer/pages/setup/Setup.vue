@@ -207,15 +207,11 @@
             <div v-if="showAdvancedGateway" class="mb-4 p-3 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
               <div class="flex items-center gap-2">
                 <label class="w-20 text-[12px] text-slate-600">协议</label>
-                <select v-model="apiMode" class="flex-1 px-2.5 py-2 rounded-lg border border-slate-200 text-[12px] bg-white">
-                  <option value="auto">自动识别</option><option value="chat_completions">OpenAI Chat</option><option value="codex_responses">OpenAI Responses</option><option value="anthropic_messages">Anthropic Messages</option>
-                </select>
+                <UiSelect field v-model="apiMode" class="flex-1 px-2.5 py-2 rounded-lg border border-slate-200 text-[12px] bg-white" :options="[{ value: 'auto', label: '自动识别' }, { value: 'chat_completions', label: 'OpenAI Chat' }, { value: 'codex_responses', label: 'OpenAI Responses' }, { value: 'anthropic_messages', label: 'Anthropic Messages' }]" />
               </div>
               <div class="flex items-center gap-2">
                 <label class="w-20 text-[12px] text-slate-600">认证</label>
-                <select v-model="authMode" class="flex-1 px-2.5 py-2 rounded-lg border border-slate-200 text-[12px] bg-white">
-                  <option value="bearer">Authorization Bearer</option><option value="x-api-key">x-api-key</option><option value="custom">自定义 Header</option>
-                </select>
+                <UiSelect field v-model="authMode" class="flex-1 px-2.5 py-2 rounded-lg border border-slate-200 text-[12px] bg-white" :options="[{ value: 'bearer', label: 'Authorization Bearer' }, { value: 'x-api-key', label: 'x-api-key' }, { value: 'custom', label: '自定义 Header' }]" />
               </div>
               <div v-for="(h, i) in extraHeaders" :key="i" class="flex items-center gap-2">
                 <input v-model="h.name" placeholder="Header 名称" class="w-28 px-2.5 py-2 rounded-lg border border-slate-200 text-[12px]" />
@@ -244,15 +240,7 @@
             <div class="mb-4 rounded-2xl border border-slate-200/80 bg-white/60 p-3">
               <div class="flex items-center gap-2">
                 <label class="text-[12px] font-medium text-slate-600 shrink-0">默认模型</label>
-                <select
-                  v-model="testModel"
-                  @change="setDefaultModel(testModel)"
-                  :disabled="!selectedModels.length"
-                  class="min-w-0 flex-1 appearance-none px-3 py-2 rounded-xl border border-slate-200 bg-white text-[12px] text-slate-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono"
-                >
-                  <option value="" disabled>先获取或添加模型</option>
-                  <option v-for="m in selectedModels" :key="m" :value="m">{{ m }}</option>
-                </select>
+                <UiSelect field v-model="testModel" @change="setDefaultModel(testModel)" :disabled="!selectedModels.length" class="min-w-0 flex-1 appearance-none px-3 py-2 rounded-xl border border-slate-200 bg-white text-[12px] text-slate-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 font-mono" :options="[{ value: '', label: '先获取或添加模型', disabled: true }, ...(selectedModels).map((m) => ({ value: m, label: String(m) }))]" />
                 <span class="shrink-0 text-[11px] text-slate-400">已选 {{ selectedModels.length }}</span>
                 <button
                   v-if="modelChoices.length"
@@ -350,15 +338,7 @@
               <div class="flex items-center gap-2">
                 <!-- 明确测哪个模型,不默认拿第一个 -->
                 <div class="relative">
-                  <select
-                    v-model="testModel"
-                    :disabled="!selectedModels.length"
-                    class="appearance-none pl-3 pr-7 py-2 rounded-xl border border-slate-200 bg-white text-[12px] text-slate-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 max-w-[190px] font-mono"
-                  >
-                    <option value="" disabled>选择测试模型…</option>
-                    <option v-for="m in selectedModels" :key="m" :value="m">{{ m }}</option>
-                  </select>
-                  <i class="fa-solid fa-chevron-down text-[9px] text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                  <UiSelect field v-model="testModel" :disabled="!selectedModels.length" class="appearance-none pl-3 pr-7 py-2 rounded-xl border border-slate-200 bg-white text-[12px] text-slate-700 disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 max-w-[190px] font-mono" :options="[{ value: '', label: '选择测试模型…', disabled: true }, ...(selectedModels).map((m) => ({ value: m, label: String(m) }))]" />
                 </div>
                 <button
                   @click="testConn"
