@@ -32,6 +32,33 @@ function keysDir() {
   return KEYS_DIR;
 }
 
+// 供诊断用:报告实际使用的密钥目录 + 两个密钥文件是否存在/多大。
+// 「授权文件无效或已损坏(TAMPERED)」几乎都是密钥缺失或不匹配,而错误在
+// 解密/验签里被吞掉了,靠这个把真实原因暴露出来。
+function keyDiagnostics() {
+  const dir = keysDir();
+  const info = (name) => {
+    const p = path.join(dir, name);
+    try {
+      const st = fs.statSync(p);
+      return { path: p, exists: true, bytes: st.size };
+    } catch {
+      return { path: p, exists: false, bytes: 0 };
+    }
+  };
+  const aes = info('aes.key');
+  const pub = info('public_key.pem');
+  let fingerprint = '';
+  try { fingerprint = pubkeyFingerprint(); } catch { /* 公钥缺失时留空 */ }
+  return {
+    dir,
+    resourcesPath: process.resourcesPath || '',
+    aesKey: aes,
+    publicKey: pub,
+    pubkeyFingerprint: fingerprint,
+  };
+}
+
 function loadAesKey() {
   return fs.readFileSync(path.join(keysDir(), 'aes.key')); // 32 字节
 }
@@ -84,4 +111,4 @@ function pubkeyFingerprint() {
   return 'sha256:' + crypto.createHash('sha256').update(loadPublicKeyPem()).digest('hex');
 }
 
-module.exports = { canonicalize, aesGcmDecrypt, decryptLicense, verifyPayload, pubkeyFingerprint, keysDir, loadAesKey };
+module.exports = { canonicalize, aesGcmDecrypt, decryptLicense, verifyPayload, pubkeyFingerprint, keysDir, loadAesKey, keyDiagnostics };
