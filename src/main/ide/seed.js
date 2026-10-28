@@ -71,4 +71,4 @@ async function seedUserSettings(userDataDir, defaults = DEFAULTS) {
   return added;
 }
 
-module.exports = { seedUserSettings };
+module.exports = { seedUserSettings, parseLenient, stripJsonComments };

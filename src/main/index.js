@@ -29,6 +29,8 @@ const ideRuntime = require('./ide');
 
 // 在创建任何窗口之前注册：所有 <webview>（本地 VS Code IDE）只能访问回环地址。
 ideRuntime.hardenWebviews();
+// IDE 把平台网关配置搬给 Claude 插件时，协议判断与设置页/写 config 保持同一套规则。
+ideRuntime.setGatewayModeResolver(normalizeGatewayMode);
 const { conversationSummary } = require('./conversation-summary.js');
 const { createProjectSessions } = require('./project-session.js');
 const licenseVerifier = require('./license/verifier.js');

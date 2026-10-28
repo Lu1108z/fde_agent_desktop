@@ -59,6 +59,8 @@ const validInvokeChannels = new Set([
   'ide:stop',
   'ide:cancel-download',
   'ide:recover',
+  'ide:claude-config',
+  'ide:apply-claude-config',
   'hermes:list-projects',
   'hermes:create-project',
   'hermes:load-project',
@@ -434,6 +436,8 @@ contextBridge.exposeInMainWorld('api', {
     stop() { return invoke('ide:stop'); },
     cancelDownload() { return invoke('ide:cancel-download'); },
     recover() { return invoke('ide:recover'); },
+    claudeConfig() { return invoke('ide:claude-config'); },
+    applyClaudeConfig(enabled) { return invoke('ide:apply-claude-config', { enabled }); },
     onStatus(handler) { return on('ide:status', handler); },
   },
 

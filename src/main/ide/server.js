@@ -12,6 +12,7 @@ const { discoverLocalVscode, spawnLocalVscode } = require('./local-vscode');
 const { prepareLocale } = require('./locale');
 const { ensureBundledExtensions } = require('./extensions');
 const { seedUserSettings } = require('./seed');
+const claudeBridge = require('./claude-bridge');
 const prefs = require('./prefs');
 const paths = require('./paths');
 
@@ -194,6 +195,8 @@ async function startCodeServer(workspacePath, onProgress) {
   });
 
   await seedUserSettings(paths.serverDataDir()).catch(() => {});
+  // 启动时按开关对账一次：用户改过网关地址/模型后不至于还用着旧配置。
+  await claudeBridge.syncOnStart(paths.serverDataDir());
   emit({ locale: i18n.locale, warning: [i18n.warning, ext.warning].filter(Boolean).join(' ') || null });
 
   const port = await pickPort('code-server');
@@ -267,6 +270,7 @@ async function startLocalVscode(cli, workspacePath) {
     userDataDir,
   });
   await seedUserSettings(userDataDir).catch(() => {});
+  await claudeBridge.syncOnStart(userDataDir);
   emit({ locale: i18n.locale, warning: [i18n.warning, ext.warning].filter(Boolean).join(' ') || null });
 
   const port = await pickPort('local-vscode');

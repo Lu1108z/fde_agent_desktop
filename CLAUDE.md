@@ -35,6 +35,7 @@ Hermes agent 桌面版（Electron + Vue 3 + Vite）。前端在 `src/renderer`�
 - `seed.js`：首次补写 `User/settings.json`（`secondarySideBar.defaultVisibility=hidden`、`security.workspace.trust.enabled=false`、**`chat.disableAIFeatures=true`** 关掉 VS Code 自带 AI），已有的键不动。
 - `cli.js`：调 `--install-extension` 的统一入口（code-server 走 `lib/node <dir>`，本机 VS Code 直接调 CLI）。
 - `extensions.js`：**预装 Claude Code**（`Anthropic.claude-code`）。缺了才装、失败只提示不阻断；有随包 vsix（`resources/extensions/claude-code-<targetPlatform>.vsix`）就离线装，否则走 Open VSX。
+- `claude-bridge.js`：可选开关，把平台网关配置搬给 Claude 插件（写 IDE 自己的 `User/settings.json` 的 `claudeCode.environmentVariables`，**不碰用户的 `~/.claude/settings.json`**）。Claude 只会 Anthropic Messages 协议，所以只在 `apiMode=anthropic_messages` 时才写；OpenAI 协议一律不写、回 `protocol-mismatch`。baseUrl 必须剥掉尾部 `/v1`（Claude 自己拼 `/v1/messages`）。协议判断由主进程注入的 `normalizeGatewayMode` 提供，保证与设置页一致。
 - `prefs.js`：后端偏好与各后端上次端口（`preferences.json` 的 `backend` / `ports`）；只有用户显式切换才落盘，回退不算。
 - `local-vscode.js`：探测本机 `code serve-web` 作为可选后端（`FDE_IDE_BACKEND=local-vscode` 可强制）。**它不认 `--disable-workspace-trust`，传了会直接退出**；目录布局也不同（`<server-data-dir>/data` + `/extensions`），单独用 `ide/vscode-server-data`。
 - `index.js`：注册 `ide:*` IPC、webview 安全策略，并给 IDE 的 webview 会话（`persist:fde-vscode`）补 `Accept-Language: zh-cn`——本机 serve-web 后端只靠这个取语言。`ide:recover` 是空白页自救（清该 session 缓存+存储），只清缓存无效。

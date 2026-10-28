@@ -30,6 +30,16 @@ function extensionsDir() {
   return path.join(ideRoot(), 'extensions');
 }
 
+/**
+ * 某个后端真正的 --user-data-dir（其下 User/settings.json 才是该后端的用户设置）。
+ * 两者布局不同，写设置时必须按后端取对目录。
+ */
+function backendUserDataDir(backend) {
+  return backend === 'local-vscode'
+    ? path.join(localServerDataDir(), 'data')
+    : serverDataDir();
+}
+
 function logsDir() {
   return path.join(ideRoot(), 'logs');
 }
@@ -50,6 +60,7 @@ module.exports = {
   serverDataDir,
   localServerDataDir,
   extensionsDir,
+  backendUserDataDir,
   logsDir,
   logFile,
   prefsFile,

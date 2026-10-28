@@ -94,6 +94,20 @@ function localeAttemptFresh(ttlMs = 24 * 60 * 60 * 1000) {
   return at > 0 && Date.now() - at < ttlMs;
 }
 
+/**
+ * 是否让 FDE Code 里的 Claude 插件复用平台 AI 网关配置。
+ * 默认关闭：这是可选增强，用户没主动开就按 Claude 插件原本的行为走。
+ */
+function claudeBridgeEnabled() {
+  return readPrefs().claudeBridge === true;
+}
+
+function rememberClaudeBridge(enabled) {
+  const prefs = readPrefs();
+  if (prefs.claudeBridge === !!enabled) return;
+  writePrefs({ ...prefs, claudeBridge: !!enabled });
+}
+
 module.exports = {
   BACKENDS,
   DEFAULT_BACKEND,
@@ -103,4 +117,6 @@ module.exports = {
   localeAttemptFresh,
   savedPort,
   rememberPort,
+  claudeBridgeEnabled,
+  rememberClaudeBridge,
 };

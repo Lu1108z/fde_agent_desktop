@@ -398,6 +398,62 @@
         </div>
       </div>
 
+      <!-- FDE Code 的 Claude 插件：复用平台网关 -->
+      <div class="glass-card rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+            <i class="fa-solid fa-terminal text-blue-700"></i>
+          </div>
+          <h2 class="font-semibold text-slate-800">FDE Code 的 Claude 插件</h2>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">
+          FDE Code 默认预装 Claude Code 扩展。开启后，扩展直接复用上面选中的平台网关，无需另外登录 Anthropic 账号。
+        </p>
+
+        <div class="flex items-center justify-between gap-4 p-3 rounded-xl border border-slate-200">
+          <div class="min-w-0">
+            <div class="text-sm text-slate-700 font-medium">复用平台 AI 配置</div>
+            <div class="text-xs text-slate-500 mt-0.5">默认关闭；关闭时保持 Claude 插件原有行为，不会改动任何设置。</div>
+          </div>
+          <button
+            role="switch"
+            :aria-checked="claudeEnabled ? 'true' : 'false'"
+            :disabled="claudeBusy"
+            @click="toggleClaudeBridge"
+            class="relative shrink-0 w-11 h-6 rounded-full transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default"
+            :class="claudeEnabled ? 'bg-primary' : 'bg-slate-300'"
+            :title="claudeEnabled ? '点击关闭' : '点击开启'"
+          >
+            <span
+              class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
+              :class="claudeEnabled ? 'translate-x-5' : 'translate-x-0'"
+            ></span>
+          </button>
+        </div>
+
+        <!-- 状态行：说清楚「开了到底生效没有」，不兼容时明确不可用 -->
+        <div v-if="claudeStatus" class="mt-3 text-xs leading-relaxed">
+          <span v-if="!claudeStatus.enabled" class="text-slate-500">
+            <i class="fa-solid fa-circle-info mr-1"></i>未启用
+          </span>
+          <span v-else-if="claudeStatus.reason === 'no-gateway'" class="text-amber-700">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i>平台还没有配置任何网关，先在上方「AI 模型配置」里添加一个。
+          </span>
+          <span v-else-if="!claudeStatus.compatible" class="text-amber-700">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+            当前网关是 {{ claudeModeLabel(claudeStatus.apiMode) }} 协议，Claude 插件只支持 Anthropic Messages 协议，无法直连。
+            已保持原样、未写入配置；可改用 Anthropic 协议的网关，或继续在插件里自行登录。
+          </span>
+          <span v-else-if="claudeStatus.applied" class="text-emerald-700">
+            <i class="fa-solid fa-circle-check mr-1"></i>
+            已生效：{{ claudeStatus.profileName || '当前网关' }}<template v-if="claudeStatus.model">，模型 {{ claudeStatus.model }}</template>
+          </span>
+          <span v-else class="text-amber-700">
+            <i class="fa-solid fa-triangle-exclamation mr-1"></i>已开启但未能写入配置{{ claudeError ? `：${claudeError}` : '' }}
+          </span>
+        </div>
+      </div>
+
       <!-- MCP Servers -->
       <div class="glass-card rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
         <div class="flex items-center gap-3 mb-4">
@@ -893,7 +949,63 @@ const saving = ref(false);
 const saveStatus = ref(''); // '' | 'success' | 'error'
 const saveMsg = ref('');
 
+// FDE Code 的 Claude 插件：是否复用平台网关。
+// 状态完全由主进程给出（它知道网关协议、也知道设置里实际写了什么），
+// 渲染层不自己推断，避免界面说"已生效"而插件其实连不上。
+const claudeStatus = ref(null);
+const claudeBusy = ref(false);
+const claudeError = ref('');
+const claudeEnabled = computed(() => !!(claudeStatus.value && claudeStatus.value.enabled));
+
+function claudeModeLabel(mode) {
+  if (mode === 'chat_completions') return 'OpenAI（chat/completions）';
+  if (mode === 'codex_responses') return 'OpenAI（responses）';
+  return mode || '其它';
+}
+
+async function refreshClaudeStatus() {
+  if (!window.api || !window.api.ide || !window.api.ide.claudeConfig) return;
+  try {
+    claudeStatus.value = await window.api.ide.claudeConfig();
+  } catch (_) {
+    return;
+  }
+  const s = claudeStatus.value;
+  // 换了网关档案 / 改了地址后，设置里写的还是旧配置：静默按新网关重同步一次。
+  if (s && s.enabled && s.compatible && !s.applied) {
+    try {
+      const r = await window.api.ide.applyClaudeConfig(true);
+      if (r && r.success && r.status) claudeStatus.value = r.status;
+    } catch (_) { /* 保持当前状态，下次进入设置页再试 */ }
+  }
+}
+
+async function toggleClaudeBridge() {
+  if (claudeBusy.value) return;
+  claudeBusy.value = true;
+  claudeError.value = '';
+  const next = !claudeEnabled.value;
+  try {
+    const r = await window.api.ide.applyClaudeConfig(next);
+    if (!r || !r.success) throw new Error((r && r.error) || '操作失败');
+    claudeStatus.value = r.status || claudeStatus.value;
+  } catch (e) {
+    claudeError.value = e.message || '操作失败';
+    await refreshClaudeStatusWithoutSync();
+  } finally {
+    claudeBusy.value = false;
+  }
+}
+
+async function refreshClaudeStatusWithoutSync() {
+  try { claudeStatus.value = await window.api.ide.claudeConfig(); } catch (_) { }
+}
+
+// 切换/启用网关后会改变协议结论，状态行要跟着变（并在需要时重同步配置）。
+watch(activeId, () => { refreshClaudeStatus(); });
+
 onMounted(async () => {
+  refreshClaudeStatus();
   // Load app version
   if (window.api && window.api.app) {
     try {

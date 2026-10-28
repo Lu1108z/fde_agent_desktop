@@ -1,7 +1,11 @@
 'use strict';
 
 const { app, ipcMain, session } = require('electron');
+const fs = require('fs');
 const server = require('./server');
+const paths = require('./paths');
+const prefs = require('./prefs');
+const claudeBridge = require('./claude-bridge');
 const { LOCALE } = require('./locale');
 
 const PARTITION = 'persist:fde-vscode';
@@ -112,10 +116,38 @@ function registerIdeIpc() {
     server.cancelDownload();
     return { success: true };
   });
+
+  // Claude 插件复用平台网关配置（可选，默认关闭）。
+  ipcMain.handle('ide:claude-config', async () => {
+    return claudeBridge.describe(paths.backendUserDataDir(prefs.resolveBackend()));
+  });
+
+  ipcMain.handle('ide:apply-claude-config', async (_event, { enabled } = {}) => {
+    const on = !!enabled;
+    prefs.rememberClaudeBridge(on);
+    const active = prefs.resolveBackend();
+    try {
+      for (const backend of prefs.BACKENDS) {
+        const dir = paths.backendUserDataDir(backend);
+        // 非当前后端还没初始化过就跳过，不为它凭空建一套没人用的目录。
+        if (backend !== active && !fs.existsSync(dir)) continue;
+        await claudeBridge.syncClaudeConfig({ userDataDir: dir }, { enabled: on });
+      }
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+    const status = await claudeBridge.describe(paths.backendUserDataDir(active));
+    return { success: true, status };
+  });
 }
 
 function shutdownIde() {
   server.shutdown();
 }
 
-module.exports = { hardenWebviews, registerIdeIpc, shutdownIde };
+/** 主进程把 normalizeGatewayMode 注入进来，搬运配置时与设置页用同一套协议判断。 */
+function setGatewayModeResolver(fn) {
+  claudeBridge.setModeResolver(fn);
+}
+
+module.exports = { hardenWebviews, registerIdeIpc, shutdownIde, setGatewayModeResolver };
