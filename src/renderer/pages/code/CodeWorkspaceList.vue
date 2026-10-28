@@ -2,7 +2,7 @@
   <div class="flex-1 overflow-y-auto p-8">
     <PageHero
       title="代码工作区"
-      description="打开任意本地文件夹，让 AI 直接读写代码；改动前先展示 diff，由你确认"
+      description="打开任意本地文件夹，在内置 FDE Code 中编辑（支持扩展/终端，已预装 Claude Code），右侧 AI 直接读写代码；改动前先展示 diff，由你确认"
       icon="fa-solid fa-code"
       :image="heroImage"
       image-class="page-hero__image--center"

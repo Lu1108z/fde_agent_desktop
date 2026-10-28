@@ -67,7 +67,7 @@ function fileIcon(name) {
     jsx: 'fa-solid fa-file-code text-blue-400',
     vue: 'fa-solid fa-file-code text-emerald-500',
     py: 'fa-brands fa-python text-blue-400',
-    json: 'fa-solid fa-brackets-curly text-amber-500',
+    json: 'fa-solid fa-file-code text-amber-500',
     html: 'fa-brands fa-html5 text-amber-600',
     css: 'fa-brands fa-css3-alt text-sky-500',
     scss: 'fa-brands fa-sass text-blue-300',

@@ -3,6 +3,7 @@
     <div class="code-workspace-main">
     <!-- Left: file tree -->
     <aside
+      v-if="!ideMode"
       class="code-sidebar"
       :class="{ 'code-sidebar--collapsed': !showTree }"
       :style="sidebarW ? { width: sidebarW + 'px' } : null"
@@ -36,7 +37,7 @@
     </aside>
 
     <aside
-      v-if="!showTree"
+      v-if="!showTree && !ideMode"
       class="code-collapsed-rail code-collapsed-rail--left"
       title="显示文件树"
       @click="showTree = true"
@@ -47,7 +48,7 @@
 
     <!-- 拖拽把手：文件树 / 主区之间 -->
     <div
-      v-if="showTree"
+      v-if="showTree && !ideMode"
       class="code-resizer code-resizer--left"
       :class="{ 'code-resizer--on': draggingPanel === 'sidebar' }"
       title="拖动调整文件树宽度"
@@ -65,10 +66,13 @@
     <section class="code-main code-chat" :class="{ 'code-chat--hidden': !showChat }" :style="previewW ? { width: previewW + 'px', flex: `0 0 ${previewW}px` } : null">
       <div class="code-main-head code-chat-head">
         <div class="flex items-center gap-2 min-w-0">
-          <i class="fa-solid fa-sparkles text-blue-600 text-xs"></i>
+          <i class="fa-solid fa-wand-magic-sparkles text-blue-600 text-xs"></i>
           <span class="text-[13px] font-semibold text-slate-700">AI coding</span>
           <span v-if="selectedFile" class="code-chat-context" :title="selectedFile">{{ selectedFile }}</span>
         </div>
+        <button class="icon-btn code-chat-collapse" title="收起 AI coding 面板" @click="showChat = false">
+          <i class="fa-solid fa-chevron-right text-[11px]"></i>
+        </button>
       </div>
 
       <!-- 会话 tab 栏（多会话，可并行）-->
@@ -231,8 +235,8 @@
       </div>
     </section>
 
-    <!-- Center: editor and terminal stack -->
-    <section class="code-center" :class="{ 'code-center--hidden': !showPreview }">
+    <!-- Center: editor and terminal stack（经典模式） -->
+    <section v-if="!ideMode" class="code-center" :class="{ 'code-center--hidden': !showPreview }">
       <div class="open-file-tabs scrollbar-thin">
         <button
           v-for="file in openFiles"
@@ -261,6 +265,8 @@
             <span v-else-if="selectedFile" class="editor-status">已保存</span>
             <button class="icon-btn" :disabled="!selectedFile" title="保存 (⌘/Ctrl+S)" @click="saveEditor"><i class="fa-solid fa-floppy-disk text-[11px]"></i></button>
             <button class="icon-btn" :disabled="!selectedFile" title="重新读取" @click="reloadFile"><i class="fa-solid fa-arrows-rotate text-[11px]"></i></button>
+            <span class="editor-action-divider"></span>
+            <CodeModeSwitch :model-value="false" @update:model-value="ideMode = $event" />
             <span class="editor-action-divider"></span>
             <div class="layout-controls" aria-label="工作区布局控制">
               <button class="layout-btn" :class="{ 'layout-btn--on': showTree }" :title="showTree ? '隐藏左侧栏' : '显示左侧栏'" @click="showTree = !showTree"><span class="layout-glyph layout-glyph--left"></span></button>
@@ -313,13 +319,21 @@
         ></div>
       </section>
     </section>
+    <CodeIdePane
+      v-else
+      :workspace="workspace"
+      mode="ide"
+      :ai-visible="showChat"
+      @update:mode="ideMode = $event === 'ide'"
+      @toggle-ai="showChat = !showChat"
+    />
     <aside
       v-if="!showChat"
       class="code-collapsed-rail code-collapsed-rail--right"
       title="显示 AI coding"
       @click="showChat = true"
     >
-      <i class="fa-solid fa-sparkles"></i>
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
       <span>AI coding</span>
     </aside>
     <div v-if="entryAction" class="entry-dialog-backdrop" @click.self="entryAction = null">
@@ -355,6 +369,8 @@ import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import FileTree from '@/components/code/FileTree.vue';
 import DiffApprovalDialog from '@/components/code/DiffApprovalDialog.vue';
+import CodeIdePane from '@/components/code/CodeIdePane.vue';
+import CodeModeSwitch from '@/components/code/CodeModeSwitch.vue';
 import { useChatComposer } from '@/composables/useChatComposer';
 import { marked } from 'marked';
 import { useTheme } from '@/composables/useTheme.js';
@@ -411,13 +427,24 @@ const stopReasonLabel = (r) => {
 };
 
 const workspace = ref(null);
+// 默认使用内置 FDE Code（编辑器内核为 VS Code）；经典模式保留自研编辑器/终端，便于回滚与低配环境。
+// 模式与 AI 面板显隐记在 localStorage，下次进工作区保持上次的选择。
+const STORAGE_MODE = 'fde-code-mode';
+const STORAGE_AI = 'fde-code-ai-visible';
+const readFlag = (key, fallback) => {
+  try {
+    const v = localStorage.getItem(key);
+    return v == null ? fallback : v === '1';
+  } catch { return fallback; }
+};
+const ideMode = ref(readFlag(STORAGE_MODE, true));
 const tree = ref([]);
 const treeLoading = ref(false);
 const treeTruncated = ref(false);
 const collapsedDirs = ref(new Set());
 const showTree = ref(true);
 const showPreview = ref(true);
-const showChat = ref(true);
+const showChat = ref(readFlag(STORAGE_AI, true));
 const terminalOpen = ref(false);
 const terminalH = ref(240);
 const terminalShell = ref('cmd');
@@ -533,6 +560,10 @@ const handleTerminalData = (payload) => { const record = terminalRecords.value.f
 const handleTerminalExit = (payload) => { const record = terminalRecords.value.find((item) => item.terminalId === payload?.terminalId); if (record) { terminalInstances.get(record.id)?.writeln('\r\n[终端已退出]'); record.terminalId = ''; } };
 watch(theme, () => { const next = terminalTheme(); terminalInstances.forEach((instance) => { instance.options.theme = next; }); });
 watch(terminalShell, async (next, old) => { if (next !== old && activeTerminalId.value) { const record = getTerminalRecord(activeTerminalId.value); if (record) { record.shellId = next; await restartTerminal(); } } });
+// 布局偏好落 localStorage，切页面再回来保持上次的样子。
+const remember = (key, value) => { try { localStorage.setItem(key, value ? '1' : '0'); } catch { /* 隐私模式忽略 */ } };
+watch(ideMode, (v) => remember(STORAGE_MODE, v));
+watch(showChat, (v) => remember(STORAGE_AI, v));
 // 三栏宽度：侧栏/预览支持拖拽调整，拖动后再固定为像素宽
 const sidebarW = ref(0);      // 0 = 用默认 260px
 const previewW = ref(0);      // 0 = 用默认 380px
@@ -1281,6 +1312,8 @@ onUnmounted(() => {
 .code-chat { order: 4; width: 380px; flex: 0 0 380px; min-width: 300px; max-width: 55vw; background: #ffffff; border: 1px solid var(--ui-brand-soft); border-radius: 12px; overflow: hidden; box-shadow: 0 6px 24px hsl(var(--primary) / 5%); }
 .code-chat.code-chat--hidden { display: none !important; }
 .code-chat-head { background: linear-gradient(180deg, #ffffff 0%, var(--ui-brand-soft) 100%); border-bottom-color: var(--ui-brand-soft-2); }
+.code-chat-collapse { margin-left: auto; color: var(--ui-text-3); }
+.code-chat-collapse:hover { color: var(--ui-brand); background: var(--ui-brand-soft); }
 .layout-controls { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; }
 .layout-btn { width: 25px; height: 25px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ui-text-2); cursor: pointer; }
 .layout-btn:hover { background: var(--ui-brand-soft); color: var(--ui-brand); }

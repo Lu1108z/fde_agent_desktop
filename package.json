@@ -9,12 +9,13 @@
     "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
     "start": "node scripts/start-electron.js",
     "build:skills-manifest": "node scripts/build-skills-manifest.js",
+    "fetch:ide-server": "node scripts/fetch-ide-server.js",
     "prebuild:renderer": "node scripts/build-skills-manifest.js",
     "build:renderer": "vite build --config vite.config.js",
     "build:check-license-keys": "node scripts/check-license-keys.js",
     "build:check-engine": "node scripts/check-engine.js",
-    "build:win": "npm run build:renderer && npm run build:check-license-keys && npm run build:check-engine && electron-builder --win portable",
-    "build:mac": "npm run build:renderer && npm run build:check-engine && electron-builder --mac dmg",
+    "build:win": "npm run build:renderer && npm run build:check-license-keys && npm run build:check-engine -- --platform=windows-amd64 && npm run build:check-ide -- --platform=windows-amd64 && electron-builder --win portable",
+    "build:mac": "npm run build:renderer && npm run build:check-engine -- --platform=macos-arm64 && npm run build:check-ide -- --platform=macos-arm64 && electron-builder --mac dmg --arm64",
     "build:hermes": "node scripts/build-hermes.js",
     "build:full": "npm run build:hermes && npm run build:win",
     "build:mac-full": "npm run build:hermes && npm run build:mac",
@@ -23,7 +24,12 @@
     "android:open": "npx cap open android",
     "android:apk": "npm run build:renderer && npx cap sync android && cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleDebug && cd .. && mkdir -p dist && cp android/app/build/outputs/apk/debug/app-debug.apk 'dist/FDE产设大师-android-debug.apk' && echo '✓ APK -> dist/FDE产设大师-android-debug.apk'",
     "android:apk:release": "npm run build:renderer && npx cap sync android && cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleRelease && cd .. && mkdir -p dist && cp android/app/build/outputs/apk/release/app-release.apk 'dist/FDE产设大师-android-release.apk' && echo '✓ APK -> dist/FDE产设大师-android-release.apk'",
-    "build:mac:trial": "node scripts/build-mac-distribution.js"
+    "build:mac:trial": "node scripts/build-mac-distribution.js",
+    "build:check-ide": "node scripts/check-ide-resources.js",
+    "build:ide:mac": "node scripts/fetch-ide-server.js --platform=macos-arm64 --package",
+    "build:ide:mac:x64": "node scripts/fetch-ide-server.js --platform=macos-amd64 --package",
+    "build:ide:win": "node scripts/fetch-ide-server.js --platform=windows-amd64 --package",
+    "build:mac:x64": "npm run build:renderer && npm run build:check-engine -- --platform=macos-amd64 && npm run build:check-ide -- --platform=macos-amd64 && electron-builder --mac dmg --x64"
   },
   "keywords": [
     "ai",
@@ -79,6 +85,18 @@
       {
         "from": "../hermes-agent/dist/hermes-acp",
         "to": "hermes-acp"
+      },
+      {
+        "from": "build/ide-resources/code-server",
+        "to": "code-server"
+      },
+      {
+        "from": "build/ide-resources/language-pack-zh-hans.vsix",
+        "to": "language-pack-zh-hans.vsix"
+      },
+      {
+        "from": "build/ide-resources/extensions",
+        "to": "extensions"
       }
     ],
     "win": {
@@ -105,7 +123,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    }
+    },
+    "npmRebuild": false
   },
   "dependencies": {
     "@capacitor/android": "^6.2.2",
