@@ -25,8 +25,7 @@
           <div class="mb-3 flex items-center justify-between text-[12px] font-semibold text-slate-500"><span>项目空间</span><div class="relative shrink-0">
           <button type="button" style="width:24px;height:24px;border:0;background:transparent" class="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-700" aria-label="更多项目操作" :aria-expanded="projectMenuOpen" @click="projectMenuOpen = !projectMenuOpen"><i class="fa-solid fa-ellipsis"></i></button>
           <div v-if="projectMenuOpen" class="absolute right-0 top-8 z-30 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
-            <button v-if="progressStage > 3 && progressStage < 5" type="button" class="w-full rounded-lg px-3 py-2 text-left text-[12px] text-slate-700 hover:bg-blue-50" :disabled="stageAdvancing || isStreaming || deliverableBusy" @click="projectMenuOpen = false; advanceStage()">{{ stageAdvancing ? '正在推进…' : (progressStage <= 3 ? '回到当前任务' : '完成本阶段，进入下一步') }}</button>
-            <button v-if="progressStage > 3" type="button" class="w-full rounded-lg px-3 py-2 text-left text-[12px] text-slate-700 hover:bg-blue-50" @click="projectMenuOpen=false; openAssessment('stage')">阶段验收</button><button type="button" class="w-full rounded-lg px-3 py-2 text-left text-[12px] text-slate-700 hover:bg-blue-50" @click="projectMenuOpen=false; backupProject()">备份整个项目</button><button type="button" class="w-full rounded-lg px-3 py-2 text-left text-[12px] text-slate-700 hover:bg-blue-50" @click="projectMenuOpen=false; restoreProject()">恢复项目备份</button><button v-if="progressStage===5&&stageStatus[5]!=='done'" type="button" class="w-full rounded-lg px-3 py-2 text-left text-[12px] text-slate-700 hover:bg-blue-50" @click="completeProject">验收并完成项目</button>
+            <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-[12px] text-slate-700 hover:bg-blue-50" @click="projectMenuOpen=false; backupProject()">备份整个项目</button><button type="button" class="w-full rounded-lg px-3 py-2 text-left text-[12px] text-slate-700 hover:bg-blue-50" @click="projectMenuOpen=false; restoreProject()">恢复项目备份</button><button v-if="progressStage===5&&stageStatus[5]!=='done'" type="button" class="w-full rounded-lg px-3 py-2 text-left text-[12px] text-slate-700 hover:bg-blue-50" @click="completeProject">验收并完成项目</button>
           </div>
         </div></div>
           <nav class="space-y-1" aria-label="项目空间">
@@ -36,6 +35,7 @@
 
             <button type="button" class="project-nav-btn" :class="activeTab === 'knowledge' ? 'is-active' : ''" @click="switchNav('knowledge')"><i class="fa-solid fa-folder-open"></i>项目资料</button>
             <button type="button" class="project-nav-btn" :class="activeTab === 'prototype' ? 'is-active' : ''" @click="switchNav('prototype')"><i class="fa-solid fa-window-maximize"></i>项目原型</button>
+            <button type="button" class="project-nav-btn" :class="activeTab === 'experts' ? 'is-active' : ''" @click="switchNav('experts')"><i class="fa-solid fa-user-tie"></i>专家交付</button>
           </nav>
         </div>
         <div class="shrink-0 border-b border-slate-100 px-4 pt-4 pb-3">
@@ -45,23 +45,28 @@
             <input v-model="docSearch" type="search" class="min-w-0 flex-1 bg-transparent text-[13px] text-slate-700 placeholder:text-slate-400 focus:outline-none" placeholder="搜索文档…" aria-label="搜索交付物" />
           </div>
         </div>
-        <div class="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-          <div v-for="stage in FDE_STAGES" :key="stage.id" class="mb-1">
-            <button type="button" class="flex min-h-9 w-full items-center gap-2 rounded-lg px-2 text-left text-[13px] font-medium transition-colors disabled:cursor-not-allowed" :class="stage.id === currentStage ? 'text-blue-700' : stage.id <= progressStage ? 'text-slate-600 hover:bg-white' : 'text-slate-400'" :disabled="stage.id > progressStage" :aria-current="stage.id === currentStage ? 'step' : undefined" :aria-expanded="expandedStageIds.has(stage.id)" @click="handleStageTreeClick(stage.id)">
-              <i class="fa-solid w-3 shrink-0 text-center text-[10px]" :class="expandedStageIds.has(stage.id) ? 'fa-chevron-down' : 'fa-chevron-right'" aria-hidden="true"></i>
-              <span class="min-w-0 flex-1 truncate">阶段{{ stage.id }}　{{ stageDisplayName(stage.id) }}</span>
-              <span v-if="stage.id === progressStage" class="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500"></span>
+        <div class="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+          <ol class="stage-rail" aria-label="项目阶段进度">
+          <li v-for="stage in FDE_STAGES" :key="stage.id" class="stage-node" :class="`is-${stageNodeState(stage.id)}`">
+            <span class="stage-dot" aria-hidden="true"><i v-if="stageNodeState(stage.id) === 'done'" class="fa-solid fa-check"></i><template v-else>{{ stage.id }}</template></span>
+            <button type="button" class="stage-node-btn" :disabled="stage.id > progressStage" :aria-current="stage.id === progressStage ? 'step' : undefined" :aria-expanded="expandedStageIds.has(stage.id)" :title="stageNodeState(stage.id) === 'done' ? '已完成' : stageNodeState(stage.id) === 'active' ? '进行中' : '未开始'" @click="handleStageTreeClick(stage.id)">
+              <span class="shrink-0">阶段{{ stage.id }}</span>
+              <span class="min-w-0 flex-1 truncate">{{ stageDisplayName(stage.id) }}</span>
             </button>
-            <div v-if="expandedStageIds.has(stage.id) && stage.id <= progressStage && filteredStageDeliverables(stage.id).length" class="ml-5 space-y-0.5 pb-2">
-              <button v-for="d in filteredStageDeliverables(stage.id)" :key="d.key" type="button" class="flex min-h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[12.5px] leading-5 transition-colors" :class="currentStage === stage.id && deliverableSelected === d.key && activeTab === 'workspace' ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-white'" @click="selectGroupDeliverable(stage.id, d.key)">
-                <i :class="d.icon" class="w-3 shrink-0 text-center text-[12px] text-slate-400" aria-hidden="true"></i>
+            <div v-if="expandedStageIds.has(stage.id) && stage.id <= progressStage && filteredStageDeliverables(stage.id).length" class="stage-children">
+              <button v-if="!docSearch.trim()" type="button" class="stage-child-btn stage-board-btn" :class="{ 'is-selected': isStageBoardOpen(stage.id) }" :title="`回到阶段${stage.id}的步骤工作台`" @click="openStageBoard(stage.id)"><i class="fa-solid fa-list-check w-3.5 shrink-0 text-center text-[12px]" aria-hidden="true"></i><span class="min-w-0 flex-1 truncate">{{ stage.id === 1 ? '调研工作台' : '步骤工作台' }}</span></button>
+              <button v-for="d in filteredStageDeliverables(stage.id)" :key="d.key" type="button" class="stage-child-btn" :class="{ 'is-selected': currentStage === stage.id && deliverableSelected === d.key && activeTab === 'workspace' && !isStageBoardOpen(stage.id) }" @click="selectGroupDeliverable(stage.id, d.key)">
+                <i :class="d.icon" class="w-3.5 shrink-0 text-center text-[12px]" aria-hidden="true"></i>
                 <span class="min-w-0 flex-1 truncate">{{ d.short || d.name }}</span>
                 <span v-if="deliverableState(stage.id, d.key) === 'ready'" class="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" title="已生成"></span>
               </button>
             </div>
-            <button v-else-if="expandedStageIds.has(stage.id) && stage.id <= progressStage && !deliverablesForStage(stage.id).length && !docSearch.trim()" type="button" class="ml-5 mb-2 flex min-h-8 w-[calc(100%-20px)] items-center gap-2 rounded-lg px-2 text-left text-[12px]" :class="currentStage === stage.id && activeTab === 'workspace' ? 'bg-blue-100 text-blue-700' : 'text-slate-500 hover:bg-white'" @click="viewStage(stage.id)"><i class="fa-regular fa-file-lines w-3 text-center" aria-hidden="true"></i>{{stage.id===1?'资料准备':'阶段说明'}}</button>
-            <p v-else-if="docSearch.trim() && expandedStageIds.has(stage.id) && stage.id <= progressStage && (stage.id === 2 || stage.id === 3)" class="ml-7 py-1 text-[12px] text-slate-400">无匹配文档</p>
-          </div>
+            <div v-else-if="expandedStageIds.has(stage.id) && stage.id <= progressStage && !deliverablesForStage(stage.id).length && !docSearch.trim()" class="stage-children">
+              <button type="button" class="stage-child-btn" :class="{ 'is-selected': isStageBoardOpen(stage.id) }" @click="openStageBoard(stage.id)"><i class="fa-solid fa-list-check w-3.5 shrink-0 text-center" aria-hidden="true"></i>{{stage.id===1?'调研工作台':'步骤工作台'}}</button>
+            </div>
+            <p v-else-if="docSearch.trim() && expandedStageIds.has(stage.id) && stage.id <= progressStage && stage.id > 1" class="stage-children py-1 text-[12px] text-slate-400">无匹配文档</p>
+          </li>
+          </ol>
         </div>
       </aside>
 
@@ -74,15 +79,15 @@
         @mousedown.prevent="startLeftDrag"
       ></div>
 
-    <div ref="projectMainRef" class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" :class="{ 'panel-resizing': assistantPanelDragging && !documentFullscreen }" :style="activeTab === 'workspace' ? { paddingRight: `${mainAssistantPanelCollapsed ? 44 : mainAssistantPanelWidth + 8}px` } : {}">
-    <div v-if="activeTab === 'workspace' && !documentFullscreen && !assistantPanelCollapsed" class="reading-splitter reading-splitter-normal" :class="{ 'is-dragging': assistantPanelDragging }" :style="{ right: `${assistantPanelWidth}px` }" role="separator" aria-label="调整文档与对话宽度" aria-orientation="vertical" tabindex="0" :aria-valuenow="assistantPanelWidth" :aria-valuemin="280" :aria-valuemax="640" title="左右拖动调整宽度，双击恢复" @pointerdown="startAssistantResize" @pointermove="moveAssistantResize" @pointerup="endAssistantResize" @pointercancel="endAssistantResize" @lostpointercapture="assistantPanelDragging = false" @dblclick="setAssistantPanelWidth(360)" @keydown.left.prevent="setAssistantPanelWidth(assistantPanelWidth + 24)" @keydown.right.prevent="setAssistantPanelWidth(assistantPanelWidth - 24)"></div>
+    <div ref="projectMainRef" class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden" :class="{ 'panel-resizing': assistantPanelDragging && !documentFullscreen }" :style="activeTab === 'workspace' ? { paddingRight: stage1Board ? '0px' : `${mainAssistantPanelCollapsed ? 44 : mainAssistantPanelWidth + 8}px` } : {}">
+    <div v-if="activeTab === 'workspace' && !stage1Board && !documentFullscreen && !assistantPanelCollapsed" class="reading-splitter reading-splitter-normal" :class="{ 'is-dragging': assistantPanelDragging }" :style="{ right: `${assistantPanelWidth}px` }" role="separator" aria-label="调整文档与对话宽度" aria-orientation="vertical" tabindex="0" :aria-valuenow="assistantPanelWidth" :aria-valuemin="280" :aria-valuemax="640" title="左右拖动调整宽度，双击恢复" @pointerdown="startAssistantResize" @pointermove="moveAssistantResize" @pointerup="endAssistantResize" @pointercancel="endAssistantResize" @lostpointercapture="assistantPanelDragging = false" @dblclick="setAssistantPanelWidth(360)" @keydown.left.prevent="setAssistantPanelWidth(assistantPanelWidth + 24)" @keydown.right.prevent="setAssistantPanelWidth(assistantPanelWidth - 24)"></div>
     <!-- 项目进度与正在浏览的阶段分开：可回看，推进仍按顺序。 -->
     <!-- 项目内容直接占满中间；项目操作移到左栏。 -->
 
     <!-- 项目空间始终保持同一侧栏；阶段②③显示文档工作区。 -->
     <div class="flex-1 flex min-h-0 overflow-hidden">
       <!-- 中间文档、右侧 AI 助手；两者保持同屏。 -->
-      <div v-if="activeTab === 'workspace'" class="contents">
+      <div v-if="activeTab === 'workspace' && !stage1Board" class="contents">
         <div v-if="assistantPanelCollapsed" class="assistant-collapsed-rail" :class="{ 'is-fullscreen': documentFullscreen }">
           <button ref="assistantPanelToggleRef" type="button" class="assistant-pane-toggle" aria-label="展开右侧对话" aria-controls="project-reading-assistant" :aria-expanded="false" title="展开对话" @click="toggleAssistantPanel"><i class="fa-solid fa-angles-left" aria-hidden="true"></i></button>
         </div>
@@ -279,8 +284,7 @@
                     :placeholder="assistantReplyBusy ? 'AI 正在响应中…' : currentStage===1&&researchExcerpt ? '针对选中内容提问…' : currentStage===1&&researchDocument ? '针对当前文件提问…' : documentFullscreen ? '针对这份交付物提问…' : '输入你的问题…'"
                     :disabled="currentStage === 1 ? knowledgeStreaming : assistantReplyBusy"
                     class="min-w-0 flex-1 resize-none bg-transparent py-1 text-[13px] leading-6 text-slate-800 placeholder-slate-400 focus:outline-none disabled:opacity-60"
-                    @keydown.ctrl.enter.prevent="dlvSend"
-                    @keydown.meta.enter.prevent="dlvSend"
+                    v-enter-send="dlvSend"
                   ></textarea>
                   <button v-if="assistantReplyBusy" @click="cancelAssistantReply" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-white" title="停止生成"><span class="h-2.5 w-2.5 rounded-[2px] bg-white"></span></button>
                   <button v-else @click="dlvSend" :disabled="!dlvInput.trim() && dlvComposer.attachments.value.length === 0" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:bg-blue-300" title="发送问题"><i class="fa-solid fa-paper-plane text-[13px]"></i></button>
@@ -303,7 +307,7 @@
                       <i class="fa-solid" :class="dlvComposer.isRecording.value ? 'fa-stop' : 'fa-microphone'"></i>
                     </button>
                   </div>
-                  <span class="ws-meta shrink-0 select-none text-slate-400">Ctrl+Enter</span>
+                  <span class="ws-meta shrink-0 select-none text-slate-400">Enter 发送 · Shift+Enter 换行</span>
                 </div>
               </div>
             </div>
@@ -326,11 +330,19 @@
         :aria-label="currentStage===1?'资料准备':undefined"
         :aria-labelledby="currentStage===1?undefined:'deliverable-reader-title'"
       >
-          <ProjectFlowWorkspace ref="workflowRef" :key="slug" v-show="workflowOpen && currentStage <= 3 && !documentFullscreen" :slug="slug" :stage="currentStage" :progress-stage="progressStage" :streaming="isStreaming || (deliverableBusy && !workflowBusy)" :run-job="runWorkflowJob" :advance-stage="advanceWorkflowStage" @open-file="openWorkflowFile" @materials="activeTab = 'knowledge'" @state="workflowSnapshot = $event" @busy="setWorkflowBusy" />
+          <!-- AI 运行中：进度和停止放在文档上方（原来在右侧对话里） -->
+          <div v-if="aiRunning && activeTab==='workspace' && !(currentStage===1 && stage1View)" class="ai-run-bar" role="status">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <strong>{{ aiRunningTitle }}</strong><span>已用时 {{ aiRunningSeconds }} 秒<template v-if="aiRunningStep"> · {{ aiRunningStep }}</template></span>
+            <button type="button" class="ai-run-stop" @click="stopAnyAi">停止</button>
+          </div>
+          <Stage1ResearchWorkspace v-if="currentStage === 1 && stage1View && !documentFullscreen" ref="stage1Ref" :key="'s1-'+slug" :slug="slug" :project-name="projectName" :meta="projectMeta" :progress-stage="progressStage" :streaming="isStreaming || knowledgeStreaming || (deliverableBusy && !workflowBusy)" :run-job="runWorkflowJob" :ask-assistant="askStage1Assistant" :advance="advanceFromStage1" :workflow-busy="workflowBusy" :job-progress="workflowJobProgress" :stop-job="stopWorkflowJob" :set-busy="setWorkflowBusy" :focus-doc="stage1FocusDoc" @materials="stage1View = false" @view-stage="viewStage" @open-file="openWorkflowFile" />
+          <button v-if="!isStageBoardOpen(currentStage) && !documentFullscreen && activeTab === 'workspace'" type="button" class="stage1-back" @click="openStageBoard(currentStage)"><i class="fa-solid fa-arrow-left"></i>返回{{ currentStage === 1 ? '行业调研' : `阶段${['','一','二','三','四','五'][currentStage]}` }}工作台<span v-if="workflowSnapshot?.currentTask && currentStage > 1 && workflowSnapshot.stage === currentStage" class="stage1-back-sub">当前步骤：{{ workflowSnapshot.currentTask }}</span></button>
+          <ProjectFlowWorkspace ref="workflowRef" :key="slug" :project-name="projectName" v-show="workflowOpen && currentStage > 1 && !documentFullscreen" :slug="slug" :stage="currentStage" :progress-stage="progressStage" :streaming="isStreaming || (deliverableBusy && !workflowBusy)" :run-job="runWorkflowJob" :advance-stage="advanceWorkflowStage" :complete-project="completeProject" :project-done="stageStatus[5] === 'done'" @open-file="openWorkflowFile" :set-busy="setWorkflowBusy" @materials="activeTab = 'knowledge'" @state="workflowSnapshot = $event" />
           <ProjectPrototypePackage v-if="selectedDeliverable?.kind === 'prototype-package' && !workflowOpen" :slug="slug" :streaming="isStreaming || deliverableBusy" @generate="generateDeliverable('prototype-demo')" @open-document="openWorkflowFile" />
-          <template v-if="(!workflowOpen || currentStage > 3 || documentFullscreen) && selectedDeliverable?.kind !== 'prototype-package'">
+          <template v-if="(currentStage === 1 ? (!stage1View || documentFullscreen) : (!workflowOpen || documentFullscreen)) && selectedDeliverable?.kind !== 'prototype-package'">
           <!-- 顶栏 -->
-          <div v-if="selectedDeliverable" :style="documentFullscreen ? { paddingRight: `${assistantPanelCollapsed ? 76 : assistantPanelWidth + 32}px` } : undefined" class="document-toolbar shrink-0 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-5 py-3">
+          <div v-if="selectedDeliverable" :style="documentFullscreen ? { paddingRight: '76px' } : undefined" class="document-toolbar shrink-0 flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-5 py-3">
               <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
                 <i :class="selectedDeliverable?.icon || 'fa-solid fa-file-lines'" class="text-blue-600 text-[16px]"></i>
               </div>
@@ -338,7 +350,7 @@
                 <div class="mb-1 flex items-center gap-2 text-[11px] text-slate-500">
                   <span>{{ selectedDeliverable ? '当前交付物' : '当前阶段' }} · 阶段 {{ currentStage }} / {{ stageDisplayName(currentStage) }}</span>
                   <span v-if="livePreviewStreaming" class="inline-flex items-center gap-1 text-blue-600"><span class="h-1.5 w-1.5 rounded-full bg-blue-500 thinking-breathe"></span>写入中</span>
-                  <span v-else-if="livePreviewContent" class="review-status" :class="currentReviewState==='confirmed'?'text-emerald-700':'text-slate-500'">{{currentReviewState==='confirmed'?'已确认':currentReviewState==='review'?'待评审':'待审阅'}}</span><span v-else-if="selectedDeliverable" class="text-slate-400">未生成</span>
+                  <span v-else-if="livePreviewContent" class="review-status" :class="currentReviewState==='confirmed'?'text-emerald-700':'text-slate-500'">{{currentReviewState==='confirmed'?'已确认':'草稿'}}<button v-if="currentReviewState==='confirmed'&&!previewEditing" class="review-undo" :disabled="isStreaming||deliverableBusy" @click="unconfirmDocument">取消确认</button></span><span v-else-if="selectedDeliverable" class="text-slate-400">未生成</span>
                 </div>
                 <h2 id="deliverable-reader-title" class="text-[17px] font-semibold leading-snug text-slate-900">{{ selectedDeliverable ? documentTitle : activeStageObj.name }}</h2>
               </div>
@@ -347,9 +359,9 @@
                 {{ documentFullscreen ? '退出全屏' : '全屏阅读' }}
               </button>
               <template v-if="selectedDeliverable&&livePreviewContent">
+                <button v-if="!previewEditing" @click="reviseOpen=!reviseOpen" :disabled="aiRunning||currentStage===1" :title="currentStage===1?'阶段一文档在调研工作台里修改':'写意见，让 AI 修改这份文档'" class="ws-tool-btn" :class="reviseOpen?'is-on':''"><i class="fa-solid fa-wand-magic-sparkles"></i>按意见修改</button>
                 <button @click="togglePreviewEdit" :disabled="livePreviewStreaming||sectionSaving" class="ws-tool-btn" :class="previewEditing?'is-on':''" title="编辑整份文档"><i class="fa-solid" :class="previewEditing?'fa-eye':'fa-pen'"></i>{{previewEditing?'预览':'编辑'}}</button>
-                <button v-if="currentReviewState==='draft'&&!previewEditing" class="document-primary-action" :disabled="isStreaming||deliverableBusy" @click="sendForReview">送审 <i class="fa-solid fa-arrow-right"></i></button>
-                <button v-else-if="currentReviewState==='review'&&!previewEditing" class="document-primary-action" :disabled="isStreaming||deliverableBusy" @click="openAssessment('document')">确认</button>
+                <button v-if="currentReviewState!=='confirmed'&&!previewEditing" class="document-primary-action" :disabled="isStreaming||deliverableBusy" @click="confirmDocument">确认这份文档 <i class="fa-solid fa-check"></i></button>
                 <button v-else-if="currentReviewState==='confirmed'&&!previewEditing&&(nextWorkflowDeliverable||currentStage===progressStage)" class="document-primary-action" :disabled="isStreaming||deliverableBusy||stageAdvancing" @click="continueDeliverableWorkflow">{{nextWorkflowDeliverable?'下一份交付物':generationStageReviewed?'进入下一阶段':'阶段验收'}} <i class="fa-solid fa-arrow-right"></i></button>
                 <div class="document-options" @keydown.esc="documentMenuOpen=false">
                   <button class="ws-tool-btn" type="button" aria-label="更多文档操作" :aria-expanded="documentMenuOpen" @click="documentMenuOpen=!documentMenuOpen"><i class="fa-solid fa-ellipsis"></i></button>
@@ -365,6 +377,11 @@
               </template>
           </div>
 
+          <!-- 按意见修改：写清哪里不对，AI 只改提到的部分 -->
+          <form v-if="reviseOpen && selectedDeliverable && livePreviewContent" class="revise-bar" @submit.prevent="reviseDocument">
+            <textarea v-model="reviseText" rows="2" :disabled="aiRunning" placeholder="写下修改意见，例如：第三节的指标口径改成按科室统计；删掉“预算”一节。AI 只改你提到的部分，其余保持不变。" v-enter-send="reviseDocument"></textarea>
+            <div><button type="button" class="ws-tool-btn" @click="reviseOpen=false;reviseText=''">取消</button><button class="document-primary-action" :disabled="aiRunning||!reviseText.trim()">按意见修改</button></div>
+          </form>
           <!-- 文档正文 -->
           <div class="document-reading-layout flex min-h-0 flex-1">
           <div ref="previewScrollRef" class="document-scroll min-h-0 flex-1 overflow-y-auto bg-[#f5f7fb]" :class="{'research-document-scroll':currentStage===1,'research-file-open':currentStage===1&&researchDocument}">
@@ -372,7 +389,7 @@
               <ProjectKnowledgeSpace ref="researchSpaceRef" embedded :source-path="knowledgeSourcePath" :slug="slug" :messages="knowledgeMessages" :streaming="knowledgeStreaming" @view="researchViewChanged" @selection="researchSelectionChanged" @changed="updateResearchSources" @busy="researchFormBusy=$event" @ask="askKnowledge" @cancel="cancelKnowledge" />
               <footer v-if="!researchDocument" class="research-continue">
                 <div><strong>{{researchSources===null?'正在读取项目资料…':researchSources.length?`已放入 ${researchSources.length} 份资料`:'先放入至少一份客户资料或对接记录'}}</strong><p>{{researchFormBusy?'当前记录编辑中，请先保存，再继续。':'这些资料会保留在项目中，用于后续需求、设计与交付物生成。'}}</p><p v-if="researchContinueError" role="alert" class="text-red-600">{{researchContinueError}}</p></div>
-                <button class="document-primary-action" :disabled="!researchSources?.length||researchFormBusy||researchContinuing||stageAdvancing||isStreaming" @click="finishResearchPreparation">{{researchContinuing?'正在进入…':'资料准备完成，进入需求沟通'}} <i class="fa-solid fa-arrow-right"></i></button>
+                <button class="document-primary-action" :disabled="researchFormBusy" @click="stage1View=true;stage1Ref?.refreshMaterials?.()">返回行业调研工作台 <i class="fa-solid fa-arrow-right"></i></button>
               </footer>
             </div>
             <div v-else-if="!isWorkspaceStage" class="stage-overview-paper"><StagePanel :stage="activeStageObj" :has-workspace="false" compact /></div>
@@ -441,7 +458,7 @@
                     <button v-if="sectionEdit?.index !== section.index" type="button" class="rounded-lg px-2 py-1 text-[12px] text-slate-500 hover:bg-blue-50 hover:text-blue-700 disabled:opacity-40" :disabled="livePreviewStreaming || isStreaming || sectionSaving" :aria-label="`单独编辑${section.title}`" @click="editDocumentSection(section.index)"><i class="fa-solid fa-pen mr-1" aria-hidden="true"></i>编辑本节</button>
                   </div>
                   <div v-if="sectionEdit?.index === section.index" class="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
-                    <textarea v-model="sectionDraft" :aria-label="`编辑${section.title}的内容`" :disabled="sectionSaving" rows="10" class="section-editor w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-3 text-[13px] leading-6 text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"></textarea>
+                    <textarea v-model="sectionDraft" :aria-label="`编辑${section.title}的内容`" rows="10" class="section-editor w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-3 text-[13px] leading-6 text-slate-800 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"></textarea>
                     <div class="mt-2 flex items-center justify-between gap-2">
                       <span class="text-[11px] text-slate-500">仅修改当前章节</span>
                       <div class="flex gap-2">
@@ -457,8 +474,8 @@
               </template>
             </div>
           </div>
-          <div v-if="documentFullscreen && !assistantPanelCollapsed" class="reading-splitter" :class="{ 'is-dragging': assistantPanelDragging }" role="separator" aria-label="调整文档与对话宽度" aria-orientation="vertical" tabindex="0" :aria-valuenow="assistantPanelWidth" :aria-valuemin="280" :aria-valuemax="640" title="左右拖动调整宽度，双击恢复" @pointerdown="startAssistantResize" @pointermove="moveAssistantResize" @pointerup="endAssistantResize" @pointercancel="endAssistantResize" @lostpointercapture="assistantPanelDragging = false" @dblclick="setAssistantPanelWidth(360)" @keydown.left.prevent="setAssistantPanelWidth(assistantPanelWidth + 24)" @keydown.right.prevent="setAssistantPanelWidth(assistantPanelWidth - 24)"></div>
-          <div v-show="documentFullscreen" id="document-reader-assistant" class="document-chat-slot" :style="{ width: `${assistantPanelCollapsed ? 44 : assistantPanelWidth}px` }" aria-label="当前交付物对话"></div>
+          <div v-if="false" class="reading-splitter" :class="{ 'is-dragging': assistantPanelDragging }" role="separator" aria-label="调整文档与对话宽度" aria-orientation="vertical" tabindex="0" :aria-valuenow="assistantPanelWidth" :aria-valuemin="280" :aria-valuemax="640" title="左右拖动调整宽度，双击恢复" @pointerdown="startAssistantResize" @pointermove="moveAssistantResize" @pointerup="endAssistantResize" @pointercancel="endAssistantResize" @lostpointercapture="assistantPanelDragging = false" @dblclick="setAssistantPanelWidth(360)" @keydown.left.prevent="setAssistantPanelWidth(assistantPanelWidth + 24)" @keydown.right.prevent="setAssistantPanelWidth(assistantPanelWidth - 24)"></div>
+          <div v-if="false" id="document-reader-assistant" class="document-chat-slot" :style="{ width: `${assistantPanelCollapsed ? 44 : assistantPanelWidth}px` }" aria-label="当前交付物对话"></div>
           </div>
           </template>
         </div>
@@ -467,6 +484,8 @@
       <ProjectKnowledgeSpace :source-path="knowledgeSourcePath" v-if="activeTab === 'knowledge'" :slug="slug" :messages="knowledgeMessages" :streaming="knowledgeStreaming" @ask="askKnowledge" @cancel="cancelKnowledge" />
 
       <ProjectSpacePanel v-if="activeTab === 'overview' || activeTab === 'meetings'" :key="activeTab" :mode="activeTab" :slug="slug" :meta="projectMeta" :progress-stage="progressStage" :stage-status="stageStatus" :stages="projectOverviewStages" @materials="switchNav('knowledge')" @resume="resumeWorkflow" @open-source="openProjectSource" @open-document="({stage,key}) => selectGroupDeliverable(stage,key)" />
+
+      <ProjectExpertDeliverables v-if="activeTab === 'experts'" :key="'experts-'+slug" :slug="slug" />
 
       <!-- Prototype Tab — full width -->
       <div v-if="activeTab === 'prototype'" class="flex h-full min-w-0 flex-1">
@@ -691,7 +710,7 @@
                   :placeholder="isStreaming ? 'AI 正在修改原型…' : '说出你想改什么，AI 就地更新原型，例如：把首页导航改成左侧栏'"
                   :disabled="isStreaming"
                   class="flex-1 resize-none text-[13px] text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none leading-6 px-4 py-3 max-h-[120px] scrollbar-hide disabled:opacity-60"
-                  @keydown.enter.exact="onIterateEnter"
+                  v-enter-send="sendIterate"
                 ></textarea>
                 <button @click="iterateComposer.pickImage" :disabled="isStreaming" class="mb-1.5 w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed" title="上传图片">
                   <i class="fa-solid fa-image text-xs"></i>
@@ -829,11 +848,10 @@
                 <textarea
                   v-model="stage3Input"
                   rows="1"
-                  :placeholder="isStreaming ? 'AI 正在响应中…' : '聊需求确认、智能体矩阵设计，Ctrl + Enter 发送'"
+                  :placeholder="isStreaming ? 'AI 正在响应中…' : '聊需求确认、智能体矩阵设计，Enter 发送，Shift+Enter 换行'"
                   :disabled="isStreaming"
                   class="w-full resize-none text-[14px] text-slate-800 placeholder-slate-400 bg-transparent focus:outline-none leading-6 px-5 pt-4 pb-1 max-h-[160px] scrollbar-hide disabled:opacity-60"
-                  @keydown.ctrl.enter.prevent="sendStage3"
-                  @keydown.meta.enter.prevent="sendStage3"
+                  v-enter-send="sendStage3"
                 ></textarea>
                 <div class="flex items-center justify-between px-3 pb-3 pt-1.5 gap-2.5">
                   <div class="flex items-center gap-1.5">
@@ -850,7 +868,7 @@
                     <span v-else-if="stage3Composer.isTranscribing.value" class="text-[11px] text-blue-500 font-medium">识别中…</span>
                   </div>
                   <div class="flex items-center gap-2.5">
-                    <span class="text-[11px] text-slate-400 select-none">Ctrl + Enter 发送</span>
+                    <span class="text-[11px] text-slate-400 select-none">Enter 发送 · Shift+Enter 换行</span>
                     <button
                       v-if="isStreaming"
                       @click="cancelStream"
@@ -895,7 +913,7 @@
     </div>
   </transition>
 
-  <div v-if="assessment" class="integrity-overlay" @click.self="assessment=null"><form class="integrity-dialog" @submit.prevent="saveAssessment"><h2>{{assessment.kind==='stage'?'阶段验收确认':'确认当前交付物版本'}}</h2><p>{{assessment.kind==='stage'?getStage(progressStage)?.successCriteria:selectedDeliverable?.name}}</p><label>确认人<input v-model="assessment.reviewer" required placeholder="客户或评审人的姓名"></label><label>确认依据<textarea v-model="assessment.evidence" required placeholder="会议日期、签字记录、验收结果或相关资料链接"></textarea></label><label v-for="(check,index) in assessment.checks" :key="index" class="integrity-check"><input type="checkbox" v-model="check.confirmed">{{check.title}}</label><p v-if="assessmentError" class="text-red-600">{{assessmentError}}</p><footer><button type="button" @click="assessment=null">取消</button><button :disabled="assessmentBusy||assessment.checks.some(c=>!c.confirmed)" class="primary">{{assessmentBusy?'保存中…':'记录确认'}}</button></footer></form></div>
+  <div v-if="assessment" class="integrity-overlay" @click.self="assessment=null"><form class="integrity-dialog" @submit.prevent="saveAssessment"><h2>{{assessment.kind==='stage'?'阶段验收确认':'确认当前交付物版本'}}</h2><p>{{assessment.kind==='stage'?getStage(progressStage)?.successCriteria:selectedDeliverable?.name}}</p><label>确认人<input v-model="assessment.reviewer" required placeholder="谁确认的，例如客户对接人姓名"></label><label>确认依据<textarea v-model="assessment.evidence" required placeholder="会议日期、签字记录、验收结果或相关资料链接"></textarea></label><label v-for="(check,index) in assessment.checks" :key="index" class="integrity-check"><input type="checkbox" v-model="check.confirmed">{{check.title}}</label><p v-if="assessmentError" class="text-red-600">{{assessmentError}}</p><footer><button type="button" @click="assessment=null">取消</button><button :disabled="assessmentBusy||assessment.checks.some(c=>!c.confirmed)" class="primary">{{assessmentBusy?'保存中…':'记录确认'}}</button></footer></form></div>
   <div v-if="projectVersionsOpen" class="integrity-overlay" @click.self="projectVersionsOpen=false"><section class="integrity-dialog"><h2>交付物历史版本</h2><p>{{selectedDeliverable?.name}}</p><div v-for="version in projectVersions" :key="version.id" class="integrity-version"><span>{{new Date(version.createdAt).toLocaleString('zh-CN')}} · {{version.label}}</span><button @click="restoreProjectVersion(version)">恢复</button></div><p v-if="!projectVersions.length">尚无历史版本，下一次保存时会自动保留。</p><footer><button @click="projectVersionsOpen=false">关闭</button></footer></section></div>
   <ImageLightbox :src="lightboxSrc" :visible="lightboxVisible" @close="lightboxVisible = false" />
 </template>
@@ -908,14 +926,16 @@ import { trackPrompt, getInflightPrompt } from '../../composables/promptInflight
 import { useRoute, onBeforeRouteLeave } from 'vue-router';
 import { marked } from 'marked';
 import { cleanAssistantContent } from '@/data/assistant-content';
-import { deliverySkillContext, verifyPrototypeSkillOutputs } from '@/data/delivery-skills.mjs';
+import { deliverySkillContext, verifyPrototypeSkillOutputs, ensurePrototypeLayout } from '@/data/delivery-skills.mjs';
 import { modelFailureMessage } from '@/data/model-failure.mjs';
 import ThinkingSummary from '@/components/agent/ThinkingSummary.vue';
 import { finalizeResponseSummary, publicToolStep, plainMessage } from '@/data/response-summary.mjs';
 import StagePanel from '@/components/workbench/StagePanel.vue';
 import ProjectKnowledgeSpace from '@/components/projects/ProjectKnowledgeSpace.vue';
 import ProjectSpacePanel from '@/components/projects/ProjectSpacePanel.vue';
+import ProjectExpertDeliverables from '@/components/projects/ProjectExpertDeliverables.vue';
 import ProjectFlowWorkspace from '@/components/projects/ProjectFlowWorkspace.vue';
+import Stage1ResearchWorkspace from '@/components/projects/Stage1ResearchWorkspace.vue';
 import { listProjectKnowledge, projectKnowledgeContext } from '@/composables/projectKnowledge';
 import ImageLightbox from '@/components/common/ImageLightbox.vue';
 import AttachmentChip from '@/components/common/AttachmentChip.vue';
@@ -970,11 +990,63 @@ async function openProjectSource(path) {
 
 // FDE guided product workflow: document review and technical validation remain distinct.
 const workflowRef = ref(null);
+const stage1Ref = ref(null), stage1View = ref(true), stage1FocusDoc = ref(null);
+// 阶段一流程工作台每步都有明确动作，修改走文档卡片，右侧对话在此隐藏；阅读资料时照常显示。
+// 右侧 AI 助手不再显示：所有 AI 操作都在中间完成（生成 / 按意见修改 / 停止），不需要另开对话框。
+const stage1Board = computed(() => true);
+// 阶段一 AI 助手：沿用资料问答通道，回答返回给工作台按模块保存。
+async function askStage1Assistant(text) {
+  assistantPanelTab.value = 'assistant'; assistantConversationOpen.value = true;
+  await askKnowledge({ text: text + `\n【当前工作台】${stage1Ref.value?.context() || ''}` });
+  const reply = knowledgeMessages.value.at(-1);
+  return reply?.role === 'assistant' && !/资料问答失败/.test(reply.content || '') ? cleanAssistantContent(reply.content || '') : '';
+}
+// 阶段一由负责人确认推进；推进门禁在主进程核对交接记录。
+async function advanceFromStage1() {
+  if (progressStage.value > 1) { await viewStage(progressStage.value); return; }
+  stageAdvancing.value = true;
+  try { await selectStage(2); } finally { stageAdvancing.value = false; }
+  if (progressStage.value !== 2) throw new Error('进入阶段二失败，请查看提示后重试。');
+  workflowOpen.value = true; deliverableSelected.value = ''; assistantConversationOpen.value = true;
+  await nextTick(); await workflowRef.value?.resume(true);
+}
 const workflowOpen = ref(true);
 const workflowSnapshot = ref(null);
+watch(workflowSnapshot, async snapshot => {
+  if (stageStatus.value[5] !== 'done' || !Object.values(snapshot?.tasks || {}).some(task => task.status === 'needs-review')) return;
+  try {
+    const next = { ...stageStatus.value, 5: 'active' };
+    await storeMeta({ stageStatus: next, completionReview: { status: 'needs-review', detectedAt: new Date().toISOString() } });
+    stageStatus.value = next;
+  } catch (error) { showToast('重新核对状态未保存：' + error.message, 'error'); }
+});
 const workflowBusy = ref(false);
 const workflowFile = ref(null);
 function setWorkflowBusy(value) { workflowBusy.value = value; deliverableBusy.value = value; }
+// 阶段 1-3 的「工作台」：阶段一是调研五步，阶段二/三是任务步骤；查看单份文档时随时能回来。
+function isStageBoardOpen(id) {
+  if (activeTab.value !== 'workspace' || currentStage.value !== id || documentFullscreen.value) return false;
+  return id === 1 ? stage1View.value : workflowOpen.value;
+}
+async function openStageBoard(id) {
+  if (workflowJob.value && id !== currentStage.value) { showToast('AI 正在处理，完成或停止后才能切换阶段','info'); return; }
+  if (id !== currentStage.value || activeTab.value !== 'workspace') { await viewStage(id); if (currentStage.value !== id) return; }
+  if (!await flushDocumentEdits()) return;
+  documentFullscreen.value = false; activeTab.value = 'workspace';
+  workflowFile.value = null; deliverableSelected.value = '';
+  if (id === 1) stage1View.value = true;
+  else { workflowOpen.value = true; discussionStore.useDefault(); assistantConversationOpen.value = true; }
+}
+// 正在运行的工作流任务：阶段一工作台没有右侧对话栏，进度和停止入口由这里提供给页面。
+const workflowJob = ref(null), workflowJobTick = ref(0);
+let workflowJobTimer = null, workflowJobAbort = null;
+const workflowJobProgress = computed(() => {
+  const job = workflowJob.value; if (!job) return null;
+  workflowJobTick.value;
+  const steps = (job.arr.at(-1)?.thinkingSteps || []).filter(step => step.kind === 'public-progress').map(step => step.text);
+  return { title: job.title, seconds: Math.floor((Date.now() - job.startedAt) / 1000), steps: [...new Set(steps)].slice(-4) };
+});
+function stopWorkflowJob() { workflowJobAbort?.(new Error('已停止生成，已完成的文件会保留。')); return cancelStream(); }
 async function resumeWorkflow() {
   if (typeof flushDocumentEdits === 'function' && !await flushDocumentEdits()) return;
   projectMenuOpen.value = false;
@@ -987,7 +1059,8 @@ async function resumeWorkflow() {
     return;
   }
   if (currentStage.value !== progressStage.value) await viewStage(progressStage.value);
-  workflowOpen.value = currentStage.value <= 3;
+  workflowOpen.value = true;
+  if (currentStage.value === 1) stage1View.value = true;
   workflowFile.value = null;
   if (workflowOpen.value) {
     deliverableSelected.value = '';
@@ -999,7 +1072,7 @@ async function resumeWorkflow() {
 }
 async function advanceWorkflowStage(id) {
   if (id <= progressStage.value) { await viewStage(progressStage.value); return; }
-  if (id !== progressStage.value + 1 || id > 3 || !workflowRef.value?.canAdvance(progressStage.value)) throw new Error('请先核对本阶段的任务成果。');
+  if (id !== progressStage.value + 1 || id > FDE_STAGES.length || !workflowRef.value?.canAdvance(progressStage.value)) throw new Error('请先核对本阶段的任务成果。');
   stageAdvancing.value = true;
   try { await selectStage(id); if(progressStage.value !== id) throw new Error('阶段保存失败，请重试。'); }
   finally { stageAdvancing.value = false; }
@@ -1007,24 +1080,35 @@ async function advanceWorkflowStage(id) {
   await nextTick(); await workflowRef.value?.resume(true);
 }
 async function openWorkflowFile({file,stage,name}) {
-  if (isStreaming.value || deliverableBusy.value) return;
+  if ((workflowJob.value || isStreaming.value || deliverableBusy.value) && stage !== currentStage.value) { showToast('AI 正在处理，完成或停止后才能打开其他阶段的文件','info'); return; }
   if (file.endsWith('.html')) {
     const result = await window.api.hermes.openInBrowser(props.slug,file);
     if (result?.success === false) showToast(result.error || '原型打开失败','error');
     return;
   }
+  // 阶段一成果都在调研工作台第 4 步里看，不走通用文档视图（否则会被当成当前阶段交付物、出现确认按钮）
+  if (stage === 1) { stage1FocusDoc.value = {file,at:Date.now()}; if (currentStage.value !== 1) await viewStage(1); else await openStageBoard(1); return; }
   const d = deliverablesForStage(stage).find(item => item.file === file);
   workflowOpen.value = false;
+  if (d && stage !== currentStage.value) { await viewStage(stage, d.key); return; }
   if (d) { workflowFile.value = null; selectDeliverable(d.key); return; }
   workflowFile.value = {key:`flow:${file}`,file,name:name || '流程成果',icon:'fa-regular fa-file-lines'};
   deliverableSelected.value = workflowFile.value.key;
   assistantConversationOpen.value = false;
   await showPreview(stage,workflowFile.value);
 }
+// 阶段四、五没有专用技能：读知识中心手册模板，作为格式依据拼进生成指令
+async function handbookTemplateContext({stage,file}) {
+  const result = file.endsWith('.md') ? await window.api.handbook.readMd(stage,file) : await window.api.handbook.readHtml(stage,file);
+  if (!result?.success || !String(result.content || '').trim()) throw new Error(`知识中心模板读取失败：${file}`);
+  const text = file.endsWith('.html') ? String(result.content).replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<script[\s\S]*?<\/script>/gi,'') : String(result.content);
+  return `\n【知识中心模板 ${stage}/${file}】严格按这份模板的章节和表格列组织成果，用 Markdown 表格写，示例内容不当作项目事实：\n----- 模板开始 -----\n${text.slice(0,12000)}\n----- 模板结束 -----\n`;
+}
 async function runWorkflowJob({stage,task,job,prompt}) {
   if (isStreaming.value) throw new Error('上一轮对话尚未结束，请稍后再试。');
   let skillContent = '';
-  if (job.skill && stage !== 2) skillContent = await deliverySkillContext(window.api,job.skill,{prototype:job.skill==='fde-prototype-final'});
+  if (job.skill && stage !== 2) skillContent = await deliverySkillContext(window.api,job.skill,{prototype:!!job.prototype||job.skill==='fde-prototype-final'});
+  if (job.template) skillContent += await handbookTemplateContext(job.template);
   const stage2Key = stage === 2 ? stage2KeyForJob(job) : '';
   if (stage2Key) skillContent += await stage2GenerationContext(window.api,stage2Key);
   deliverableSelected.value = ''; workflowFile.value = null;
@@ -1035,17 +1119,24 @@ async function runWorkflowJob({stage,task,job,prompt}) {
   arr.push(createMessage('user',`${task.title} · ${job.title}`));
   const streamId=beginStream(arr,tab);
   arr.push(createMessage('assistant','',{thinkingSteps:[{text:job.title,icon:'fa-solid fa-wand-magic-sparkles',visible:true}],thinkingDone:false,expanded:true,typingContent:'',timestamp:'',streamId}));
+  workflowJob.value={title:job.title,startedAt:Date.now(),arr};
+  workflowJobTimer=setInterval(()=>{workflowJobTick.value++;},1000);
+  const aborted=new Promise((_,reject)=>{workflowJobAbort=reject;});
   try {
     await window.api.hermes.saveMessage(props.slug,{role:'user',content:`${task.title} · ${job.title}`,tab,timestamp:new Date().toISOString()});
     const p=projectPrompt(prompt+skillContent);
     trackPrompt(props.slug,{tab},p);
-    const result=await p;
+    const result=await Promise.race([p,aborted]);
     if(result?.success === false || result?.stopReason === 'cancelled') throw new Error(result?.error || '生成已停止，已完成文件会保留。');
     if(stage2Key) await verifyStage2Files(window.api,props.slug,stage2Key);
     if(job.skill==='fde-prototype-final') await verifyPrototypeSkillOutputs(window.api,props.slug,'stage3/prototype');
+    // 原型实际渲染检查：只铺半屏、横向溢出、脚本报错 → 让 AI 按具体问题补一轮再复检
+    const layoutDir = stage2Key==='prototype-demo' ? 'prototype' : job.skill==='fde-prototype-final' ? 'stage3/prototype' : '';
+    if(layoutDir) await ensurePrototypeLayout(window.api,props.slug,layoutDir,async fix=>{const r=await Promise.race([projectPrompt(fix),aborted]);if(r?.success===false||r?.stopReason==='cancelled')throw new Error(r?.error||'生成已停止，已完成文件会保留。');});
     endStream();
     await loadDeliverablesForStage(stage); await refreshPrototypeFiles();
   } catch(e) { endStream(); throw e; }
+  finally { clearInterval(workflowJobTimer); workflowJobAbort=null; workflowJob.value=null; }
 }
 
 const documentMenuOpen=ref(false);
@@ -1091,7 +1182,7 @@ const handleContentImgClick = (e) => {
 };
 
 // --- FDE 五阶段工作台状态 ---
-const WORKSPACE_STAGES = [2, 3]; // 文档阶段共用阅读器，其余阶段在同一阅读区展示阶段说明
+const WORKSPACE_STAGES = [2, 3, 4, 5]; // 文档阶段共用阅读器，其余阶段在同一阅读区展示阶段说明
 const currentStage = ref(DEFAULT_STAGE);
 const progressStage = ref(DEFAULT_STAGE); // 项目真实进度；currentStage 仅表示正在查看的阶段
 const stageStatus = ref({ 1: 'active', 2: 'todo', 3: 'todo', 4: 'todo', 5: 'todo' });
@@ -1101,7 +1192,7 @@ const isWorkspaceStage = computed(() => WORKSPACE_STAGES.includes(currentStage.v
 const stageDisplayName = (id) => ({ 1: '调研准备', 2: '需求沟通', 3: '需求确认', 4: '工作台上线', 5: '客户试用' })[id] || getStage(id)?.label || '';
 
 async function continueProject() {
-  if (progressStage.value <= 3) return resumeWorkflow();
+  return resumeWorkflow();
   if(!await flushDocumentEdits())return;
   activeTab.value = 'workspace';
   if (currentStage.value !== progressStage.value) await viewStage(progressStage.value);
@@ -1109,9 +1200,12 @@ async function continueProject() {
 }
 
 async function viewStage(id, key = '') {
-  if (!Number.isInteger(id) || id < 1 || id > progressStage.value || isStreaming.value || deliverableBusy.value) return;
+  if (workflowJob.value) { showToast('AI 正在处理，完成或停止后才能切换阶段','info'); return; }
+  if (!Number.isInteger(id) || id < 1 || id > progressStage.value) return;
+  if ((isStreaming.value || deliverableBusy.value) && id !== currentStage.value) { showToast('正在生成内容，完成后再切换阶段','info'); return; }
   if(!await flushDocumentEdits())return;
-  workflowOpen.value = id <= 3 && !key; workflowFile.value = null;
+  workflowOpen.value = !key; workflowFile.value = null;
+  if (id === 1 && !key) stage1View.value = true;
   if(workflowOpen.value) { deliverableSelected.value=''; assistantConversationOpen.value=true; }
   expandStageDirectory(id);
   if (id === currentStage.value && !key && activeTab.value === 'workspace') return;
@@ -1197,6 +1291,10 @@ const filteredStageDeliverables = (stageId) => {
   const q = docSearch.value.trim().toLowerCase();
   return q ? list.filter((d) => `${d.name} ${d.short || ''}`.toLowerCase().includes(q)) : list;
 };
+function stageNodeState(stageId) {
+  if (stageStatus.value[stageId] === 'done' || stageId < progressStage.value) return 'done';
+  return stageId === progressStage.value ? 'active' : 'todo';
+}
 function handleStageTreeClick(stageId) {
   if (stageId > progressStage.value) return;
   const next = new Set(expandedStageIds.value);
@@ -1263,9 +1361,10 @@ async function copyMessage(text) {
 
 const assessment=ref(null),assessmentBusy=ref(false),assessmentError=ref(''),projectVersionsOpen=ref(false),projectVersions=ref([]),reviewToken=ref('');let reviewSeq=0;
 
-const currentReviewState=computed(()=>{const record=projectMeta.value?.deliverableReviews?.[selectedDeliverable.value?.file];return record&&record.token===reviewToken.value?record.state:'draft';});
+const currentReviewState=computed(()=>{const record=projectMeta.value?.deliverableReviews?.[selectedDeliverable.value?.file];return record?.state==='confirmed'&&record.token===reviewToken.value?'confirmed':'draft';});
 async function storeMeta(updates){const result=await window.api.hermes.updateProjectMeta(props.slug,updates);if(!result?.success)throw Error(result?.error||'保存失败');projectMeta.value=result.meta;return result.meta;}
-async function sendForReview(){if(!await flushDocumentEdits())return;const d=selectedDeliverable.value;if(!d)return;try{const source=await window.api.hermes.readFile(props.slug,d.file);if(!source.success||!source.content.trim())throw Error('先完成正文再送审');await storeMeta({deliverableReviews:{...projectMeta.value?.deliverableReviews,[d.file]:{state:'review',token:source.token,updatedAt:new Date().toISOString()}}});}catch(e){showToast(e.message,'error');}}
+async function confirmDocument(){if(!await flushDocumentEdits())return;const d=selectedDeliverable.value;if(!d)return;try{const source=await window.api.hermes.readFile(props.slug,d.file);if(!source.success||!source.content.trim())throw Error('先完成正文再确认');await storeMeta({deliverableReviews:{...projectMeta.value?.deliverableReviews,[d.file]:{kind:'document',state:'confirmed',token:source.token,updatedAt:new Date().toISOString()}}});showToast('已确认，正文再修改需重新确认','success');}catch(e){showToast(e.message,'error');}}
+async function unconfirmDocument(){const d=selectedDeliverable.value;if(!d)return;try{const reviews={...projectMeta.value?.deliverableReviews};delete reviews[d.file];await storeMeta({deliverableReviews:reviews});}catch(e){showToast(e.message,'error');}}
 async function openAssessment(kind){if(!await flushDocumentEdits())return;assessmentError.value='';const stage=getStage(progressStage.value);assessment.value={kind,reviewer:'',evidence:'',checks:kind==='stage'?[...(stage.deliverables||[]).map(d=>({title:d.name,confirmed:false})),{title:stage.successCriteria,confirmed:false}]:[{title:'已阅读当前版本，确认内容和验收口径',confirmed:false}]};}
 async function saveAssessment(){if(!assessment.value||assessmentBusy.value)return;assessmentBusy.value=true;assessmentError.value='';try{const record={...assessment.value,state:'confirmed',updatedAt:new Date().toISOString()};if(record.kind==='document'){const d=selectedDeliverable.value,source=await window.api.hermes.readFile(props.slug,d.file);if(!source.success||!source.content.trim())throw Error('先完成正文再确认');record.token=source.token;await storeMeta({deliverableReviews:{...projectMeta.value?.deliverableReviews,[d.file]:record}});}else{await storeMeta({stageReviews:{...projectMeta.value?.stageReviews,[progressStage.value]:record}});}assessment.value=null;showToast('确认已记录，正文修改后需重新确认','success');}catch(e){assessmentError.value=e.message;}finally{assessmentBusy.value=false;}}
 async function completeProject(){if(!await flushDocumentEdits())return;try{const next={...stageStatus.value,5:'done'};await storeMeta({stageStatus:next});stageStatus.value=next;projectMenuOpen.value=false;showToast('项目已验收完成','success');}catch(e){showToast(e.message,'error');}}
@@ -1275,7 +1374,7 @@ async function backupProject(){if(!await flushDocumentEdits())return;const resul
 async function restoreProject(){if(!await flushDocumentEdits()||isStreaming.value||deliverableBusy.value)return;const result=await window.api.hermes.restoreProject(props.slug);if(!result.success)showToast(result.error,'error');else if(!result.canceled)window.location.reload();}
 
 async function advanceStage() {
-  if(progressStage.value <= 3) return resumeWorkflow();
+  return resumeWorkflow();
   if(!await flushDocumentEdits())return;
   if (stageAdvancing.value || isStreaming.value || deliverableBusy.value || progressStage.value >= FDE_STAGES.length) return;
   stageAdvancing.value = true;
@@ -1295,7 +1394,7 @@ async function selectStage(id) {
   }
   // 先保存，再更新屏幕；保存失败时不会出现重开项目后阶段回退。
   try {
-    const result = await window.api.hermes.updateProjectMeta(props.slug, { stage: id, stageStatus: next, ...(id <= 3 ? {workflowMode:'product-flow-v1'} : {}) });
+    const result = await window.api.hermes.updateProjectMeta(props.slug, { stage: id, stageStatus: next, workflowMode:'product-flow-v1' });
     if (!result?.success || !result.meta) throw new Error(result?.error || '项目阶段保存失败');
   } catch (e) {
     console.error('[ProjectDetail] stage update failed:', e);
@@ -1916,6 +2015,7 @@ const loadProject = async () => {
     if (data) {
       projectMeta.value = data.meta || data;
       projectName.value = data.meta?.name || data.name || props.slug;
+      if (data.sessionWarning) showToast(data.sessionWarning, 'error');
       // 读取 FDE 阶段状态(主进程已对旧项目补默认)
       const m = projectMeta.value || {};
       if (typeof m.stage === 'number') {
@@ -1937,7 +2037,7 @@ const loadProject = async () => {
           }
           if (!tab.startsWith('deliverable:')) continue;
           const key = tab.slice('deliverable:'.length);
-          const knownStages = [2, 3].filter(sid => deliverablesForStage(sid).some(d => d.key === key));
+          const knownStages = [2, 3, 4, 5].filter(sid => deliverablesForStage(sid).some(d => d.key === key));
           const stageIds = m.stageId ? [m.stageId] : knownStages.length ? knownStages : [projectMeta.value?.stage || 2];
           for (const sid of stageIds) {
             const k = `${sid}:${key}`;
@@ -2263,7 +2363,7 @@ const handleSessionUpdate = (data) => {
     loadSpec();
     refreshPrototypeFiles();
     // 阶段②③：AI 可能刚写完交付物文件，读回渲染
-    if (completedTab !== 'knowledge' && (currentStage.value === 2 || currentStage.value === 3)) {
+    if (completedTab !== 'knowledge' && currentStage.value > 1) {
       deliverableBusy.value = false;
       deliverableBusyKey.value = '';
       livePreviewStreaming.value = false;
@@ -2569,7 +2669,7 @@ async function followKnowledgeCitation(event){const link=event.target.closest('a
 async function projectPrompt(text, attachments, selectedPaths) {
   const context = await projectKnowledgeContext(props.slug, selectedPaths, text);
   const files = Array.isArray(attachments) ? attachments : attachments?.attachments;
-  const flowContext = workflowOpen.value && currentStage.value <= 3 ? `\n【当前任务上下文】${workflowRef.value?.context() || ''}` : '';
+  const flowContext = currentStage.value === 1 && stage1View.value ? `\n【当前任务上下文】${stage1Ref.value?.context() || ''}` : workflowOpen.value && currentStage.value > 1 ? `\n【当前任务上下文】${workflowRef.value?.context() || ''}` : '';
   const target = activeMessagesArr();
   try {
     const result = await window.api.hermes.prompt(props.slug, text + context + flowContext, files);
@@ -2602,6 +2702,36 @@ async function askKnowledge({ text, paths, excerpt, reference, attachments }) {
   if (result?.error && !result.cancelled) showToast('资料问答失败：' + result.error, 'error');
 }
 
+const reviseOpen = ref(false), reviseText = ref('');
+const aiRunning = computed(() => !!workflowJob.value || isStreaming.value || deliverableBusy.value);
+const aiRunningTitle = computed(() => workflowJob.value?.title || (deliverableBusyKey.value ? `正在处理《${deliverablesForStage(currentStage.value).find(d => d.key === deliverableBusyKey.value)?.name || '交付物'}》` : 'AI 正在处理'));
+const aiRunStartedAt = ref(0);
+watch(aiRunning, on => { aiRunStartedAt.value = on ? Date.now() : 0; });
+const aiRunningSeconds = computed(() => { workflowJobTick.value; return aiRunStartedAt.value ? Math.floor((Date.now() - aiRunStartedAt.value) / 1000) : 0; });
+const aiRunningStep = computed(() => workflowJobProgress.value?.steps?.at(-1) || '');
+let aiRunTicker = null;
+watch(aiRunning, on => { clearInterval(aiRunTicker); if (on && !workflowJob.value) aiRunTicker = setInterval(() => { workflowJobTick.value++; }, 1000); });
+function stopAnyAi() { return workflowJob.value ? stopWorkflowJob() : cancelStream(); }
+watch([currentStage, deliverableSelected], () => { reviseOpen.value = false; reviseText.value = ''; });
+// 按意见修改当前交付物：直接改写文件，完成后刷新正文；改完正文变了，确认状态自动失效。
+async function reviseDocument() {
+  const text = reviseText.value.trim(), d = selectedDeliverable.value, stageId = currentStage.value;
+  if (!text || !d || aiRunning.value) return;
+  if (!await flushDocumentEdits()) return;
+  deliverableBusy.value = true; deliverableBusyKey.value = d.key; reviseOpen.value = false; reviseText.value = '';
+  const arr = deliverableMsgs.value[dkey(stageId, d.key)] ||= [], tab = `deliverable:${d.key}`;
+  beginStream(arr, tab);
+  arr.push(createMessage('user', `按意见修改：${text}`));
+  arr.push(createMessage('assistant', '', { thinkingSteps: [{ text: `正在修改《${d.name}》`, icon: 'fa-solid fa-wand-magic-sparkles', visible: true }], thinkingDone: false, expanded: true, typingContent: '', timestamp: '', streamId: currentStreamId }));
+  window.api.hermes.saveMessage(props.slug, { role: 'user', content: `按意见修改《${d.name}》：${text}`, tab, timestamp: new Date().toISOString() });
+  const prompt = `【按意见修改交付物】修改项目文件 \`${d.file}\`（《${d.name}》）。\n修改意见：${text}\n\n要求：先读取该文件当前内容；只改意见涉及的部分，其余章节、表格、编号（P/S/D/Q 等）和格式保持原样；不得编造资料中没有的事实，缺的信息写为待确认。用 write_file 写回同一个文件，最后用一两句话说明改了哪些地方。`;
+  try {
+    const result = await projectPrompt(prompt);
+    if (result?.success === false || result?.stopReason === 'cancelled') throw Error(result?.error || '已停止修改');
+    endStream(); showToast('已按意见修改，请核对后重新确认', 'success');
+  } catch (e) { endStream(); showToast(e.message || '修改失败，原文已保留', 'error'); }
+  finally { deliverableBusy.value = false; deliverableBusyKey.value = ''; await finishLivePreview(stageId); }
+}
 async function dlvSend() {
   if (!dlvInput.value.trim() && dlvComposer.attachments.value.length === 0) return;
   if (currentStage.value === 1 ? knowledgeStreaming.value : isStreaming.value) return;
@@ -2829,8 +2959,9 @@ async function selectDeliverable(key) {
     else {openWorkflowFile({file:key==='feature-spec'?'spec.md':'stage2/prd.md',stage:2,name:key==='feature-spec'?'产品原型 Demo · 功能清单':'产品原型 Demo · 配套 PRD'});return;}
   }
 
-  workflowOpen.value=false; workflowFile.value=null;
   if(!await flushDocumentEdits())return;
+  workflowOpen.value=false; workflowFile.value=null;
+  if(currentStage.value===1) stage1View.value=false;
   deliverableSelected.value = key;
   assistantConversationOpen.value = false;
   const d = deliverablesForStage(currentStage.value).find((x) => x.key === key);
@@ -2849,8 +2980,14 @@ const sectionSaving = ref(false),previewSaving=ref(false);
 watch(livePreviewContent,async content=>{const seq=++reviewSeq;const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(content||''));if(seq===reviewSeq)reviewToken.value=Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');});
 let editContext=null,previewSavePromise=null,sectionSavePromise=null,editTimer=null,sectionTimer=null;
 function projectDraftKey(){return 'fde-project-draft:'+props.slug+':'+(editContext?.stageId||currentStage.value)+':'+(editContext?.key||deliverableSelected.value);}
-watch(previewDraft,()=>{if(!previewEditing.value)return;try{localStorage.setItem(projectDraftKey(),previewDraft.value);}catch{}clearTimeout(editTimer);editTimer=setTimeout(()=>savePreviewEdit(false),800);});
-watch(sectionDraft,()=>{if(!sectionEdit.value)return;try{localStorage.setItem('fde-section-draft:'+props.slug+':'+sectionEdit.value.stageId+':'+sectionEdit.value.key+':'+sectionEdit.value.index,sectionDraft.value);}catch{}clearTimeout(sectionTimer);sectionTimer=setTimeout(()=>saveDocumentSection(false),800);});
+// 中文输入法组字时不自动保存，否则保存过程会打断输入法，把拼音字母留在框里
+let imeComposing=false;
+const onImeStart=()=>{imeComposing=true;};const onImeEnd=()=>{imeComposing=false;};
+onMounted(()=>{document.addEventListener('compositionstart',onImeStart,true);document.addEventListener('compositionend',onImeEnd,true);});
+onUnmounted(()=>{document.removeEventListener('compositionstart',onImeStart,true);document.removeEventListener('compositionend',onImeEnd,true);});
+function whenIdle(fn){return function retry(...args){if(imeComposing){editTimer=setTimeout(()=>retry(...args),600);return;}return fn(...args);};}
+watch(previewDraft,()=>{if(!previewEditing.value)return;try{localStorage.setItem(projectDraftKey(),previewDraft.value);}catch{}clearTimeout(editTimer);editTimer=setTimeout(whenIdle(()=>savePreviewEdit(false)),1200);});
+watch(sectionDraft,()=>{if(!sectionEdit.value)return;try{localStorage.setItem('fde-section-draft:'+props.slug+':'+sectionEdit.value.stageId+':'+sectionEdit.value.key+':'+sectionEdit.value.index,sectionDraft.value);}catch{}clearTimeout(sectionTimer);sectionTimer=setTimeout(whenIdle(()=>saveDocumentSection(false)),1200);});
 async function flushDocumentEdits(){if(researchSpaceRef.value&&!researchSpaceRef.value.beforeLeave())return false;clearTimeout(editTimer);clearTimeout(sectionTimer);if(sectionEdit.value&&!await saveDocumentSection())return false;if(previewEditing.value&&!await savePreviewEdit())return false;return true;}
 onBeforeRouteLeave(flushDocumentEdits);
 async function setPreviewMode(mode){if(await flushDocumentEdits())livePreviewMode.value=mode;}
@@ -3337,12 +3474,6 @@ const exportDeliverableMd = async (key) => {
   } catch (e) { console.error('Export deliverable md failed:', e); }
 };
 
-// 中文输入法选词时的回车 isComposing 为 true，不能当发送——否则选个词就把半句发出去。
-const onIterateEnter = (e) => {
-  if (e.isComposing || e.keyCode === 229) return;
-  e.preventDefault();
-  sendIterate();
-};
 
 const cancelStream = async () => {
   try {
@@ -3794,7 +3925,9 @@ watch(activeTab, (newTab) => {
 </script>
 
 <style scoped>
-.review-status{font-size:11px;color:#64748b;border-radius:5px;background:#f0f5ff;padding:4px 6px;white-space:nowrap}.integrity-overlay{position:fixed;inset:0;z-index:1500;display:grid;place-items:center;background:#17203640}.integrity-dialog{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;width:min(520px,90vw);max-height:85vh;overflow:auto;font-size:13px;color:#334155}.integrity-dialog h2{font-size:18px;font-weight:600;margin-bottom:10px}.integrity-dialog p{font-size:12px;line-height:1.8;color:#64748b;margin:10px 0}.integrity-dialog label{display:flex;flex-direction:column;gap:6px;margin:14px 0}.integrity-dialog input:not([type=checkbox]),.integrity-dialog textarea{padding:8px 10px;border:1px solid #dbe4f0;border-radius:7px;width:100%}.integrity-dialog textarea{min-height:85px}.integrity-dialog label.integrity-check{flex-direction:row;align-items:flex-start;line-height:1.7}.integrity-dialog footer{display:flex;justify-content:flex-end;gap:14px;margin-top:20px}.integrity-dialog button{padding:7px 10px;border-radius:6px;cursor:pointer;color:#2563eb}.integrity-dialog button.primary{background:#2563eb;color:#fff}.integrity-dialog button:disabled{opacity:.5}.integrity-version{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #edf1f6;padding:6px 0}
+.review-status{font-size:11px;color:#64748b;border-radius:5px;background:#f0f5ff;padding:4px 6px;white-space:nowrap}.ai-run-bar{display:flex;align-items:center;gap:10px;padding:9px 20px;background:#eff6ff;border-bottom:1px solid #dbeafe;font-size:12.5px;color:#1e40af}.ai-run-bar span{color:#475569;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.ai-run-stop{border:1px solid #fca5a5;color:#dc2626;background:#fff;border-radius:6px;padding:3px 12px;cursor:pointer}.ai-run-stop:hover{background:#fef2f2}
+.revise-bar{display:flex;flex-direction:column;gap:8px;padding:12px 20px;background:#fafbff;border-bottom:1px solid #e2e8f0}.revise-bar textarea{width:100%;border:1px solid #c7d7f5;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.6;resize:vertical;background:#fff}.revise-bar textarea:focus{outline:2px solid #bfdbfe}.revise-bar div{display:flex;justify-content:flex-end;gap:8px}
+.review-undo{margin-left:6px;color:#64748b;text-decoration:underline;cursor:pointer}.review-undo:hover{color:#2563eb}.integrity-overlay{position:fixed;inset:0;z-index:1500;display:grid;place-items:center;background:#17203640}.integrity-dialog{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;width:min(520px,90vw);max-height:85vh;overflow:auto;font-size:13px;color:#334155}.integrity-dialog h2{font-size:18px;font-weight:600;margin-bottom:10px}.integrity-dialog p{font-size:12px;line-height:1.8;color:#64748b;margin:10px 0}.integrity-dialog label{display:flex;flex-direction:column;gap:6px;margin:14px 0}.integrity-dialog input:not([type=checkbox]),.integrity-dialog textarea{padding:8px 10px;border:1px solid #dbe4f0;border-radius:7px;width:100%}.integrity-dialog textarea{min-height:85px}.integrity-dialog label.integrity-check{flex-direction:row;align-items:flex-start;line-height:1.7}.integrity-dialog footer{display:flex;justify-content:flex-end;gap:14px;margin-top:20px}.integrity-dialog button{padding:7px 10px;border-radius:6px;cursor:pointer;color:#2563eb}.integrity-dialog button.primary{background:#2563eb;color:#fff}.integrity-dialog button:disabled{opacity:.5}.integrity-version{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #edf1f6;padding:6px 0}
 
 .fde-reply-status { display:flex; align-items:center; gap:7px; padding:4px 0 10px; color:#7c8aa2; font-size:12px; }
 .document-toolbar { min-height:68px; flex-wrap:wrap; gap:8px; }
@@ -3819,7 +3952,29 @@ watch(activeTab, (newTab) => {
 .project-nav-btn.is-active { background: #e9f0ff; color: #1d4ed8; font-weight: 600; }
 .project-sidebar input { font-size: 12px; }
 .project-sidebar button:not(.project-nav-btn) { font-size: 11.5px; font-weight: 450; }
-.project-sidebar button[aria-current] { font-weight: 550; }
+.stage-rail { list-style: none; margin: 0; padding: 0; }
+.stage-node { position: relative; padding: 0 0 14px 34px; }
+.stage-node:not(:last-child)::before { content: ''; position: absolute; left: 11px; top: 26px; bottom: 2px; width: 2px; border-radius: 1px; background: #e2e8f0; }
+.stage-node.is-done:not(:last-child)::before { background: #a7e3c4; }
+.stage-dot { position: absolute; left: 0; top: 4px; z-index: 1; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #e2e8f0; background: #fff; color: #94a3b8; font-size: 11px; font-weight: 600; }
+.stage-node.is-done .stage-dot { border-color: #22a06b; background: #22a06b; color: #fff; font-size: 10px; }
+.stage-node.is-active .stage-dot { border-color: #2563eb; background: #2563eb; color: #fff; box-shadow: 0 0 0 4px #dbe7ff; }
+.project-sidebar button.stage-node-btn { display: flex; width: 100%; min-height: 32px; align-items: center; gap: 8px; border-radius: 8px; padding: 0 6px; text-align: left; font-size: 13px; font-weight: 600; color: #1e293b; transition: background-color .15s; }
+.stage-node-btn:not(:disabled):hover { background: #fff; }
+.stage-node-btn:disabled { cursor: not-allowed; }
+.stage-node.is-active .stage-node-btn { color: #1d4ed8; }
+.project-sidebar .stage-node.is-todo .stage-node-btn { color: #94a3b8; font-weight: 500; }
+.stage-children { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+.project-sidebar button.stage-child-btn { display: flex; width: 100%; min-height: 32px; align-items: center; gap: 9px; border-radius: 8px; padding: 0 8px; text-align: left; font-size: 12.5px; color: #475569; transition: background-color .15s, color .15s; }
+.stage-child-btn i { color: #94a3b8; }
+.stage-child-btn:hover { background: #fff; color: #1d4ed8; }
+.project-sidebar .stage-child-btn.is-selected { background: #e9f0ff; color: #1d4ed8; font-weight: 600; }
+.stage-child-btn.is-selected i { color: #2563eb; }
+.stage1-back { display: flex; align-items: center; gap: 6px; padding: 10px 20px; font-size: 12.5px; color: #1d4ed8; background: #f4f8ff; border-bottom: 1px solid #e3ebf7; text-align: left; }
+.stage1-back:hover { background: #e9f1ff; }
+.stage1-back:disabled { opacity: .55; cursor: not-allowed; }
+.stage1-back-sub { margin-left: 8px; color: #64748b; }
+.project-sidebar .stage-board-btn { font-weight: 500; }
 .assistant-pane > div[role="tablist"] button { font-size: 11px; font-weight: 500; }
 .assistant-pane .assistant-intro h3 { font-size: 14px; font-weight: 600; }
 .assistant-pane .assistant-intro h4 { font-size: 12px; font-weight: 600; }

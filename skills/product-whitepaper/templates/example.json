@@ -1,0 +1,22 @@
+{
+  "title": "示例智能体",
+  "filename": "示例智能体白皮书",
+  "team": "",
+  "team_en": "",
+  "intro": "本文件用于演示白皮书的结构和排版，不代表任何真实产品。制作实际白皮书时，应以当前产品资料填写服务对象、核心能力、业务输出和价值。",
+  "forbidden_terms": ["重庆版", "重庆话"],
+  "sections": [
+    {"title": "适用客户群体", "blocks": [{"type":"paragraph","text":"填写已经确认的机构类型、业务部门及适用条件。"}]},
+    {"title": "需求痛点与现状", "blocks": [
+      {"type":"heading","text":"使用者侧"},
+      {"type":"capability","name":"信息理解成本高","text":"用经过资料核对的真实业务场景说明现状和后果。"},
+      {"type":"heading","text":"管理侧"},
+      {"type":"paragraph","text":"描述管理者当前面临的问题及其影响。"}
+    ]},
+    {"title":"核心能力与价值","blocks":[
+      {"type":"heading","text":"业务模块：提供清晰的任务结果"},
+      {"type":"capability","name":"已验证能力","text":"根据真实资料填写输入、处理动作、输出结果及业务价值。"}
+    ]},
+    {"title":"部署方式","blocks":[{"type":"bullets","items":["仅填写已确认支持的部署模式、计算与数据位置及对接前提。"]}]}
+  ]
+}

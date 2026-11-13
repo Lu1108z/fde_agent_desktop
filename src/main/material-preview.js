@@ -54,7 +54,7 @@ async function presentation(file){
 }
 function findOfficeConverter(){
   const executable=process.platform==='win32'?'soffice.exe':'soffice';
-  const candidates=[process.env.FDE_PREVIEW_CONVERTER,'/Applications/LibreOffice.app/Contents/MacOS/soffice',path.join(os.homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice'),...String(process.env.PATH||'').split(path.delimiter).map(dir=>path.join(dir,executable))];
+  const candidates=[process.env.FDE_PREVIEW_CONVERTER,'/Applications/LibreOffice.app/Contents/MacOS/soffice',...String(process.env.PATH||'').split(path.delimiter).map(dir=>path.join(dir,executable))];
   if(process.platform==='win32')candidates.push(path.join(process.env.ProgramFiles||'C:\\Program Files','LibreOffice/program/soffice.exe'));
   return candidates.find(p=>p&&fs.existsSync(p));
 }
@@ -73,7 +73,7 @@ async function previewFile(file,ext,cacheDir){
   if(['csv','tsv'].includes(ext)){const rows=csvRows(fs.readFileSync(file,'utf8').replace(/^\uFEFF/,''));return {format:'spreadsheet',sheets:[{name:'数据',rows:rows.map((row,i)=>({number:i+1,cells:row.map((value,j)=>({index:j,value}))}))}]};}
   if(['pptx','ppt','odp','xls','ods','doc','rtf','odt','pages','numbers','key'].includes(ext)){
     try{const pdf=await officePdf(file,cacheDir);if(pdf)return {format:'file',previewType:'pdf',path:pdf};}catch(_){/* 转换不可用时仍提供内容预览或打开原件。 */}
-    if(ext==='pptx')return presentation(file);
+    if(ext==='pptx')return {...await presentation(file),path:file};
     return {format:'file',path:file,previewNotice:'此格式的页式预览需要本机安装 LibreOffice，可先用本机程序打开。'};
   }
   if(['html','htm'].includes(ext))return {format:'web',content:fs.readFileSync(file,'utf8')};

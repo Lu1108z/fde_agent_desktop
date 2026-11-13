@@ -25,6 +25,12 @@
       </div>
     </div>
 
+    <div v-else-if="loadError" class="py-12 text-center" role="alert">
+      <h3 class="text-lg font-semibold text-slate-700">项目加载失败</h3>
+      <p class="my-3 text-sm text-red-600">{{ loadError }}</p>
+      <button class="btn-sm-pri" @click="loadProjects">重新加载</button>
+    </div>
+
     <!-- Empty state -->
     <div v-else-if="projects.length === 0" class="flex flex-col items-center justify-center py-20">
       <div class="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-6">
@@ -214,6 +220,7 @@ const heroImage = useHeroImage('projects');
 const router = useRouter();
 const projects = ref([]);
 const loading = ref(true);
+const loadError = ref('');
 const showDeleteConfirm = ref(false);
 const deleteTarget = ref(null);
 const showRename = ref(false);
@@ -224,12 +231,14 @@ const renameInput = ref(null);
 
 const loadProjects = async () => {
   loading.value = true;
+  loadError.value = '';
   try {
     const list = await window.api.hermes.listProjects({ kind: 'project' });
-    projects.value = list || [];
+    if (!Array.isArray(list)) throw new Error(list?.error || '项目服务返回异常');
+    projects.value = list;
   } catch (e) {
     console.error('Failed to load projects:', e);
-    projects.value = [];
+    loadError.value = e.message || '无法连接项目服务，请重试。';
   } finally {
     loading.value = false;
   }

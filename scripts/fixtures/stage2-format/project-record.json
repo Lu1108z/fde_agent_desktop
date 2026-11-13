@@ -1,0 +1,119 @@
+{
+ "schemaVersion": "0.1",
+ "stage2": {
+  "aiCapabilities": {
+   "document": "stage2/ai-capability.md",
+   "items": [
+    {
+     "id": "AI-01",
+     "name": "运营月报初稿生成",
+     "description": "按院级口径表自动汇总 9 项核心指标，生成含同比环比、科室排名与原因分析的月报初稿",
+     "requirementIds": [
+      "REQ-01"
+     ],
+     "input": "D-01 就诊与床位日报、D-02 住院费用明细、D-03 科室收入成本、D-06 口径表",
+     "output": "月度运营分析报告初稿（Word/HTML）与指标明细表",
+     "dataDependencies": [
+      "D-01",
+      "D-02",
+      "D-03",
+      "D-05",
+      "D-06"
+     ],
+     "metric": {
+      "name": "月报编制工时与指标一致率",
+      "target": "编制工时 ≤2 个工作日；指标与人工复核一致率 ≥99%",
+      "method": "对 2026 年 3-5 月三期月报回放，对比人工终稿逐项核对"
+     },
+     "judge": "运营管理部 陈立文",
+     "priority": "P0",
+     "fallback": "口径表版本缺失或成本数据未出时，只出收入类指标并在初稿首页标注缺口，由专员补充",
+     "aiRole": "生成者（专员审核后定稿）",
+     "dataDependencyLevel": "高",
+     "testDataset": "2026 年 3-5 月全院月报与指标明细（运营部提供）"
+    },
+    {
+     "id": "AI-02",
+     "name": "指标异常研判与归因",
+     "description": "每日扫描科室指标，按阈值与同比环比识别异常，给出候选原因与证据并推送责任人",
+     "requirementIds": [
+      "REQ-02"
+     ],
+     "input": "D-01、D-02 日粒度指标，D-06 阈值规则，D-07 通知对象",
+     "output": "异常卡片（指标、偏离幅度、候选原因、证据明细、建议动作）",
+     "dataDependencies": [
+      "D-01",
+      "D-02",
+      "D-06",
+      "D-07"
+     ],
+     "metric": {
+      "name": "异常推送准确率",
+      "target": "科主任确认为真实异常的占比 ≥80%；推送时效 ≤1 个工作日",
+      "method": "试运行 4 周，统计推送异常的确认结果"
+     },
+     "judge": "运营管理部 王琳",
+     "priority": "P0",
+     "fallback": "归因置信度低于 0.6 时只推送异常不给原因，转运营专员人工归因",
+     "aiRole": "研判者（科主任确认）",
+     "dataDependencyLevel": "高",
+     "testDataset": "2026 年 1-5 月已人工标注的 126 条科室异常"
+    },
+    {
+     "id": "AI-03",
+     "name": "自然语言问数",
+     "description": "院领导用自然语言提问，智能体解析为指标、维度、时间并按口径取数，回答附口径与来源",
+     "requirementIds": [
+      "REQ-03"
+     ],
+     "input": "自然语言问题、D-06 口径表、已授权指标库",
+     "output": "结论 + 数据表/图 + 口径说明 + 数据来源",
+     "dataDependencies": [
+      "D-01",
+      "D-02",
+      "D-03",
+      "D-06"
+     ],
+     "metric": {
+      "name": "问数准确率",
+      "target": "与人工复核结果一致的准确率 ≥95%；当天应答率 ≥90%",
+      "method": "用 2026 年上半年院领导真实临时问数 180 条回放评测"
+     },
+     "judge": "副院长 刘振华",
+     "priority": "P1",
+     "fallback": "无法匹配口径或超出授权的问题，明确拒答并转运营专员，记录为新口径需求",
+     "aiRole": "问答者",
+     "dataDependencyLevel": "中",
+     "testDataset": "2026 年 1-6 月临时问数记录 180 条（脱敏）"
+    },
+    {
+     "id": "AI-04",
+     "name": "DRG 病组盈亏归因",
+     "description": "按月测算各 DRG 病组盈亏，分解药、耗、检查、手术、护理费用结构，对比支付标准给出改进方向",
+     "requirementIds": [
+      "REQ-04"
+     ],
+     "input": "D-04 DRG 入组明细、D-02 费用明细",
+     "output": "病组盈亏清单、费用结构对比、改进建议",
+     "dataDependencies": [
+      "D-02",
+      "D-04"
+     ],
+     "metric": {
+      "name": "病组盈亏测算偏差",
+      "target": "与分组器结算结果偏差 ≤1%；亏损病组识别率 100%",
+      "method": "以 2026Q1 结算数据回放 87 个亏损病组"
+     },
+     "judge": "医务处 DRG 办 孙浩",
+     "priority": "P1",
+     "fallback": "入组明细缺失或支付标准未更新时，暂停测算并提示 DRG 办补充",
+     "aiRole": "分析者（DRG 办确认）",
+     "dataDependencyLevel": "高",
+     "testDataset": "2026Q1 DRG 入组与结算数据"
+    }
+   ],
+   "reviewEvidence": "",
+   "excludedRequirementReasons": {}
+  }
+ }
+}

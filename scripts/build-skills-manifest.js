@@ -16,11 +16,11 @@ const SKILLS_DIR = path.join(__dirname, '..', 'skills');
 // group key -> display name + icon + color + member skill ids. Unmatched -> general.
 const GROUPS = [
   { id: 'product-doc',   name: '产品文档',   icon: 'file-lines',      color: '#2563eb',
-    members: ['product-prd-allinone', 'product-feature-spec', 'product-doc-to-word', 'md-export'] },
+    members: ['product-prd-allinone', 'product-feature-spec', 'product-doc-to-word', 'md-export', 'operation-manual', 'product-whitepaper', 'product-introduction'] },
   { id: 'prototype',     name: '原型设计',   icon: 'window-maximize', color: '#1d4ed8',
     members: ['prototype-generator', 'prototype-iterate'] },
   { id: 'report-image',  name: '汇报出图',   icon: 'image',           color: '#3b82f6',
-    members: ['360-ppt-generator', 'business-architecture-image', 'fireworks-tech-graph', 'image-generator'] },
+    members: ['360-ppt-generator', 'ppt-template', 'business-architecture-image', 'fireworks-tech-graph', 'image-generator', 'product-demo-film'] },
   { id: 'dataviz',       name: '数据可视化', icon: 'chart-column',    color: '#0ea5e9',
     members: ['dashboard-generator'] },
   { id: 'coach',         name: '教练陪练',   icon: 'headset',         color: '#1e40af',
@@ -36,17 +36,23 @@ const SKILL_ICONS = {
   'product-feature-spec': 'list-check',
   'product-doc-to-word': 'file-word',
   'md-export': 'file-export',
+  'operation-manual': 'book-open',
+  'product-whitepaper': 'file-invoice',
+  'product-introduction': 'id-card',
   'prototype-generator': 'wand-magic-sparkles',
   'prototype-iterate': 'pen-ruler',
   '360-ppt-generator': 'file-powerpoint',
+  'ppt-template': 'file-powerpoint',
   'business-architecture-image': 'sitemap',
   'fireworks-tech-graph': 'diagram-project',
   'image-generator': 'palette',
+  'product-demo-film': 'clapperboard',
   'dashboard-generator': 'chart-line',
   'fde-coach': 'headset',
   'brainstorming': 'lightbulb',
   'collaborative-planning-board': 'chalkboard-user',
   'first-principles-critic': 'scale-balanced',
+  'med-knowledge-qa': 'book-medical',
 };
 
 // Parse the first frontmatter block; supports | > block scalars, quotes.

@@ -19,7 +19,9 @@
         :class="open ? 'rotate-180' : ''"></i>
     </button>
 
-    <!-- Dropdown：向上弹出（bottom-full），避免被底部输入框边界遮挡 -->
+    <!-- Dropdown：挂到 body、按按钮实际位置固定定位，不会被任何滚动容器（overflow）裁掉；
+         默认向上弹，上方放不下才向下；横向贴按钮，超出窗口就往回收。 -->
+    <Teleport to="body">
     <transition
       enter-active-class="transition duration-150 ease-out"
       enter-from-class="opacity-0 translate-y-1"
@@ -30,8 +32,9 @@
     >
       <div
         v-if="open"
-        :class="minimal ? 'right-0' : 'left-0'"
-        class="model-options-menu absolute z-30 bottom-full mb-2 w-[280px] max-h-[340px] rounded-2xl border border-slate-200/80 glass-card shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col"
+        ref="menuRef"
+        :style="menuStyle"
+        class="model-options-menu fixed z-[1000] w-[280px] rounded-2xl border border-slate-200/80 glass-card shadow-xl shadow-slate-200/50 overflow-hidden flex flex-col"
       >
         <!-- Search -->
         <div class="p-2.5 border-b border-slate-100">
@@ -67,7 +70,7 @@
             <div class="min-w-0 flex-1">
               <div class="text-[12.5px] truncate"
                 :class="isCurrent(item.id) ? 'font-semibold text-blue-700' : 'text-slate-700'">
-                {{ shortName(item.id) }}
+                {{ item.label }}
               </div>
               <div class="text-[10px] text-slate-400 truncate">{{ item.id }}</div>
             </div>
@@ -76,11 +79,13 @@
         </div>
       </div>
     </transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { FIXED_MODELS } from '../../constants/models.js';
 
 const props = defineProps({
   minimal: { type: Boolean, default: false },
@@ -99,15 +104,12 @@ const searchRef = ref(null);
 // 去掉 provider 前缀（openai-api:anthropic/claude-opus-4.8 → anthropic/claude-opus-4.8）
 function stripProvider(id) {
   const s = String(id || '');
-  const i = s.indexOf(':');
+  const i = s.lastIndexOf(':');
   return i >= 0 ? s.slice(i + 1) : s;
 }
 
 // 归一化：统一成 { id, label }，按去前缀名去重。
-// 数据源是主进程 hermes:list-models，它已按 config.yaml 里当前网关声明的 models: 过滤
-// (readDeclaredModelIds)，所以这里不再叠加前端白名单 —— 早期那份硬编码 CURATED 与
-// config 不同步，正是「新加的模型不显示、已删的模型还在」的根因。用户在设置页
-// 「获取模型」勾选了什么，这里就显示什么。
+// 数据源是主进程 hermes:list-models，只返回管理员固定的模型（FIXED_MODELS），名字用中文显示名。
 const normalized = computed(() => {
   const all = (props.models || []).map((m) => {
     if (typeof m === 'string') return { id: m };
@@ -119,7 +121,7 @@ const normalized = computed(() => {
   const byBare = new Map();
   for (const m of all) {
     const bare = stripProvider(m.id);
-    if (!byBare.has(bare)) byBare.set(bare, m);
+    if (FIXED_MODELS.some(model => model.id === bare) && !byBare.has(bare)) byBare.set(bare, m);
   }
 
   const picked = [];
@@ -167,7 +169,7 @@ const currentLabel = computed(() => {
   return hit ? hit.label : shortName(bareModel(props.current));
 });
 
-const currentShort = computed(() => shortName(bareModel(props.current)));
+const currentShort = computed(() => currentLabel.value);
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase();
@@ -177,10 +179,31 @@ const filtered = computed(() => {
   );
 });
 
+const MENU_W = 280, MENU_MAX_H = 340, GAP = 8, EDGE = 12;
+const menuRef = ref(null);
+const menuStyle = ref({});
+
+// 按按钮在视口中的位置算浮层坐标：优先向上，上方不够且下方更宽裕时向下；
+// 横向默认与按钮左对齐（minimal 时右对齐），再夹到窗口内，保证完整可见。
+function placeMenu() {
+  const btn = rootRef.value?.getBoundingClientRect();
+  if (!btn) return;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const above = btn.top - GAP - EDGE, below = vh - btn.bottom - GAP - EDGE;
+  const up = above >= Math.min(MENU_MAX_H, 200) || above >= below;
+  const maxHeight = Math.max(120, Math.min(MENU_MAX_H, up ? above : below));
+  let left = props.minimal ? btn.right - MENU_W : btn.left;
+  left = Math.min(Math.max(left, EDGE), Math.max(EDGE, vw - MENU_W - EDGE));
+  menuStyle.value = up
+    ? { left: `${left}px`, bottom: `${vh - btn.top + GAP}px`, maxHeight: `${maxHeight}px` }
+    : { left: `${left}px`, top: `${btn.bottom + GAP}px`, maxHeight: `${maxHeight}px` };
+}
+
 function toggleOpen() {
   open.value = !open.value;
   if (open.value) {
     query.value = '';
+    placeMenu();
     nextTick(() => searchRef.value && searchRef.value.focus());
   }
 }
@@ -191,11 +214,25 @@ function select(id) {
 }
 
 function onDocClick(e) {
-  if (rootRef.value && !rootRef.value.contains(e.target)) open.value = false;
+  if (rootRef.value?.contains(e.target) || menuRef.value?.contains(e.target)) return;
+  open.value = false;
 }
+// 页面滚动或窗口尺寸变化时跟着按钮重新定位
+function onReflow() { if (open.value) placeMenu(); }
+function onKey(e) { if (e.key === 'Escape') open.value = false; }
 
-onMounted(() => document.addEventListener('click', onDocClick));
-onBeforeUnmount(() => document.removeEventListener('click', onDocClick));
+onMounted(() => {
+  document.addEventListener('click', onDocClick);
+  window.addEventListener('resize', onReflow);
+  window.addEventListener('scroll', onReflow, true);
+  document.addEventListener('keydown', onKey);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick);
+  window.removeEventListener('resize', onReflow);
+  window.removeEventListener('scroll', onReflow, true);
+  document.removeEventListener('keydown', onKey);
+});
 </script>
 
 <style scoped>

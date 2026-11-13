@@ -18,6 +18,7 @@ async function main() {
     if(!fs.existsSync(file)) throw Error('Missing required release resource: '+file);
   }
   if(fs.readFileSync(path.join(keys,'aes.key')).length !== 32) throw Error('Invalid license verification material.');
+  execFileSync('npm',['run','sync:agent-platform','--','--if-changed'],{cwd:root,stdio:'inherit'});
   execFileSync('npm',['run','build:renderer'],{cwd:root,stdio:'inherit'});
   const config = {...pkg.build,
     directories:{...pkg.build.directories,output},

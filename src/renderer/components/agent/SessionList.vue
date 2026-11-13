@@ -2,9 +2,10 @@
   <div class="session-list w-[224px] shrink-0 border-r border-slate-200/60 flex flex-col">
     <div class="shrink-0 px-4 py-3 border-b border-slate-100">
       <div class="flex items-center justify-between mb-3">
-        <span class="text-xs font-medium text-slate-500">{{ projectMode ? '项目对话' : coachMode ? '教练陪练' : '智能对话' }}</span>
+        <span class="text-xs font-medium text-slate-500">{{ projectMode ? '项目对话' : coachMode ? '培训空间' : '工作空间' }}</span>
         <button aria-label="收起对话列表" class="session-close" @click="$emit('close')"><i class="fa-solid fa-chevron-left"></i></button>
       </div>
+      <div v-if="!projectMode" class="session-space-label"><i :class="coachMode ? 'fa-solid fa-headset' : 'fa-regular fa-comments'"></i>{{ coachMode ? '教练陪练' : 'AI 助手' }}</div>
       <button :disabled="!!busySlug" @click="$emit('new-chat')" class="session-new-chat"><i class="fa-solid fa-plus"></i>{{ coachMode ? '开始新陪练' : '开启新对话' }}</button>
     </div>
     <div class="px-3 py-2">
@@ -21,7 +22,9 @@
         <button class="session-more" :aria-label="`更多操作：${project.name}`" aria-haspopup="menu" :aria-expanded="menuProject?.slug === project.slug" @click.stop="openMenu(project, $event)"><i class="fa-solid fa-ellipsis"></i></button>
       </div>
       <p v-if="filteredProjects.length === 0 && searchQuery" class="session-empty">没有找到相关对话</p>
+      <p v-else-if="filteredProjects.length === 0" class="session-empty">{{ coachMode ? '完成第一次练习后，记录会出现在这里' : '从一个想法开始，对话将保存在这里' }}</p>
     </div>
+    <div v-if="!projectMode" class="session-tip"><strong><i class="fa-regular fa-lightbulb"></i>{{ coachMode ? '练习，让沟通更从容' : '你的产品设计搭档' }}</strong><p>{{ coachMode ? '进入具体情境，练习真实提问。复盘之后，还能从关键节点重练。' : '从一个想法，到一份好方案。把复杂的事，一起理清楚。' }}</p></div>
 
     <Teleport to="body">
       <div v-if="menuProject" ref="menuElement" class="session-menu" :style="menuStyle" role="menu" aria-label="对话操作" @keydown="menuKeys" @keydown.esc.stop.prevent="closeMenu(true)">
@@ -204,8 +207,11 @@ onBeforeUnmount(() => { document.removeEventListener('pointerdown', outsideMenu)
 <style scoped>
 .session-list { background:#f8fbff; }
 .session-close { border:0; background:transparent; color:#94a3b8; cursor:pointer; }
-.session-new-chat { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:10px 12px; border:1px solid #dce7fb; border-radius:10px; background:#fff; color:#2563eb; font-size:12px; font-weight:500; cursor:pointer; }
-.session-new-chat:hover { background:#edf3ff; }
+.session-new-chat { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:12px; border:1px solid #4e6ee8; border-radius:9px; background:#4e6ee8; color:#fff; font-size:12px; font-weight:500; cursor:pointer; }
+.session-new-chat:hover { background:#405fd5; }
+.session-new-chat:disabled{opacity:.5;cursor:default}
+.session-space-label{display:flex;gap:12px;align-items:center;margin:14px -3px 18px;padding:13px 12px;background:#edf2ff;color:#5575df;border-radius:9px;font-size:13px;font-weight:500}
+.session-tip{margin:20px 16px;padding:16px 12px;background:#f4f6fb;border-radius:11px;color:#8291a8;font-size:11px;line-height:1.9}.session-tip strong{display:flex;align-items:center;gap:7px;color:#5e708b;font-size:12px;font-weight:500;margin-bottom:8px}
 .session-search { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #e8edf5; border-radius:9px; background:#fff; color:#94a3b8; font-size:11px; }
 .session-search input { min-width:0; width:100%; background:transparent; border:0; outline:none; font-size:12px; color:#475569; }
 .session-search:focus-within { border-color:#8aafff; }

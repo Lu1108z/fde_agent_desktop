@@ -20,9 +20,8 @@
     </div>
 
     <!-- 窗口控制保留在独立的拖拽栏，避免顶部导航占用原生窗口操作区域。 -->
-    <header class="app-titlebar drag-region">
-      <span class="titlebar-caption">FDE 产品设计</span>
-      <div class="titlebar-right no-drag">
+    <header class="app-titlebar drag-region" :class="{ 'titlebar-mac': platform === 'darwin' }">
+      <div v-if="platform !== 'darwin'" class="titlebar-left no-drag">
         <button @click="minimizeWindow" class="win-btn" title="最小化">
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
         </button>
@@ -34,6 +33,7 @@
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
         </button>
       </div>
+      <span class="titlebar-caption">FDE 产品设计</span>
     </header>
 
     <header class="app-header">
@@ -81,7 +81,7 @@
 
     <main class="app-content">
       <RouterView v-slot="{ Component, route: pageRoute }">
-        <KeepAlive include="AgentHome,Coach">
+        <KeepAlive include="AgentHome,Coach,AgentPlatform">
           <component :is="Component" :key="pageRoute.path" />
         </KeepAlive>
       </RouterView>
@@ -95,6 +95,7 @@ import { useRoute } from 'vue-router';
 
 const route = useRoute();
 const isMaximized = ref(false);
+const platform = ref('');
 const appVersion = ref('v3.3.8');
 const licenseInfo = ref(null);
 const importing = ref(false);
@@ -137,17 +138,19 @@ const primaryNav = [
     { to: '/coach', label: 'FDE 教练陪练', icon: 'fa-solid fa-headset', match: (p) => p === '/coach' },
     { to: '/training', label: '培训教程', icon: 'fa-solid fa-graduation-cap', match: (p) => p === '/training' },
   ] },
-  { to: '/chat', label: 'AI 助手', icon: 'fa-solid fa-comments', match: (p) => p === '/chat' || p.startsWith('/code') || p === '/apps' || p === '/experts', children: [
+  { to: '/chat', label: 'AI 助手', icon: 'fa-solid fa-comments', match: (p) => p === '/chat' || p.startsWith('/code') || p.startsWith('/apps') || p === '/experts', children: [
     { to: '/chat', label: 'AI 智能对话', icon: 'fa-solid fa-comments', match: (p) => p === '/chat' },
     { to: '/code', label: 'AI 代码模式', icon: 'fa-solid fa-code', match: (p) => p.startsWith('/code') },
-    { to: '/apps', label: 'AI 应用广场', icon: 'fa-solid fa-store', match: (p) => p === '/apps' || p === '/experts' },
+    { to: '/apps', label: 'AI 应用广场', icon: 'fa-solid fa-store', match: (p) => p.startsWith('/apps') || p === '/experts' },
   ] },
   { to: '/library/team', label: '资源', icon: 'fa-solid fa-book-open', match: (p) => p.startsWith('/library') || p === '/knowledge' || p === '/skills', children: [
     { to: '/library/team', label: '团队资料库', icon: 'fa-solid fa-folder-open', match: p => p === '/library/team' },
+    { to: '/library/promo', label: '宣传物料', icon: 'fa-solid fa-photo-film', match: p => p === '/library/promo' },
     { to: '/library/repository', label: '代码仓', icon: 'fa-solid fa-code-branch', match: p => p === '/library/repository' },
     { to: '/knowledge', label: '知识中心', icon: 'fa-solid fa-book-open', match: (p) => p === '/knowledge' },
     { to: '/skills', label: '技能中心', icon: 'fa-solid fa-brain', match: (p) => p === '/skills' },
   ] },
+  { to: '/agent-platform', label: '智能体平台', icon: 'fa-solid fa-hospital', match: (p) => p === '/agent-platform' },
 ];
 
 // 顶栏授权徽章:客户名 + 有效期(永久/剩余天数/缓冲期)
@@ -295,6 +298,7 @@ onMounted(async () => {
   if (window.api && window.api.app) {
     try {
       appVersion.value = 'v' + await window.api.app.getVersion();
+      platform.value = await window.api.app.getPlatform();
     } catch (e) {}
   }
   loadLicense();
@@ -437,7 +441,8 @@ const closeWindow = () => {
   border-bottom: 1px solid #e9eef8;
 }
 .titlebar-caption { color: #8a99b3; font-size: 10px; font-weight: 600; letter-spacing: 0.02em; }
-.titlebar-right { display: inline-flex; align-items: center; gap: 3px; }
+.titlebar-left { display: inline-flex; align-items: center; gap: 3px; margin-right: 12px; }
+.titlebar-mac { padding-left: 88px; /* macOS 红黄绿 + 间距 */ }
 .win-btn {
   width: 28px; height: 23px;
   display: inline-flex; align-items: center; justify-content: center;

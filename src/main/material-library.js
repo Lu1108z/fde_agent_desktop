@@ -15,9 +15,15 @@ function createMaterialLibrary(root, onChange = () => {}) {
   let restoring = false;
   function atomic(target, data) {fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target+'.tmp',data);fs.renameSync(target+'.tmp',target);}
   function persist(db) {fs.mkdirSync(path.join(root,'files'),{recursive:true});atomic(indexPath,JSON.stringify(db,null,2));}
+  // 宣传物料单独一个空间：每个智能体一个文件夹，放 PPT / 视频 / Word；老资料库读取时补上
+  const PROMO_SPACE={id:'promo',title:'宣传物料',description:'各智能体的宣传 PPT、演示视频和介绍文档',system:true};
   function state() {
-    if (fs.existsSync(indexPath)) return JSON.parse(fs.readFileSync(indexPath,'utf8'));
-    const db={version:2,spaces:[{id:'agents',title:'FDE医疗智能体标品',description:'智能体原型、PRD、宣传材料与标准产品资产'},{id:'projects',title:'FDE医疗项目管理',description:'项目资料、客户对接、日报与会议纪要'}],entries:[]};
+    if (fs.existsSync(indexPath)) {
+      const db=JSON.parse(fs.readFileSync(indexPath,'utf8'));
+      if(!db.spaces.some(s=>s.id===PROMO_SPACE.id)){db.spaces.push({...PROMO_SPACE,createdAt:now()});persist(db);}
+      return db;
+    }
+    const db={version:2,spaces:[{id:'agents',title:'FDE医疗智能体标品',description:'智能体原型、PRD、宣传材料与标准产品资产'},{id:'projects',title:'FDE医疗项目管理',description:'项目资料、客户对接、日报与会议纪要'},{...PROMO_SPACE,createdAt:now()}],entries:[]};
     persist(db); return db;
   }
   function name(value) {if (typeof value !== 'string' || !value.trim()) throw Error('请输入名称');return value.trim();}
@@ -83,7 +89,8 @@ function createMaterialLibrary(root, onChange = () => {}) {
       else {content=e.ext==='docx'?(await require('mammoth').convertToHtml({path:file(e)})).value:await markdownHtml(fs.readFileSync(file(e),'utf8'));}
       if(token(e)!==fingerprint)throw Error('原件正在被修改，请稍后刷新');
       if(!cacheValid || e.htmlSourceToken!==fingerprint){const db=state();e=entry(db,id);atomic(htmlFile,content);e.htmlSourceToken=fingerprint;persist(db);snapshot(e,'原件同步版本');}
-      return {...e,format:'html',content,token:fingerprint};
+      // 用户上传的 Word 原件（非资料库自己编辑生成的）给出原件路径，前端按原样式排版预览
+      return {...e,format:'html',content,token:fingerprint,...(e.ext==='docx'&&!['folder','document','daily'].includes(e.kind)?{originalPath:file(e)}:{})};
     }
     return {...e,...await previewFile(file(e),e.ext,path.join(root,'previews')),token:fingerprint};
   });}
@@ -102,6 +109,15 @@ function createMaterialLibrary(root, onChange = () => {}) {
   });}
   function rename(id,title) {ensureWritable();const db=state();const e=entry(db,id);e.title=name(title);return changed(db,e,'重命名了资料');}
   function move(id,parentId) {ensureWritable();const db=state();const e=entry(db,id);parent(db,e.spaceId,parentId);let current=parentId;while(current){if(current===id)throw Error('不能移动到自身或子文件夹');current=entry(db,current).parentId;}e.parentId=parentId||null;return changed(db,e,'移动了资料');}
+  // 宣传物料里的智能体生命周期：推广日 + 周期月数 + 购买记录，状态由前端按日期算
+  function setLifecycle(id,lifecycle){ensureWritable();const db=state(),e=entry(db,id);if(e.spaceId!=='promo'||e.kind!=='folder'||e.parentId)throw Error('只有宣传物料里的智能体能设置生命周期');
+    if(lifecycle===null){delete e.lifecycle;return changed(db,e,'清除了生命周期');}
+    const date=v=>{if(typeof v!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(v))throw Error('日期格式不对');const d=new Date(v+'T00:00:00Z');if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==v)throw Error('日期不存在');return v;};
+    const months=Number(lifecycle?.months);if(!Number.isInteger(months)||months<1||months>60)throw Error('周期请填 1 到 60 个月');
+    const purchases=(Array.isArray(lifecycle.purchases)?lifecycle.purchases:[]).map(p=>({id:validId(p?.id)?p.id:randomUUID(),customer:name(p?.customer),date:date(p?.date)}));
+    const current=new Date(),today=[current.getFullYear(),String(current.getMonth()+1).padStart(2,'0'),String(current.getDate()).padStart(2,'0')].join('-');
+    if(purchases.some(p=>p.date>today))throw Error('购买日期不能晚于今天');
+    e.lifecycle={launchAt:date(lifecycle.launchAt),months,purchases};return changed(db,e,'更新了生命周期');}
   function associate(id,slugs) {ensureWritable();if(!Array.isArray(slugs)||slugs.some(s=>!validId(s)))throw Error('无效项目');const db=state(),e=entry(db,id);e.projectSlugs=[...new Set(slugs)];return changed(db,e,'更新了关联项目');}
   function linked(slug){const db=state();return db.entries.filter(e=>{if(e.deletedAt)return false;let current=e;const seen=new Set();while(current&&!seen.has(current.id)){seen.add(current.id);if((current.projectSlugs||[]).includes(slug))return true;current=db.entries.find(p=>p.id===current.parentId&&!p.deletedAt);}return false;});}
   function trash(id) {ensureWritable();const db=state();const e=entry(db,id);const ids=new Set([id]);let size=0;while(size!==ids.size){size=ids.size;db.entries.filter(x=>ids.has(x.parentId)).forEach(x=>ids.add(x.id));}const deletedAt=now();db.entries.filter(x=>ids.has(x.id)).forEach(x=>x.deletedAt=deletedAt);changed(db,e,'移入了回收站');}
@@ -133,7 +149,7 @@ function createMaterialLibrary(root, onChange = () => {}) {
       fs.renameSync(root,old);try{fs.renameSync(stage,root);}catch(e){fs.renameSync(old,root);throw e;}return {previousBackup:old};
     }finally{restoring=false;fs.rmSync(stage,{recursive:true,force:true});}
   }
-  return {state,createSpace,renameSpace,trashSpace,restoreSpace,create,upload,read,write,rename,move,trash,restore,locate,history,restoreRevision,backup,restoreBackup,associate,linked,passages,search};
+  return {state,createSpace,renameSpace,trashSpace,restoreSpace,create,upload,read,write,rename,move,trash,restore,locate,history,restoreRevision,backup,restoreBackup,associate,setLifecycle,linked,passages,search};
 }
 function escape(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 module.exports={createMaterialLibrary};

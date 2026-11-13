@@ -22,3 +22,10 @@ Hermes agent 桌面版（Electron + Vue 3 + Vite）。前端在 `src/renderer`�
 - 选中文件预览：html → iframe（`isHtmlSelected`），其余（js/json/css…）→ 深色只读源码视图（`fileSource`）。
 - iframe 预览带**缩放控件**（`previewZoom` 0.5~1.5，CSS transform，只缩放视觉、不改原型文件）。原型本身字号偏大是生成侧（原型生成 skill）的规范问题，桌面端只能靠缩放缓解。
 - 文件图标按扩展名着色：`fileIcon(rel)`。
+
+## 智能体平台（med-ai-demo）同步
+
+「智能体平台」页是 med-ai-demo 代码仓的静态站点副本（`med-ai-demo/`，不进 git，版本记在 `med-ai-demo/.source-version`）。
+- 平台更新后：`npm run sync:agent-platform -- --pull`（先 git pull 平台代码仓再同步）。
+- `build:win` / `build:mac` / `build:mac:trial` 打包前会自动跑 `sync:agent-platform -- --if-changed`：平台版本没变就跳过；找不到平台代码仓时沿用现有副本。
+- 同步哪些目录以平台 `.electron-build/assemble.sh` 里 `for item in …` 那一行为准，平台增删智能体无需改本仓。

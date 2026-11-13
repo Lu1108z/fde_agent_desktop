@@ -10,10 +10,10 @@ import {stage2GenerationContext,stage2FormatIssues,templateStructure} from '../s
 const require=createRequire(import.meta.url),mammoth=require('mammoth');
 const projectRoot=fileURLToPath(new URL('..',import.meta.url)),fixture=path.join(projectRoot,'scripts/fixtures/stage2-format');
 const normalize=text=>String(text).normalize('NFKC').replace(/\s+/g,'');
-test('stage two exposes exactly three official deliverables; prototype companions stay in one package',async()=>{
+test('stage two exposes exactly three official deliverables; prototype package holds only the prototype, PRD is stage three',async()=>{
  const data=await import('data:text/javascript,'+encodeURIComponent(fs.readFileSync(path.join(projectRoot,'src/renderer/data/project-deliverables.js'),'utf8')));
  assert.deepEqual(data.STAGE2_DELIVERABLES.map(item=>item.name),['需求与数据对接确认表','AI能力清单','产品原型 Demo']);
- assert.deepEqual(data.STAGE2_DELIVERABLES[2].files,['prototype/index.html','stage2/prd.md','spec.md','stage2/prototype-handoff.md']);
+ assert.deepEqual(data.STAGE2_DELIVERABLES[2].files,['prototype/index.html']);
 });
 test('actual skill scripts produce the knowledge-center table columns and labeled rows',async()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'fde-stage2-script-'));

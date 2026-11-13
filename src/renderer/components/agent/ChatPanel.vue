@@ -26,6 +26,7 @@
         :available-models="availableModels"
         :current-model="currentModel"
         @start-voice="$emit('start-voice')"
+        @scenario="$emit('scenario', $event)"
         @send-quick="(text) => $emit('send-quick', text)"
         @send-with-attachments="(text, atts) => $emit('send-with-attachments', text, atts)"
         @navigate="(tab) => $emit('navigate', tab)"
@@ -88,12 +89,12 @@
           <!-- Assistant Message -->
           <div v-else class="w-full flex flex-col items-start">
             <div v-if="!msg.systemNotice" class="assistant-message-heading">
-              <img :src="coachAvatar" alt="FDE 助手" />
+              <slot name="assistant-avatar"><img :src="coachAvatar" alt="FDE 助手" /></slot>
               <span>{{ projectMeta?.projectType === 'fde-coach' || slug.startsWith('coach-') ? 'FDE 教练' : projectMeta?.aiApp?.name || 'FDE 智能助手' }}</span>
               <span v-if="isStreaming && idx === messages.length - 1" class="assistant-message-status">正在回复</span>
             </div>
             <!-- Thinking Steps -->
-            <ThinkingSummary v-if="!msg.systemNotice" :message="msg" :busy="isStreaming && idx === messages.length - 1 && !msg.thinkingDone" />
+            <ThinkingSummary v-if="!readingMode && !msg.systemNotice" :message="msg" :busy="isStreaming && idx === messages.length - 1 && !msg.thinkingDone" />
 
             <!-- System notice: 引擎回执(如已并入/已排队)，非 AI 回答，浅灰提示条 -->
             <div v-if="msg.systemNotice && (msg.displayContent || msg.content)" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[13px] text-slate-500">
@@ -107,7 +108,11 @@
               :content="msg.content" :animate="Boolean(msg.streamId)" :streaming="isStreaming && idx === messages.length - 1"
               :stopped="msg.cancelled" :render="renderAssistantContent" @progress="followStreamingAnswer" @click="handleContentImgClick" />
 
+            <!-- 回答依据（如医疗专家的知识库出处），由页面按需提供 -->
+            <slot name="assistant-footer" :message="msg" :index="idx"></slot>
+
             <!-- Action bar (always visible) -->
+            <div class="assistant-response-footer" :class="{ 'assistant-response-footer--reading': readingMode }">
             <div v-if="msg.content && !msg.systemNotice" class="flex items-center gap-0.5 mt-2">
               <button @click="copyMessage(msg.content, idx)" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer" :title="copiedIdx === idx ? '已复制' : '复制'">
                 <i class="text-[13px]" :class="copiedIdx === idx ? 'fa-solid fa-check text-emerald-500' : 'fa-regular fa-copy'"></i>
@@ -138,6 +143,8 @@
               </div>
 
               <span v-if="msg.timestamp" class="text-[12px] text-slate-400 ml-2 self-center">{{ msg.timestamp }}</span>
+            </div>
+            <ThinkingSummary v-if="readingMode && !msg.systemNotice" class="response-footer-summary" :message="msg" :busy="isStreaming && idx === messages.length - 1 && !msg.thinkingDone" />
             </div>
           </div>
         </div>
@@ -191,8 +198,7 @@
             @focus="isFocused = true"
             @blur="isFocused = false"
             class="scrollbar-hide disabled:opacity-60"
-            @keydown.ctrl.enter.prevent="sendMessage"
-            @keydown.meta.enter.prevent="sendMessage"
+            v-enter-send="sendMessage"
           ></textarea>
 
           <div class="fde-composer-toolbar">
@@ -235,6 +241,7 @@ import { cleanAssistantContent } from '@/data/assistant-content';
 const props = defineProps({
   coachMode: { type: Boolean, default: false },
   branded: { type: Boolean, default: false },
+  readingMode: { type: Boolean, default: false },
   slug: { type: String, required: true },
   projectName: { type: String, default: '' },
   projectMeta: { type: Object, default: () => ({}) },
@@ -247,7 +254,7 @@ const props = defineProps({
   currentModel: { type: String, default: '' },
 });
 
-const emit = defineEmits(['start-voice', 'send', 'send-quick', 'send-with-attachments', 'cancel', 'navigate', 'fork', 'regenerate', 'feedback', 'delete', 'change-model', 'preview-file']);
+const emit = defineEmits(['start-voice', 'scenario', 'send', 'send-quick', 'send-with-attachments', 'cancel', 'navigate', 'fork', 'regenerate', 'feedback', 'delete', 'change-model', 'preview-file']);
 
 const inputText = ref('');
 const inputRef = ref(null);
@@ -529,6 +536,7 @@ watch(inputText, (val) => {
 const sendMessage = () => {
   const text = inputText.value.trim();
   if (!text && chatAttachments.value.length === 0) return;
+  if (props.isStreaming) return;
   if (chatAttachments.value.length > 0) {
     emit('send-with-attachments', text || '请分析这张图片', [...chatAttachments.value]);
   } else {
@@ -797,6 +805,12 @@ defineExpose({ scrollToBottom, scrollToMessage, setDraft });
 .assistant-message-heading img { width:30px; height:30px; object-fit:cover; border-radius:50%; border:1px solid #e3ecf8; }
 .assistant-message-status { font-size:11px; color:#2563eb; font-weight:400; }
 .assistant-answer { overflow-wrap:anywhere; }
+.assistant-response-footer{width:100%}
+.assistant-response-footer--reading{display:flex;flex-wrap:wrap;align-items:center;gap:0 16px;margin-top:16px}
+.assistant-response-footer--reading>div{margin-top:0}
+.assistant-response-footer--reading :deep(.response-footer-summary){display:contents}
+.assistant-response-footer--reading :deep(.summary-body){flex-basis:100%;order:1;max-width:100%;box-sizing:border-box}
+.assistant-response-footer--reading :deep(.thinking-summary>button){font-size:12px;color:var(--ui-text-2,#64748b)}
 .chat-composer-dock > div { max-width:788px; }
 .chat-composer { background:#fff!important; border-color:#dce5f3; box-shadow:0 4px 20px rgba(39,71,119,.06)!important; }
 .chat-composer:focus-within { border-color:#8aafff; }

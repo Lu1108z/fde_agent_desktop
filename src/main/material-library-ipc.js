@@ -12,12 +12,13 @@ function registerMaterialLibrary({ipcMain,dialog,shell,root,getWindow,recordActi
   handle('trash-space',async p=>{library.trashSpace(p.id);return {};});
   handle('restore-space',async p=>{library.restoreSpace(p.id);return {};});
   handle('create',async p=>({entry:await library.create(p)}));
-  handle('read',async p=>{const document=await library.read(p.id);if(document.format==='file')document.url=await registerMediaUrl(document.path);return {document};});
+  handle('read',async p=>{const document=await library.read(p.id);if(document.format==='file'||document.format==='slides'&&document.path)document.url=await registerMediaUrl(document.path);if(document.format==='html'&&document.ext==='docx'&&document.originalPath)document.originalUrl=await registerMediaUrl(document.originalPath);delete document.originalPath;return {document};});
   handle('write',async p=>({entry:await library.write(p.id,p.format,p.content,p.token)}));
   handle('search',async p=>({matches:await library.search(p.query,p.spaceId)}));
   handle('history',p=>({versions:library.history(p.id)}));
   handle('restore-revision',async p=>({entry:await library.restoreRevision(p.id,p.revisionId,p.token)}));
   handle('associate',p=>({entry:library.associate(p.id,p.slugs)}));
+  handle('lifecycle',p=>({entry:library.setLifecycle(p.id,p.lifecycle)}));
   handle('linked',p=>({entries:library.linked(p.slug)}));
   handle('passages',async p=>({result:await library.passages(p.id,p.query)}));
   handle('backup',async()=>{const selected=await dialog.showSaveDialog(getWindow(),{title:'备份整个资料库',defaultPath:'FDE资料库-'+new Date().toISOString().slice(0,10)+'.zip',filters:[{name:'资料库备份',extensions:['zip']}]});if(selected.canceled)return {canceled:true};await library.backup(selected.filePath);return {};});
@@ -27,9 +28,21 @@ function registerMaterialLibrary({ipcMain,dialog,shell,root,getWindow,recordActi
   handle('trash',async p=>{library.trash(p.id);return {};});
   handle('restore',async p=>{library.restore(p.id);return {};});
   handle('upload',async p=>{
-    const selection=await dialog.showOpenDialog(getWindow(),{title:'上传资料',properties:['openFile','multiSelections'],filters:[{name:'所有文件',extensions:['*']}]});
+    const filters=Array.isArray(p.filters)&&p.filters.every(f=>typeof f?.name==='string'&&Array.isArray(f.extensions))?p.filters:[{name:'所有文件',extensions:['*']}];
+    const selection=await dialog.showOpenDialog(getWindow(),{title:p.dialogTitle||'上传资料',properties:['openFile','multiSelections'],filters});
     if(selection.canceled)return {canceled:true};
-    return {entries:await library.upload({...p,paths:selection.filePaths})};
+    return {entries:await library.upload({spaceId:p.spaceId,parentId:p.parentId,paths:selection.filePaths})};
+  });
+  // 封面缩略图：用系统缩略图（macOS QuickLook / Windows Shell）生成 PDF、PPT、Word、视频的首页画面，按文件指纹缓存成 jpg
+  const thumbs=new Map();
+  handle('thumbnail',async p=>{
+    const file=await library.locate(p.id);const stat=fs.statSync(file);const dir=path.join(root,'previews','thumbs');
+    const target=path.join(dir,p.id+'.'+Math.round(stat.mtimeMs)+'.'+stat.size+'.jpg');
+    if(!fs.existsSync(target)){
+      if(!thumbs.has(target))thumbs.set(target,(async()=>{try{const {nativeImage}=require('electron');const image=await nativeImage.createThumbnailFromPath(file,{width:720,height:450});if(image.isEmpty())return false;fs.mkdirSync(dir,{recursive:true});fs.writeFileSync(target,image.toJPEG(82));return true;}catch(_){return false;}finally{thumbs.delete(target);}})());
+      if(!await thumbs.get(target)&&!fs.existsSync(target))return {url:''};
+    }
+    return {url:await registerMediaUrl(target)};
   });
   handle('open',async p=>{const d=await library.read(p.id);if(d.kind==='link'){await shell.openExternal(d.url);return {};}
     const error=await shell.openPath(await library.locate(p.id));if(error)throw Error(error);return {};

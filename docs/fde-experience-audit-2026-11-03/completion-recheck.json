@@ -1,0 +1,14 @@
+{
+  "stageStatus": {
+    "1": "done",
+    "2": "done",
+    "3": "done",
+    "4": "done",
+    "5": "done"
+  },
+  "signoffStatus": "needs-review",
+  "completionBanner": [
+    "项目已验收完成。各表仍可打开查看，修改后需要重新核对。"
+  ],
+  "recompletionButtons": 0
+}

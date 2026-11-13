@@ -24,7 +24,7 @@ const electronPath = require('electron');
 
 console.log('[launcher] Starting Electron with clean environment...');
 
-const child = spawn(electronPath, ['.'], {
+const child = spawn(electronPath, ['.', ...(env.FDE_DEBUG_PORT ? ['--remote-debugging-port=' + env.FDE_DEBUG_PORT] : [])], {
   env,
   stdio: 'inherit',
   windowsHide: false

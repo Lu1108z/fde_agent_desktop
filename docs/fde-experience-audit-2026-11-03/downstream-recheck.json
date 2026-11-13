@@ -1,0 +1,19 @@
+{
+  "case": "修改已确认PRD后刷新流程",
+  "statuses": {
+    "3:scope": "confirmed",
+    "3:design": "confirmed",
+    "3:final": "needs-review",
+    "3:handoff": "needs-review",
+    "4:schedule": "confirmed",
+    "4:demo": "confirmed",
+    "4:launch": "confirmed",
+    "5:tracker": "confirmed",
+    "5:iteration": "confirmed",
+    "5:usage": "confirmed",
+    "5:signoff": "confirmed"
+  },
+  "handoff": {
+    "status": "needs-review"
+  }
+}

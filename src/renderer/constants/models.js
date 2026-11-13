@@ -8,6 +8,14 @@
 // anthropic/claude-sonnet-5;OpenAI/DeepSeek 官方只认裸名 gpt-4o,带前缀会 400。
 // 档案里显式存这个标记,主进程写 config.yaml 时据此决定是否剥前缀 ——
 // 旧代码在两处用 base_url 是否含 360.cn 去猜,猜不准自建代理。
+// 管理员固定的网关和模型（与主进程 src/main/index.js 的 FIXED_GATEWAY / FIXED_MODELS 保持一致）。
+// 使用的人只能填 API Key，聊天时只能在这两个模型之间切换。
+export const FIXED_GATEWAY = { name: '360 网关', baseUrl: 'https://api.360.cn/v1', apiMode: 'chat_completions' };
+export const FIXED_MODELS = [
+  { id: 'deepseek/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash' },
+  { id: 'anthropic/claude-opus-5-5', label: 'Claude Opus 5.5' },
+];
+
 export const GATEWAY_PRESETS = [
   {
     id: '360',

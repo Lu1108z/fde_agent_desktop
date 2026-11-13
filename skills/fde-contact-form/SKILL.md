@@ -29,3 +29,15 @@ category: product-doc
 生成前同时读取软件知识中心当前模板。保留其章节、表格列名、列顺序与填写行；本技能的示例和旧骨架不具有客户事实效力。对接表完整保留 4.1–4.6；AI能力清单必须包含第四章“AI验收口径汇总”，不得以业务方确认替代该表。PRD与功能清单属于第三件“产品原型 Demo”的配套文件，不在阶段二单独计数。
 
 整理已有非脚本稿件时，先读取并核对人工修订，再使用 `--migrate-existing`；脚本会将旧正文按内容哈希归档至 `.fde-flow/format-history/`。修订同一轮仍需 `--replace-round`，不得将未知确认改成已确认。
+
+## 承接阶段一（2026-11）
+
+第一轮生成前必须先读阶段一成果，不从零开始：
+- `stage1/research-brief.md` → 一、基本信息、4.1 场景概述
+- `stage1/interview-outline.md` → 二、组织关系的访谈对象、本轮议题
+- `stage1/business-flow.md` → 4.2 / 4.4 业务流程，沿用 P-xx（节点）、S-xx（系统）编号
+- `stage1/data-flow.md` → 4.5 数据对接，沿用 S-xx；CDR 判断与接入方式照搬，本轮证实后再改
+- `stage1/data-requirements.md` → 4.5 数据对接，沿用 D-xx
+- `.fde-flow/context.json` 的 openQuestions → 本轮材料回答了的写进对应章节；没回答的进“遗留未定事项”
+
+编号只补不改。阶段一标“推测 / 待确认”的内容，只有本轮材料证实后才能写成事实，并在备注写明本轮来源。

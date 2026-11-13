@@ -1,0 +1,30 @@
+{
+  "operations": {
+    "file": "operations.docx",
+    "source_name": "运营决策智能体-产品介绍.docx",
+    "sha256": "7b608fbb86379797e8889ff70663c600109cc608a268c3c62898b0298d54e528",
+    "styles_sha256": "1331a50d5bed879ff7ad6462120c6ee47e7fe7f9d91a41d7c219faf98bf48133",
+    "numbering_sha256": "59ff13a4afbfdcf5f8cf8b274e61338747229f963c63670ad1e36d6353ad2018"
+  },
+  "hr": {
+    "file": "hr.docx",
+    "source_name": "医院人事管理智能体-产品介绍.docx",
+    "sha256": "969a768a59459fe724168931cc8f73ccdb3a04f57fc3a267fe632e4cbb21d41c",
+    "styles_sha256": "1331a50d5bed879ff7ad6462120c6ee47e7fe7f9d91a41d7c219faf98bf48133",
+    "numbering_sha256": "59ff13a4afbfdcf5f8cf8b274e61338747229f963c63670ad1e36d6353ad2018"
+  },
+  "quality-risk": {
+    "file": "quality-risk.docx",
+    "source_name": "医疗质量与安全风险预警智能体-产品介绍.docx",
+    "sha256": "6911e9a361e77603f77b99020b553b2132cd7a04ff01b407b31400eba68063db",
+    "styles_sha256": "1331a50d5bed879ff7ad6462120c6ee47e7fe7f9d91a41d7c219faf98bf48133",
+    "numbering_sha256": "59ff13a4afbfdcf5f8cf8b274e61338747229f963c63670ad1e36d6353ad2018"
+  },
+  "perioperative": {
+    "file": "perioperative.docx",
+    "source_name": "围术期决策智能体-产品介绍.docx",
+    "sha256": "9e90aea28b74b9c4aa4402f3e3e480fdee8d129e81c1bc6da1af6d9249957757",
+    "styles_sha256": "1331a50d5bed879ff7ad6462120c6ee47e7fe7f9d91a41d7c219faf98bf48133",
+    "numbering_sha256": "59ff13a4afbfdcf5f8cf8b274e61338747229f963c63670ad1e36d6353ad2018"
+  }
+}

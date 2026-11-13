@@ -1,5 +1,8 @@
 // Keep the received answer intact; only pace its presentation when chunks arrive in bursts.
-export function createTextReveal(onUpdate, clock = { setInterval, clearInterval }) {
+// 浏览器的 setInterval 必须以 window 为 this 调用，否则 Chromium 报 Illegal invocation
+const defaultClock = { setInterval: (fn, ms) => setInterval(fn, ms), clearInterval: (id) => clearInterval(id) };
+
+export function createTextReveal(onUpdate, clock = defaultClock) {
   let target = '';
   let visible = '';
   let timer = null;

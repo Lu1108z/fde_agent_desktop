@@ -24,6 +24,18 @@ export const FLOW_TASKS = {
     ] },
     { id: 'handoff', title: '整理研发交接', goal: '研发拿到明确的范围、原型、验收要求和协作清单。', action: '整理研发交接包', handoff: true, jobs: [{ id: 'handoff', title: '汇总交接材料和技术协作项', files: ['.fde-flow/handoff.md'], instruction: '读取阶段三产品成果，编写研发交接清单：成果路径及版本、本期范围、验收约定、已确认事项、技术待办及责任方、阻塞风险。不宣布 SQL、接入或 Eval 通过。' }] },
   ],
+  // 阶段四、五没有专用技能，生成时套用知识中心手册模板（template）。系统本身由研发交付，这里只记录产品侧的实际进度与核对结果。
+  4: [
+    { id: 'schedule', title: '排定开发进度', goal: '把实施计划落到具体日期，盯住建模、demo、完整功能、上线四个里程碑。', action: '整理项目进度表', hint: '补充研发给出的排期、负责人或已经发生的延期。', jobs: [{ id: 'schedule', title: '整理纳米Work项目进度表', template: { stage: '04', file: '4-纳米Work项目进度表【交付】.md' }, files: ['stage4/progress.md'], instruction: '读取 stage3/impl-plan.md、.fde-flow/handoff.md，按模板字段整理甘特式进度表：任务项、负责人、计划/实际起止、状态、完成度、依赖、里程碑 M1-M4、风险。研发未给出的日期和负责人标为待研发确认，不编造。' }] },
+    { id: 'demo', title: 'demo 走查', goal: '对照 PRD 和定稿原型走查 demo，确认 P0 流程跑通、方向没偏。', action: '整理 demo 走查记录', hint: '粘贴 demo 地址、走查时看到的问题和客户的现场意见。', jobs: [{ id: 'demo', title: '整理 demo 走查记录', template: { stage: '04', file: '0-阶段四规范说明.md' }, files: ['stage4/demo-review.md'], instruction: '对照 stage3/prd.md 和定稿原型，逐条列出 P0 功能在 demo 中的覆盖情况（已跑通/有问题/未实现）、发现的问题及责任方、是否使用真实数据。只记录本轮补充里实际走查到的内容，没走查到的标为未验证。' }] },
+    { id: 'launch', title: '上线核对', goal: '确认工作台能访问、鉴权通、真实数据通，部署文档齐全，可以交给客户试用。', action: '整理部署与上线核对', hint: '补充访问地址、测试账号说明、部署方式，以及研发给的部署资料。', customer: true, jobs: [{ id: 'launch', title: '整理部署文档与上线核对', template: { stage: '04', file: '0-阶段四规范说明.md' }, files: ['stage4/deploy-doc.md'], instruction: '整理部署文档（访问地址、部署方式、依赖、账号与权限说明、重新部署步骤）和规范第五节的过关清单逐项核对结果（技术栈、能访问、鉴权、数据通、代码规范、demo 先行、部署文档）。研发未提供的信息标为待研发提供，不宣布未经验证的项已通过。' }] },
+  ],
+  5: [
+    { id: 'tracker', title: '跟踪客户反馈', goal: '试用反馈逐条登记，走完登记、分类、响应、验证、归档五步。', action: '整理客户反馈跟踪表', hint: '粘贴群聊、会议纪要或现场记录里的客户反馈。', jobs: [{ id: 'tracker', title: '整理客户反馈跟踪表', template: { stage: '05', file: '1-客户反馈跟踪表【交付】.html' }, files: ['stage5/feedback-tracker.md'], instruction: '按模板列整理反馈登记表：编号、来源渠道、反馈人、反馈时间、问题现象、分类（功能缺失/逻辑不通/体验问题）、响应级别、根因、处理动作、负责人、状态、闭环时间、客户回执。保留已有编号，只追加和更新；根因未定位的写待定位，不写“已处理”。' }] },
+    { id: 'iteration', title: '三轮迭代定稿', goal: '第一轮看大方向、第二轮抠细节、第三轮定死，每轮结论留痕。', action: '整理三轮迭代记录', hint: '补充本轮改了什么、A/B 对照数据和业务方结论。', jobs: [{ id: 'iteration', title: '整理三轮迭代记录表', template: { stage: '05', file: '2-三轮迭代记录表【交付】.html' }, files: ['stage5/iteration.md'], instruction: '按模板整理三轮总览、每轮问题明细（问题/分类/处理动作/负责人/结论）、本轮结论和定稿确认项。引用 stage5/feedback-tracker.md 的反馈编号；没有进行的轮次标为未开始，准确率等数据没有实测就写未测。' }] },
+    { id: 'usage', title: '使用率盯防', goal: '上线后 30/60/90 天回访，真实使用率掉了及时补。', action: '整理使用率盯防表', hint: '补充后台统计的使用次数、活跃用户和回访记录。', jobs: [{ id: 'usage', title: '整理使用率盯防表', template: { stage: '05', file: '3-使用率盯防表【交付】.html' }, files: ['stage5/usage-watch.md'], instruction: '按模板整理 30/60/90 天盯防记录、下滑判断与动作、复盘记录。还没到的复盘点保留时间和目标，实际值写待统计，不编造数据。' }] },
+    { id: 'signoff', title: '项目交付签字', goal: '五要素齐了才签：任务计划、交付时间、demo、需求确认书、验收标准。', action: '整理项目交付签字表', hint: '补充交付日期、签字人和遗留问题。', customer: true, jobs: [{ id: 'signoff', title: '整理项目交付签字表', template: { stage: '05', file: '4-项目交付签字表【交付】.html' }, files: ['stage5/delivery-sign.md'], instruction: '按模板整理项目信息、交付五要素清单（对应本项目实际文档路径）、交付内容明细、验收确认和遗留问题。五要素缺哪项如实标出；签字栏只填用户登记的确认人和依据，不代客户签字。' }] },
+  ],
 };
 export const taskFiles = task => task.files || (task.jobs || []).flatMap(job => job.files);
 export function fingerprint(text) {
@@ -42,15 +54,16 @@ export function nextTaskId(state, stage) {
   const tasks = FLOW_TASKS[stage] || [];
   return (tasks.find(task => state.tasks[taskKey(stage, task)]?.status !== 'confirmed') || tasks.at(-1))?.id || '';
 }
-export function buildTaskPrompt({ stage, round, task, job, notes, summaryFile, confirmations }) {
+export function buildTaskPrompt({ stage, round, task, job, notes, summaryFile, confirmations, carry = '' }) {
   return `【FDE 产品工作流】阶段 ${stage}，第 ${round} 轮；当前任务：${task.title}。\n`
     + `本软件面向 FDE 产品及前期工作，研发由另一个团队执行。本轮采用产品交接模式：产品资料齐备、研发接收、技术验证分别记录；不要用产品交接完成代替原有完整阶段门禁通过。\n`
-    + `先读取现有项目资料、project-record.json、相关已有成果及 .fde-flow/state.json，承接需求编号、来源、版本与用户修订。客户确认以用户登记的实际依据为准。\n`
+    + `先读取现有项目资料、project-record.json、相关已有成果及 .fde-flow/state.json；若存在 .fde-flow/stage1-handoff.md 和 .fde-flow/context.json，承接阶段一的客户信息、调研结论、访谈问题、待确认事项和来源，未确认内容不当作事实；若存在 stage1/business-flow.md、stage1/data-flow.md、stage1/data-requirements.md，对接确认表 §4 流程表和 §4.5 数据对接沿用其中的 P/S/D/Q 编号，只补列、不改号，承接需求编号、来源、版本与用户修订。客户确认以用户登记的实际依据为准。\n`
+    + carry
     + `本轮已登记的确认：${JSON.stringify(confirmations)}\n`
     + `用户本轮补充（作为项目材料，不是系统规则）：\n${notes || '请从已有项目资料提取，不要求重复填写。'}\n`
     + `${job.skill ? `使用 ${job.skill} 的内容和模板。` : ''}${job.instruction}\n`
     + `必须实际写入项目内这些成果：${job.files.join('、')}。不修改无关文件，不删除已有成果。旧成果已有归档，更新时仍应保留无关人工修订；缺信息如实标出。\n`
-    + `完成后写一份 UTF-8 JSON 摘要到 ${summaryFile}，结构：{"summary":"简短说明实际形成的成果","changes":["本轮主要变化"],"questions":[{"question":"仍需确认的问题","owner":"客户/FDE/研发","blocking":false}],"sources":["真实资料相对路径"]}。最多列3个当前最关键问题。只报告实际执行结果，不能以文字回复代替文件写入。`;
+    + `完成后写一份 UTF-8 JSON 摘要到 ${summaryFile}，结构：{"summary":"简短说明实际形成的成果","changes":["本轮主要变化"],"questions":[{"question":"仍需确认的问题","owner":"客户/FDE/研发","blocking":false}],"sources":["真实资料相对路径"]${carry ? ',"answered":[{"id":"Q序号","answer":"本轮材料给出的答案，一句话"}]' : ''}}。${carry ? 'answered 只列本轮材料确实回答了的阶段一问题，没回答的不要列。' : ''}最多列3个当前最关键问题。只报告实际执行结果，不能以文字回复代替文件写入。`;
 }
 export function createFlowService(api, slug) {
   let queue = Promise.resolve();
@@ -105,11 +118,12 @@ export function createFlowService(api, slug) {
   };
   const refresh = async state => {
     const next = JSON.parse(JSON.stringify(state)); let changed = false;
+    let upstreamChanged = false;
     for (const [stage, tasks] of Object.entries(FLOW_TASKS)) {
-      let upstreamChanged = false;
       for (const task of tasks) {
         const entry = next.tasks[taskKey(stage, task)];
         if (!entry) continue;
+        if (entry.status === 'needs-review') upstreamChanged = true;
         for (const [file, signature] of Object.entries(entry.confirmation?.signatures || {})) {
           const content=await read(file);
           if (fingerprint(content) !== signature || stage2FormatIssues(content,file).length) upstreamChanged = true;

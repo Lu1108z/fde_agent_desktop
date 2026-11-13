@@ -40,4 +40,17 @@ export const STAGE3_DELIVERABLES = [
 ];
 
 // 当前阶段的交付物清单
-export const deliverablesForStage = (id) => id === 2 ? STAGE2_DELIVERABLES : id === 3 ? STAGE3_DELIVERABLES : [];
+// 阶段④⑤：系统本身由研发交付，这里是产品侧要留档的表；模板取知识中心手册
+export const STAGE4_DELIVERABLES = [
+  { key:'progress', name:'纳米Work项目进度表', short:'项目进度表', icon:'fa-solid fa-chart-gantt', file:'stage4/progress.md', tpl:{stage:'04',md:'4-纳米Work项目进度表【交付】.md'}, hint:'建模→后端→前端→智能体接入→联调→部署，排到具体日期，盯 M1-M4 里程碑。' },
+  { key:'demo-review', name:'demo 走查记录', short:'demo 走查', icon:'fa-solid fa-display', file:'stage4/demo-review.md', tpl:{stage:'04',md:'0-阶段四规范说明.md'}, hint:'对照 PRD 和定稿原型逐条走查 demo 的 P0 流程。' },
+  { key:'deploy-doc', name:'部署文档与上线核对', short:'部署文档', icon:'fa-solid fa-server', file:'stage4/deploy-doc.md', tpl:{stage:'04',md:'0-阶段四规范说明.md'}, hint:'访问地址、部署方式、依赖、账号权限，以及过关清单逐项核对。' },
+];
+export const STAGE5_DELIVERABLES = [
+  { key:'feedback-tracker', name:'客户反馈跟踪表', short:'反馈跟踪表', icon:'fa-solid fa-comments', file:'stage5/feedback-tracker.md', tplHtml:{stage:'05',html:'1-客户反馈跟踪表【交付】.html'}, hint:'每条反馈走完登记→分类→响应→验证→归档。' },
+  { key:'iteration', name:'三轮迭代记录表', short:'三轮迭代', icon:'fa-solid fa-arrows-rotate', file:'stage5/iteration.md', tplHtml:{stage:'05',html:'2-三轮迭代记录表【交付】.html'}, hint:'看大方向→抠细节→定死，每轮结论留痕。' },
+  { key:'usage-watch', name:'使用率盯防表', short:'使用率盯防', icon:'fa-solid fa-chart-line', file:'stage5/usage-watch.md', tplHtml:{stage:'05',html:'3-使用率盯防表【交付】.html'}, hint:'30/60/90 天回访真实使用率。' },
+  { key:'delivery-sign', name:'项目交付签字表', short:'交付签字表', icon:'fa-solid fa-file-signature', file:'stage5/delivery-sign.md', tplHtml:{stage:'05',html:'4-项目交付签字表【交付】.html'}, hint:'五要素齐了才签：任务计划、交付时间、demo、需求确认书、验收标准。' },
+];
+const BY_STAGE = { 2: STAGE2_DELIVERABLES, 3: STAGE3_DELIVERABLES, 4: STAGE4_DELIVERABLES, 5: STAGE5_DELIVERABLES };
+export const deliverablesForStage = (id) => BY_STAGE[id] || [];

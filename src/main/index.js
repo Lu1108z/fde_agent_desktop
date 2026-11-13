@@ -510,6 +510,18 @@ function buildGatewayHeaders(apiKey, authMode = 'bearer', extraHeaders = {}, api
 // 这里改成建档时就定下来,不再猜。
 const GATEWAY_PROFILES_PATH = path.join(PRODUCT_LOBSTER_HOME, 'gateway-profiles.json');
 
+// --- 固定模型 -----------------------------------------------------------------
+// 管理员统一定好网关和模型，使用的人不能改：网关固定 360，下拉框只有这两个模型，
+// 设置页 / 首启向导只填 API Key。每次启动都把 config.yaml 收敛回这份清单，
+// 用户手改 config.yaml 或旧版本留下的其它模型都会被纠正。
+const FIXED_GATEWAY = { name: '360 网关', baseUrl: 'https://api.360.cn/v1', apiMode: 'chat_completions', authMode: 'bearer', stripVendorPrefix: false };
+const FIXED_MODELS = [
+  { id: 'deepseek/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash', contextLength: 1000000 },
+  { id: 'anthropic/claude-opus-5-5', label: 'Claude Opus 5.5', contextLength: 1000000 },
+];
+const FIXED_MODEL_IDS = FIXED_MODELS.map((m) => m.id);
+const isFixedModel = (id) => FIXED_MODEL_IDS.includes(stripModelPrefix(id));
+
 function readGatewayProfiles() {
   try {
     if (!fs.existsSync(GATEWAY_PROFILES_PATH)) return { version: 1, activeId: '', profiles: [] };
@@ -610,6 +622,26 @@ function ensureGatewayProfilesSeeded() {
   };
   writeGatewayProfiles(seeded);
   return seeded;
+}
+
+// 启动时把配置收敛到管理员固定的网关和模型。只有已经填过 Key 才动（全新安装交给首启向导）；
+// 当前默认模型不在清单里时换回第一个。Key 原样保留。
+function enforceFixedModels() {
+  try {
+    const store = ensureGatewayProfilesSeeded();
+    const active = store.profiles.find((p) => p.id === store.activeId) || store.profiles[0];
+    const apiKey = (active && active.apiKey) || parseEnvConfig().apiKey;
+    if (!apiKey) return;
+    const profile = { id: (active && active.id) || 'default', ...FIXED_GATEWAY, apiKey, models: [...FIXED_MODEL_IDS], extraHeaders: {} };
+    writeGatewayProfiles({ version: 1, activeId: profile.id, profiles: [profile] });
+    const keep = isFixedModel(readConfigModel()) ? stripModelPrefix(readConfigModel()) : FIXED_MODEL_IDS[0];
+    writeConfigProviderKey(apiKey, FIXED_GATEWAY.baseUrl, [keep, ...FIXED_MODEL_IDS.filter((m) => m !== keep)], {
+      stripVendorPrefix: false, replaceModels: true, apiMode: FIXED_GATEWAY.apiMode, authMode: FIXED_GATEWAY.authMode, extraHeaders: {},
+    });
+    upsertEnvVars({ OPENAI_API_KEY: apiKey, OPENAI_BASE_URL: FIXED_GATEWAY.baseUrl, ANTHROPIC_API_KEY: null, HERMES_MODEL: null });
+  } catch (e) {
+    console.warn('[main] enforceFixedModels failed:', e.message);
+  }
 }
 
 // 从 session/new 的响应里抓模型列表 + 当前模型。
@@ -1397,6 +1429,7 @@ function readProjectMeta(slug) {
   const metaPath = resolveProjectPath(slug, 'meta.json');
   if (!fs.existsSync(metaPath)) return null;
   const meta = ensureFdeFields(JSON.parse(fs.readFileSync(metaPath, 'utf-8')));
+  if (require('./project-completion').reconcileCompletion(resolveProjectPath(slug), meta)) writeProjectMeta(slug, meta);
   return require('./project-start').normalizeProjectStart(meta, resolveProjectPath(slug));
 }
 
@@ -1633,13 +1666,13 @@ function buildAppMenu() {
 }
 
 function createWindow() {
-  mainWindow = new BrowserWindow({
+  const isMac = process.platform === 'darwin';
+  const winOpts = {
     width: 1480,
     height: 900,
     minWidth: 1024,
     minHeight: 768,
     show: false,
-    frame: false,
     // 不设的话 Chromium 给纯白，首帧就是刺眼白屏；对齐 :root 的 --background(白)，
     // 让「窗口底 → 页面底」无缝，看不出加载过程。
     backgroundColor: '#ffffff',
@@ -1651,7 +1684,16 @@ function createWindow() {
       contextIsolation: true,
       webSecurity: false,
     },
-  });
+  };
+  if (isMac) {
+    // macOS：隐藏原生标题栏, 红黄绿按钮保留, 位置内嵌到页面顶部（保持系统原生样式和手感）
+    winOpts.titleBarStyle = 'hiddenInset';
+    winOpts.trafficLightPosition = { x: 12, y: 8 };
+  } else {
+    // Windows/Linux：无边框, 全自绘三按钮（统一应用外观）
+    winOpts.frame = false;
+  }
+  mainWindow = new BrowserWindow(winOpts);
 
   // Development errors are forwarded to the terminal to diagnose stalled page updates.
   if (!app.isPackaged) {
@@ -1663,6 +1705,8 @@ function createWindow() {
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    // 智能体平台站内新开的页面留在应用里打开（独立窗口），不跳系统浏览器
+    if (agentPlatform.isPlatformUrl(url)) return { action: 'allow', overrideBrowserWindowOptions: { width: 1440, height: 900, autoHideMenuBar: true, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } } };
     if (url.startsWith('http') || url.startsWith('https') || url.startsWith('file://')) {
       shell.openExternal(url);
       return { action: 'deny' };
@@ -2053,6 +2097,9 @@ ipcMain.handle('activity:list', async () => {
   } catch (error) { return {success:false,error:error.message}; }
 });
 
+// 智能体平台（med-ai-demo 静态站点），开发时读仓库内 med-ai-demo/，打包后读 Resources/med-ai-demo
+const agentPlatform=require('./agent-platform').createAgentPlatform([process.env.FDE_AGENT_PLATFORM_DIR,app.isPackaged?path.join(process.resourcesPath,'med-ai-demo'):null,path.join(__dirname,'..','..','med-ai-demo')]);
+ipcMain.handle('agent-platform:url',async(_event,{page}={})=>{try{return {success:true,url:await agentPlatform.url(page)};}catch(e){return {success:false,error:e.message};}});
 require('./material-library-ipc').registerMaterialLibrary({ipcMain,dialog,shell,root:path.join(PRODUCT_LOBSTER_HOME,'material-library'),getWindow:()=>mainWindow,recordActivity,registerMediaUrl:readyMediaUrl});
 
 const { createHandbookEditor } = require('./handbook-edits');
@@ -2176,11 +2223,11 @@ function resolveSkillPath(skillId, file) {
 // 这样"约定目录里新出现的技能"打开技能页即可见,无需重生静态 manifest.json。
 const SKILLS_GROUPS = [
   { id: 'product-doc',   name: '产品文档',   icon: 'file-lines',      color: '#2563eb',
-    members: ['product-prd-allinone', 'product-feature-spec', 'product-doc-to-word', 'md-export'] },
+    members: ['product-prd-allinone', 'product-feature-spec', 'product-doc-to-word', 'md-export', 'operation-manual', 'product-whitepaper', 'product-introduction'] },
   { id: 'prototype',     name: '原型设计',   icon: 'window-maximize', color: '#1d4ed8',
     members: ['prototype-generator', 'prototype-iterate'] },
   { id: 'report-image',  name: '汇报出图',   icon: 'image',           color: '#3b82f6',
-    members: ['360-ppt-generator', 'business-architecture-image', 'fireworks-tech-graph', 'image-generator'] },
+    members: ['360-ppt-generator', 'ppt-template', 'business-architecture-image', 'fireworks-tech-graph', 'image-generator', 'product-demo-film'] },
   { id: 'dataviz',       name: '数据可视化', icon: 'chart-column',    color: '#0ea5e9',
     members: ['dashboard-generator'] },
   { id: 'coach',         name: '教练陪练',   icon: 'headset',         color: '#1e40af',
@@ -2191,10 +2238,10 @@ const SKILLS_GROUPS = [
 ];
 const SKILL_ICONS = {
   'product-prd-allinone': 'file-contract', 'product-feature-spec': 'list-check',
-  'product-doc-to-word': 'file-word', 'md-export': 'file-export',
+  'product-doc-to-word': 'file-word', 'md-export': 'file-export', 'operation-manual': 'book-open', 'product-whitepaper': 'file-invoice', 'product-introduction': 'id-card',
   'prototype-generator': 'wand-magic-sparkles', 'prototype-iterate': 'pen-ruler',
-  '360-ppt-generator': 'file-powerpoint', 'business-architecture-image': 'sitemap',
-  'fireworks-tech-graph': 'diagram-project', 'image-generator': 'palette',
+  '360-ppt-generator': 'file-powerpoint', 'ppt-template': 'file-powerpoint', 'business-architecture-image': 'sitemap',
+  'fireworks-tech-graph': 'diagram-project', 'image-generator': 'palette', 'product-demo-film': 'clapperboard',
   'dashboard-generator': 'chart-line', 'fde-coach': 'headset',
   'brainstorming': 'lightbulb', 'collaborative-planning-board': 'chalkboard-user',
   'first-principles-critic': 'scale-balanced',
@@ -3662,8 +3709,10 @@ ipcMain.handle('code:save-conversation', async (_event, { id, conversationId, me
 
 ipcMain.handle('hermes:create-project', async (_event, params) => {
   const { name, requirement, slug: customSlug, projectType: requestedType, expert, aiApp, skillId } = params || {};
+  // 专家对话关联的 FDE 项目（只接受存在的普通项目）
+  const linkedProject = aiApp && typeof params?.linkedProject === 'string' && linkedProjectInfo(params.linkedProject) ? params.linkedProject : '';
   try {
-    const slug = customSlug || slugify(name);
+    const slug = customSlug || `${slugify(String(name || 'project')).slice(0, 48)}-${require('crypto').randomUUID()}`;
     const projectDir = resolveProjectPath(slug);
 
     if (fs.existsSync(projectDir)) {
@@ -3683,7 +3732,7 @@ ipcMain.handle('hermes:create-project', async (_event, params) => {
     // 如果是 AI 应用专家项目，先准备记忆 + 知识 + CLAUDE.md，
     // 让 session/new 启动时 cwd 里就有完整的专家上下文。
     if (aiApp && aiApp.id) {
-      prepareAiAppProjectContext(slug, aiApp);
+      prepareAiAppProjectContext(slug, aiApp, linkedProject);
     }
 
     // Persist the selected skill before starting the engine in this directory.
@@ -3695,24 +3744,11 @@ ipcMain.handle('hermes:create-project', async (_event, params) => {
       activeSkill = require('./skill-context').prepareSkillProject({ skill, sourcePath, projectDir });
     }
 
-    // Create session via ACP
-    let sessionId = null;
-    if (acp && !(params.voiceOnly === true && requestedType === 'fde-coach')) {
-      const result = await acp.request('session/new', { cwd: projectDir, mcpServers: [] });
-      sessionId = result && result.sessionId ? result.sessionId : null;
-      projectSessions.markLoaded(acp, sessionId);
-      captureModelsFromSession(result);
-      // Auto-approve all edits — fire-and-forget so we don't block project creation on a second round-trip
-      if (sessionId) {
-        acp.request('session/set_mode', { sessionId, modeId: 'dont_ask' }).catch(() => {});
-      }
-    }
-
     const projectType = requestedType || inferProjectType(slug, {});
     const meta = {
       name,
       slug,
-      sessionId,
+      sessionId: null,
       requirement: requirement || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -3725,12 +3761,30 @@ ipcMain.handle('hermes:create-project', async (_event, params) => {
       messageCount: 0,
       ...(expert ? { expert } : {}),
       ...(aiApp ? { aiApp } : {}),
+      ...(linkedProject ? { linkedProject } : {}),
       ...(activeSkill ? { activeSkill } : {}),
     };
     writeProjectMeta(slug, meta);
 
+    // 项目先落盘，模型连接失败不能让用户丢失项目或被残留目录阻止重试。
+    // 无会话时，后续 loadProject / prompt 会通过 projectSessions.ensure 重建。
+    let sessionWarning = '';
+    if (acp && !(params.voiceOnly === true && requestedType === 'fde-coach')) {
+      try {
+        const result = await acp.request('session/new', { cwd: projectDir, mcpServers: [] });
+        meta.sessionId = result?.sessionId || null;
+        projectSessions.markLoaded(acp, meta.sessionId);
+        captureModelsFromSession(result);
+        writeProjectMeta(slug, meta);
+        if (meta.sessionId) acp.request('session/set_mode', { sessionId: meta.sessionId, modeId: 'dont_ask' }).catch(() => {});
+      } catch (error) {
+        sessionWarning = '项目已保存，AI 引擎暂未连接，可稍后重试。';
+        console.warn('[main] project session deferred:', error.message);
+      }
+    }
+
     usageTracker.trackProjectCreate(name, projectType);
-    return { slug, ...meta };
+    return { slug, ...meta, ...(sessionWarning ? { sessionWarning } : {}) };
   } catch (err) {
     throw new Error(`Failed to create project: ${err.message}`);
   }
@@ -3748,7 +3802,11 @@ ipcMain.handle('hermes:load-project', async (_event, payload) => {
 
     const persistedMessages = readMessages(slug);
     if (meta.aiApp?.id) prepareAiAppProjectContext(slug, meta.aiApp);
-    const restored = acp ? await projectSessions.ensure(acp, slug) : meta;
+    let restored = meta;
+    if (acp) {
+      try { restored = await projectSessions.ensure(acp, slug); }
+      catch (error) { restored = { ...meta, sessionWarning: 'AI 引擎暂未连接，项目资料仍可查看；恢复后可重试对话。' }; }
+    }
     return { slug, ...restored, messages: persistedMessages };
   } catch (err) {
     throw new Error(`Failed to load project: ${err.message}`);
@@ -3792,12 +3850,13 @@ ipcMain.handle('hermes:update-project-meta', async (_event, { slug, updates }) =
     const completing=updates?.stageStatus?.[5]==='done'&&previous.stageStatus?.[5]!=='done';
     if(progressing||completing){
       if(progressing&&updates.stage!==previous.stage+1)throw Error('项目只能按顺序进入下一阶段');
-      const issues=updates.workflowMode==='product-flow-v1' && progressing && updates.stage<=3
-        ? require('./product-flow-gate').gate(resolveProjectPath(slug),previous.stage)
+      // 走步骤工作台的项目（product-flow-v1）五个阶段都按流程记录放行；旧项目仍按文档确认 + 阶段验收
+      const issues=(updates.workflowMode||previous.workflowMode)==='product-flow-v1'
+        ? (completing ? [2,3,4,5] : [previous.stage]).flatMap(stage => require('./product-flow-gate').gate(resolveProjectPath(slug),stage))
         : require('./project-integrity').gate(resolveProjectPath(slug),previous,previous.stage);
       if(issues.length)throw Error('请先完成验收：'+issues.join('；'));
     }
-    const meta = updateProjectMeta(slug, updates);
+    const meta = updateProjectMeta(slug, completing ? { ...updates, completionReview: { status: 'confirmed', confirmedAt: new Date().toISOString() } } : updates);
     return { success: true, meta };
   } catch (err) {
     return { success: false, error: err.message };
@@ -3864,31 +3923,10 @@ function readDeclaredModelIds() {
   } catch { return []; }
 }
 
-// 把模型 id 归一到「裸名」用于比较：剥掉 provider 前缀（custom:/openai-api: 等）。
-function bareModelId(id) {
-  const s = String(id || '').trim();
-  const withoutProto = s.includes(':') ? s.slice(s.indexOf(':') + 1) : s;
-  return withoutProto.toLowerCase();
-}
-
 ipcMain.handle('hermes:list-models', async () => {
-  const declared = readDeclaredModelIds();
-  if (!declared.length) return { models: cachedModels, current: currentModelId };
-  const allow = new Set(declared.map(bareModelId));
-  const filtered = (cachedModels || []).filter((m) => {
-    const id = m && (m.model_id || m.modelId || m.id || m.name);
-    return id && allow.has(bareModelId(id));
-  });
-  if (filtered.length) return { models: filtered, current: currentModelId };
-  // 过滤后为空 = 引擎缓存与 config 声明完全不交集。最常见的成因是刚切了网关:
-  // 引擎重启后 cachedModels 可能还是上一个网关的列表(warmup session 尚未回填)。
-  // 此时若兜底返回 cachedModels,顶栏会显示旧网关的模型名,用户点了必然 400
-  // (OpenAI 不认 anthropic/claude-sonnet-5)。所以直接用 config 声明的清单 ——
-  // 它就是用户在设置页勾选的那几个,是当前网关的事实来源。
-  return {
-    models: declared.map((id) => ({ model_id: id, name: id })),
-    current: currentModelId,
-  };
+  // 下拉框只显示管理员固定的模型，不再看引擎探测到的全量列表或 config 里的声明。
+  const current = isFixedModel(currentModelId) ? currentModelId : (isFixedModel(readConfigModel()) ? readConfigModel() : FIXED_MODEL_IDS[0]);
+  return { models: FIXED_MODELS.map((m) => ({ model_id: m.id, name: m.label })), current, locked: true };
 });
 
 // 读 config.yaml 里 custom_providers[].models 的原始声明 id 列表 + 当前 base_url。
@@ -3935,6 +3973,7 @@ async function applyProfileToEngine() {
 }
 
 ipcMain.handle('hermes:set-model', async (_event, { slug, modelId }) => {
+  if (!isFixedModel(modelId)) return { success: false, error: '该模型未开放，只能在管理员指定的模型之间切换' };
   // 关键：360 custom provider 下，运行时 session/set_model 会被 hermes 误判成 openrouter
   // provider（detect_provider_for_model 看到 vendor/model 格式即判 openrouter）→ 401。
   // 唯一可靠方式：写 config.yaml 的 model.default(裸名) + 重启引擎，让 provider: custom 生效。
@@ -3956,6 +3995,7 @@ ipcMain.handle('hermes:read-config-model', async () => {
 
 // 只写 config.yaml 的 model.default（兜底/独立持久化，不走 session/set_model）
 ipcMain.handle('hermes:set-config-model', async (_event, { modelId }) => {
+  if (!isFixedModel(modelId)) return { success: false, error: '该模型未开放' };
   const ok = writeConfigModel(modelId);
   return { success: ok };
 });
@@ -4102,7 +4142,9 @@ ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments, channe
     const recovery = sessions.recoveryPrefix(client, meta.sessionId, text);
     if (channel === 'knowledge') text = '【独立项目资料问答】只回答资料问题，不生成或修改文件，不执行原型生成任务。其他会话可能正在写入项目文件；不要接续它的任务。\n' + text;
     const promptBlocks = buildPromptBlocks(recovery + text, attachments, resolveProjectPath(slug, 'uploads'));
-    promptBlocks.unshift({ type: 'text', text: require('./response-summary-format').RESPONSE_SUMMARY_INSTRUCTION });
+    const { replyInstructionsForMeta, APP_SUMMARY_INSTRUCTION } = require('./ai-reply-policy');
+    const appReplyPolicy = replyInstructionsForMeta(meta, channel);
+    promptBlocks.unshift({ type: 'text', text: appReplyPolicy ? `${APP_SUMMARY_INSTRUCTION}\n\n${appReplyPolicy}` : require('./response-summary-format').RESPONSE_SUMMARY_INSTRUCTION });
 
     // [debug] 多模态附件排查：打印附件概况与 block 详情
     if (Array.isArray(attachments) && attachments.length > 0) {
@@ -4160,7 +4202,37 @@ ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments, channe
 });
 
 require('./coach-speech').registerCoachSpeech({ ipcMain, app, getConfig: parseEnvConfig });
-require('./coach-reply').registerCoachReply({ ipcMain, app, getConfig: parseEnvConfig, getInstructions: () => { const file = resolveSkillPath('fde-coach', 'SKILL.md'); return fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : ''; } });
+
+// 「医疗行业专家」知识包（scripts/build-med-knowledge.cjs 生成），开发时读仓库内 med-knowledge/，打包后读 Resources/med-knowledge
+const MED_KNOWLEDGE_DIR = app.isPackaged ? path.join(process.resourcesPath, 'med-knowledge') : path.join(__dirname, '..', '..', 'med-knowledge');
+const medKnowledge = require('./med-knowledge').createMedKnowledge({ dir: MED_KNOWLEDGE_DIR, getConfig: parseEnvConfig });
+// 专家详情页展示的内置知识库目录：只读 manifest，不加载正文和向量
+ipcMain.handle('med:knowledge-catalog', async () => {
+  try {
+    const { builtAt, stats, documents } = JSON.parse(await fs.promises.readFile(path.join(MED_KNOWLEDGE_DIR, 'manifest.json'), 'utf8'));
+    return { success: true, builtAt, stats, documents: documents.map(({ id, title, topic, chars }) => ({ id, title, topic, chars })) };
+  } catch { return { success: false, error: '医疗知识包缺失，请重新安装' }; }
+});
+ipcMain.handle('med:knowledge', async (_event, { query, history = [] } = {}) => {
+  try { return { success: true, ...await medKnowledge.retrieve(String(query || '').slice(0, 6000), Array.isArray(history) ? history.slice(-6) : []) }; }
+  catch (e) { return { success: false, error: e.message === '知识包缺失' ? '医疗知识包缺失，请重新安装' : '医疗知识库暂时无法读取，请重试' }; }
+});
+
+// 「临床医学知识专家」知识包（scripts/build-clinical-knowledge.cjs 生成）：疾病百科 + 卫健委临床路径，内部学习用
+const CLINICAL_KNOWLEDGE_DIR = app.isPackaged ? path.join(process.resourcesPath, 'clinical-knowledge') : path.join(__dirname, '..', '..', 'clinical-knowledge');
+const clinicalKnowledge = require('./med-knowledge').createMedKnowledge({ dir: CLINICAL_KNOWLEDGE_DIR, getConfig: parseEnvConfig,
+  label: '临床医学知识专家', synonyms: require('./med-knowledge').CLINICAL_SYNONYMS, codes: false });
+ipcMain.handle('clinical:knowledge-catalog', async () => {
+  try {
+    const { builtAt, stats, documents } = JSON.parse(await fs.promises.readFile(path.join(CLINICAL_KNOWLEDGE_DIR, 'manifest.json'), 'utf8'));
+    return { success: true, builtAt, stats, documents: documents.map(({ id, title, topic, chars }) => ({ id, title, topic, chars })) };
+  } catch { return { success: false, error: '临床知识包缺失，请重新安装' }; }
+});
+ipcMain.handle('clinical:knowledge', async (_event, { query, history = [] } = {}) => {
+  try { return { success: true, ...await clinicalKnowledge.retrieve(String(query || '').slice(0, 6000), Array.isArray(history) ? history.slice(-6) : []) }; }
+  catch (e) { return { success: false, error: e.message === '知识包缺失' ? '临床知识包缺失，请重新安装' : '临床知识库暂时无法读取，请重试' }; }
+});
+require('./coach-reply').registerCoachReply({ ipcMain, app, getConfig: parseEnvConfig, readMeta: readProjectMeta, readHistory: readMessages, getInstructions: () => { const file = resolveSkillPath('fde-coach', 'SKILL.md'); return fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : ''; } });
 
 // 语音转文字：录音 base64 → 360 ASR（volcengine/asr-turbo）→ 识别文本
 // 360 ASR 接受内联 base64 音频（extra_body.audio.data，无 data: 前缀），无需公网 URL。
@@ -4670,26 +4742,17 @@ ipcMain.handle('gateway:list-profiles', async () => {
 // 新增或更新一组档案。返回落盘后的完整列表,前端直接替换本地状态。
 ipcMain.handle('gateway:save-profile', async (_event, { profile } = {}) => {
   try {
-    if (!profile || !String(profile.name || '').trim()) {
-      return { success: false, error: '请填写网关名称' };
+    if (!profile || !String(profile.apiKey || '').trim()) {
+      return { success: false, error: '请填写 API Key' };
     }
     const store = readGatewayProfiles();
     const id = String(profile.id || '').trim() || `gw_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
     const models = Array.isArray(profile.models)
       ? profile.models.map((m) => String(m || '').trim()).filter(Boolean)
       : [];
-    const next = {
-      id,
-      name: String(profile.name).trim(),
-      baseUrl: String(profile.baseUrl || '').trim(),
-      apiKey: String(profile.apiKey || '').trim(),
-      models: models.filter((m, i) => models.indexOf(m) === i),
-      stripVendorPrefix: !!profile.stripVendorPrefix,
-      apiMode: ['auto', 'chat_completions', 'codex_responses', 'anthropic_messages'].includes(profile.apiMode)
-        ? profile.apiMode : 'auto',
-      authMode: ['bearer', 'x-api-key', 'custom'].includes(profile.authMode) ? profile.authMode : 'bearer',
-      extraHeaders: profile.extraHeaders && typeof profile.extraHeaders === 'object' ? profile.extraHeaders : {},
-    };
+    // 网关和模型由管理员固定，这里只采用用户填写的 API Key。
+    void models;
+    const next = { id, ...FIXED_GATEWAY, apiKey: String(profile.apiKey || '').trim(), models: [...FIXED_MODEL_IDS], extraHeaders: {} };
     const idx = store.profiles.findIndex((p) => p.id === id);
     if (idx >= 0) store.profiles[idx] = next;
     else store.profiles.push(next);
@@ -4919,6 +4982,17 @@ ipcMain.handle('hermes:list-files', async (_event, { slug, dir, recursive }) => 
   }
 });
 
+// 原型版面检查：隐藏窗口按 1440×900 渲染每页，量内容铺满程度（治"只有半屏"）
+ipcMain.handle('hermes:check-prototype-layout', async (_event, { slug, dir }) => {
+  try {
+    const { checkPrototypeLayout } = require('./prototype-layout-check');
+    const target = resolveProjectPath(slug, dir || 'prototype');
+    return { success: true, ...(await checkPrototypeLayout(target, { BrowserWindow })) };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('hermes:prototype-url', async (_event, { slug, file }) => {
   try {
     const protoDir = resolveProjectPath(slug, 'prototype');
@@ -5005,6 +5079,47 @@ ipcMain.handle('hermes:save-file', async (_event, { slug, file }) => {
   } catch (err) {
     return { success: false, error: err.message };
   }
+});
+
+// 项目页「专家交付」：列出关联到该项目的专家对话，以及 deliverables/<专家id>/ 下的成果文件
+ipcMain.handle('hermes:expert-deliverables', async (_event, { slug } = {}) => {
+  try {
+    const root = resolveProjectPath(slug);
+    const files = [];
+    const base = path.join(root, EXPERT_OUTPUT_DIR);
+    if (fs.existsSync(base)) {
+      const walk = (dir, expertId) => {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (e.name.startsWith('.')) continue;
+          const abs = path.join(dir, e.name);
+          if (e.isDirectory()) walk(abs, expertId || e.name);
+          else { const st = fs.statSync(abs); files.push({ expertId: expertId || '', name: e.name, relPath: path.relative(root, abs).split(path.sep).join('/'), size: st.size, mtimeMs: st.mtimeMs }); }
+        }
+      };
+      walk(base, '');
+    }
+    files.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    const sessions = [];
+    if (fs.existsSync(PROJECTS_DIR)) {
+      for (const entry of fs.readdirSync(PROJECTS_DIR, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        let meta = null; try { meta = JSON.parse(fs.readFileSync(path.join(PROJECTS_DIR, entry.name, 'meta.json'), 'utf-8')); } catch { continue; }
+        if (meta?.linkedProject !== slug || !meta.aiApp?.id || meta.conversationDeletedAt) continue;
+        sessions.push({ slug: entry.name, name: meta.conversationName || meta.name || '', expertId: meta.aiApp.id, expertName: meta.aiApp.name || '', updatedAt: meta.lastMessageAt || meta.updatedAt || meta.createdAt || '' });
+      }
+    }
+    sessions.sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    return { success: true, files, sessions };
+  } catch (err) { return { success: false, error: err.message }; }
+});
+ipcMain.handle('hermes:project-file-action', async (_event, { slug, relativePath, action } = {}) => {
+  try {
+    const target = resolveProjectPath(slug, relativePath || '.');
+    if (!fs.existsSync(target)) throw new Error('文件不存在，可能已被移动或删除');
+    if (action === 'reveal') { shell.showItemInFolder(target); return { success: true }; }
+    const error = await shell.openPath(target);
+    return error ? { success: false, error } : { success: true };
+  } catch (err) { return { success: false, error: err.message }; }
 });
 
 ipcMain.handle('hermes:open-in-browser', async (_event, { slug, file }) => {
@@ -5188,7 +5303,7 @@ ipcMain.handle('hermes:preview-material', async (_event, {slug,relativePath}) =>
     if(ext==='docx')document={format:'html',content:(await require('mammoth').convertToHtml({path:target})).value};
     else if(ext==='md')document={format:'html',content:await require('./handbook-word').markdownHtml(fs.readFileSync(target,'utf8'))};
     else document=await require('./material-preview').previewFile(target,ext,path.join(PRODUCT_LOBSTER_HOME,'material-previews'));
-    if(document.format==='file')document.url=await readyMediaUrl(document.path);
+    if(document.format==='file'||document.format==='slides'&&document.path)document.url=await readyMediaUrl(document.path);
     return {success:true,document:{...document,ext}};
   }catch(e){return {success:false,error:e.message};}
 });
@@ -5403,6 +5518,7 @@ function whenReadyToShow(win, timeoutMs = 8000) {
 
 app.whenReady().then(async () => {
   ensureDirs();
+  enforceFixedModels();
   buildAppMenu();
   registerWindowControls();
   startPrototypeServer();
@@ -5596,7 +5712,48 @@ function syncAiAppKnowledgeToProject(appId, slug) {
 
 // 渲染项目根 CLAUDE.md：把 AI 应用的画像 + 记忆 + 知识清单写进去，
 // 让 agent 从项目一打开就带着这位专家的人设与知识工作。
-function buildAiAppClaudeMd(app, memory, knowledgeFiles) {
+// 专家对话关联 FDE 项目：把项目需求、已有交付物、项目资料的绝对路径写进专家 CLAUDE.md，
+// 并约定成果文件落到 <项目>/deliverables/<专家id>/，项目页「专家交付」据此归档展示。
+const EXPERT_OUTPUT_DIR = 'deliverables';
+function linkedProjectInfo(projectSlug) {
+  if (!projectSlug) return null;
+  try {
+    const meta = readProjectMeta(projectSlug);
+    if (!meta || meta.projectType === 'ai-app') return null;
+    const root = resolveProjectPath(projectSlug);
+    const list = (dir, depth = 0) => {
+      const abs = path.join(root, dir);
+      if (!fs.existsSync(abs)) return [];
+      const out = [];
+      for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+        if (e.name.startsWith('.')) continue;
+        const rel = `${dir}/${e.name}`;
+        if (e.isDirectory()) { if (depth < 2) out.push(...list(rel, depth + 1)); }
+        else out.push(rel);
+      }
+      return out;
+    };
+    const docs = [...list('stage2'), ...list('stage3'), ...list('stage4'), ...list('stage5')].filter((f) => /\.(md|docx|html)$/i.test(f)).slice(0, 40);
+    const prototype = fs.existsSync(path.join(root, 'prototype', 'index.html')) ? 'prototype/index.html' : '';
+    const materials = list('knowledge').slice(0, 40);
+    return { slug: projectSlug, name: meta.name || projectSlug, requirement: meta.requirement || '', stage: meta.stage, root, docs, prototype, materials };
+  } catch (e) { console.warn('[ai-apps] linked project unreadable:', e.message); return null; }
+}
+function linkedProjectSection(app, info) {
+  const out = path.join(info.root, EXPERT_OUTPUT_DIR, app.id || 'expert');
+  const lines = ['## 关联项目（本次任务服务的 FDE 项目）', '',
+    `- 项目名称：${info.name}`, `- 项目目录：\`${info.root}\``, `- 当前阶段：阶段${info.stage || 1}`];
+  if (info.requirement) lines.push(`- 项目需求：${String(info.requirement).slice(0, 600)}`);
+  lines.push('', '用户在这个对话里提的任务默认就是为该项目做的。动手前先读下面的项目文件，从中提取客户、产品、需求、功能和数据，不要让用户重复粘贴已经写在项目里的内容；项目文件没有的信息再向用户确认。', '');
+  if (info.docs.length) { lines.push('已生成的项目交付物（相对项目目录）：'); for (const f of info.docs) lines.push(`- \`${f}\``); lines.push(''); }
+  if (info.prototype) lines.push(`产品原型入口：\`${info.prototype}\`（多页面 HTML，可读取页面了解功能）`, '');
+  if (info.materials.length) { lines.push('项目原始资料（客户提供的访谈、背景、需求材料）：'); for (const f of info.materials) lines.push(`- \`${f}\``); lines.push(''); }
+  lines.push('成果归档（必须遵守）：', `- 最终交付文件（docx/pptx/pdf/mp4/png/html 等）保存到 \`${out}\`，目录不存在就创建；文件名用中文说明内容并带日期，如「产品白皮书-${info.name}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.docx」。`,
+    '- 中间稿、脚本、临时文件放在当前工作目录，不要放进上述成果目录。', '- 不修改项目目录里的其他文件（stage*/、prototype/、knowledge/ 只读）。', '- 完成后在回复里写明成果文件的完整路径。');
+  return lines;
+}
+
+function buildAiAppClaudeMd(app, memory, knowledgeFiles, linkedProject) {
   const a = app || {};
   const name = a.name || 'AI 应用专家';
   const lines = [];
@@ -5621,6 +5778,9 @@ function buildAiAppClaudeMd(app, memory, knowledgeFiles) {
   if (a.constraints) { lines.push('## 约束与原则'); lines.push(''); lines.push(a.constraints); lines.push(''); }
   if (a.riskNotice) { lines.push('## 风险提示'); lines.push(''); lines.push(a.riskNotice); lines.push(''); }
   if (a.prompt) { lines.push('## 系统提示词'); lines.push(''); lines.push(a.prompt); lines.push(''); }
+  lines.push('## 回答组织与对话节奏');
+  lines.push(require('./ai-reply-policy').appReplyInstructions(a));
+  lines.push('');
 
   if (Array.isArray(a.skills) && a.skills.length) {
     lines.push('## 推荐技能');
@@ -5634,6 +5794,25 @@ function buildAiAppClaudeMd(app, memory, knowledgeFiles) {
     }
     lines.push('');
   }
+
+  if (a.knowledge === 'med') {
+    lines.push('## 内置知识库');
+    lines.push('');
+    lines.push('随安装包提供的只读知识包，查询方法见 `med-knowledge-qa` 技能。知识包目录（命令里的 `<知识包>`）：');
+    lines.push('');
+    lines.push(`\`${MED_KNOWLEDGE_DIR}\``);
+    lines.push('');
+  }
+  if (a.knowledge === 'clinical') {
+    lines.push('## 内置知识库');
+    lines.push('');
+    lines.push('随安装包提供的只读知识包（疾病百科 + 卫健委临床路径），本轮检索结果已随问题附带；需要补查时可读取知识包目录下的 chunks.json（字段 t 为正文、s 为病种/路径名）：');
+    lines.push('');
+    lines.push(`\`${CLINICAL_KNOWLEDGE_DIR}\``);
+    lines.push('');
+  }
+
+  if (linkedProject) lines.push(...linkedProjectSection(a, linkedProject), '');
 
   lines.push('## 专家记忆');
   lines.push('');
@@ -5658,7 +5837,7 @@ function buildAiAppClaudeMd(app, memory, knowledgeFiles) {
 
 // 编排：确保记忆存在 → 读记忆 → 同步知识 → 生成并写入 CLAUDE.md。
 // aiAppSnapshot 是保存在项目 meta.aiApp 里的应用快照（至少含 id/name）。
-function prepareAiAppProjectContext(slug, aiAppSnapshot) {
+function prepareAiAppProjectContext(slug, aiAppSnapshot, linkedProjectSlug) {
   const app = aiAppSnapshot || {};
   const appId = app.id;
   if (!appId) return { memoryChars: 0, knowledgeCount: 0 };
@@ -5666,7 +5845,8 @@ function prepareAiAppProjectContext(slug, aiAppSnapshot) {
     ensureAiAppMemoryStore(appId, app.name);
     const memory = readAiAppMemory(appId);
     const knowledgeFiles = syncAiAppKnowledgeToProject(appId, slug);
-    const claudeMd = buildAiAppClaudeMd(app, memory, knowledgeFiles);
+    if (linkedProjectSlug === undefined) { try { linkedProjectSlug = readProjectMeta(slug)?.linkedProject || ''; } catch { linkedProjectSlug = ''; } }
+    const claudeMd = buildAiAppClaudeMd(app, memory, knowledgeFiles, linkedProjectInfo(linkedProjectSlug));
     const claudePath = resolveProjectPath(slug, 'CLAUDE.md');
     fs.writeFileSync(claudePath, claudeMd, 'utf-8');
     return { memoryChars: memory.length, knowledgeCount: knowledgeFiles.length };
@@ -5730,7 +5910,7 @@ function normalizeLocalAiApp(input, existing) {
   }
   app.id = existing ? existing.id : (input.id && String(input.id).startsWith('local-') ? String(input.id) : sanitizeAiAppId(input.name));
   app.name = clampStr(app.name || '未命名应用', 100);
-  app.category = clampStr(app.category || 'enterprise', 60);
+  app.category = clampStr(app.category || 'docs', 60);
   app.icon = clampStr(app.icon || 'rocket', 60);
   app.color = clampStr(app.color || '#2563eb', 20);
   app.tagline = clampStr(app.tagline, 200);

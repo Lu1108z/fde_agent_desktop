@@ -53,3 +53,11 @@ __pycache__/
 *.sqlite
 *.sqlite3
 *.db
+
+# 智能体平台站点：由 npm run sync:agent-platform 从 med-ai-demo 代码仓同步，不入库
+/med-ai-demo/
+
+# 医疗知识包构建缓存（正文/向量），产物在 med-knowledge/
+.med-knowledge-cache/
+# 临床知识包构建缓存，产物在 clinical-knowledge/
+.clinical-knowledge-cache/

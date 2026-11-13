@@ -1,7 +1,7 @@
 <template>
-  <div class="chat-welcome flex flex-col h-full min-h-0" :class="{ 'chat-welcome--branded': branded }">
-    <svg v-if="branded" width="0" height="0" class="welcome-logo-filter" aria-hidden="true"><defs><filter :id="logoFilterId" color-interpolation-filters="sRGB" x="0" y="0" width="100%" height="100%"><feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  -1 0 0 0 1" /><feComposite in2="SourceAlpha" operator="in" /></filter></defs></svg>
-    <div class="welcome-scroll flex-1 min-h-0 overflow-y-auto">
+  <div class="chat-welcome flex flex-col h-full min-h-0" :class="{ 'chat-welcome--branded': branded, 'chat-welcome--coach': coachMode }">
+    <component :is="branded ? WelcomeExperience : 'div'" :class="{ 'welcome-project-layout': !branded }" :coach-mode="coachMode" :cards="featureCards" @fill="fillInput" @scenario="$emit('scenario', $event)">
+    <div v-if="!branded" class="welcome-scroll flex-1 min-h-0 overflow-y-auto">
       <div class="welcome-content">
         <div class="welcome-hero">
           <div v-if="branded" class="welcome-decoration" aria-hidden="true"><span class="welcome-orbit"></span><span class="welcome-glass-panel panel-back"></span><span class="welcome-glass-panel panel-middle"></span><span class="welcome-glass-panel panel-front"><img :src="cloudLogo" class="welcome-cloud-logo" :style="{ filter: `url(#${logoFilterId})` }" alt="极库云" /></span></div>
@@ -38,13 +38,12 @@
           <textarea
             ref="inputRef"
             v-model="inputText"
-            :placeholder="coachMode ? '说说你想练习的场景…' : '向我提问…'"
+             :placeholder="coachMode ? '例如：明天拜访医院信息科主任，如何开场并了解他们的需求…' : '告诉我你正在处理的任务，或上传一份材料…'"
             :aria-label="coachMode ? '发送给 FDE 教练的消息' : '发送给 AI 助手的消息'"
             rows="1"
             @input="resizeInput"
             class="welcome-textarea"
-            @keydown.ctrl.enter.prevent="handleSend"
-            @keydown.meta.enter.prevent="handleSend"
+            v-enter-send="handleSend"
           ></textarea>
           <!-- Attachment preview (images + files) -->
           <div v-if="attachments.length > 0" class="fde-composer-attachments flex items-center gap-2 px-4 py-1.5 flex-wrap">
@@ -62,25 +61,25 @@
           <div class="fde-composer-toolbar">
             <div class="fde-composer-left">
               <AttachmentMenu :recording="isRecording" :voice-supported="recordingSupported" @image="pickImage" @file="pickFile" @voice="toggleRecording" />
+              <template v-if="branded">
+                <button v-if="coachMode" type="button" class="welcome-chip" @click="$emit('start-voice')"><i class="fa-solid fa-headset"></i>语音对话</button>
+                <button v-else type="button" class="welcome-chip" @click="pickFile"><i class="fa-solid fa-paperclip"></i>添加材料</button>
+                <button type="button" class="welcome-chip" :aria-pressed="searchEnabled" @click="searchEnabled = !searchEnabled" title="回答时联网搜索并给出来源"><i class="fa-solid fa-globe"></i>联网</button>
+                <button v-if="!coachMode" type="button" class="welcome-chip" :aria-pressed="codeEnabled" @click="codeEnabled = !codeEnabled" title="按代码任务处理"><i class="fa-solid fa-code"></i>代码</button>
+              </template>
               <span v-if="isRecording" class="fde-composer-status">录音中 {{ recordSeconds }}s</span>
               <span v-else-if="isTranscribing" class="fde-composer-status">识别中…</span>
             </div>
             <div class="fde-composer-right">
               <ModelSelector minimal :models="availableModels" :current="currentModel" @change="(id) => $emit('change-model', id)" />
               <button type="button" class="fde-voice-button" :class="{ 'is-recording': isRecording }" :disabled="!recordingSupported || isTranscribing" @click="toggleRecording" :aria-label="isRecording ? '停止录音' : '语音输入'" :title="isRecording ? '停止录音' : '语音输入'"><i class="fa-solid" :class="isRecording ? 'fa-stop' : 'fa-microphone'" aria-hidden="true"></i></button>
-              <button type="button" class="fde-send-button" @click="handleSend" aria-label="发送消息" :disabled="!inputText.trim() && attachments.length === 0"><i class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+              <button type="button" class="fde-send-button" :class="{ 'welcome-start-button': branded && coachMode }" @click="handleSend" aria-label="发送消息" :disabled="!inputText.trim() && attachments.length === 0"><template v-if="branded && coachMode">开始陪练</template><i class="fa-solid fa-arrow-right" v-if="branded" aria-hidden="true"></i><i v-else class="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
             </div>
           </div>
         </div>
-        <div v-if="branded" class="welcome-tools">
-          <button v-if="coachMode" type="button" @click="$emit('start-voice')" class="welcome-voice-entry"><i class="fa-solid fa-headset"></i>语音对话</button>
-          <button type="button" @click="pickFile"><i class="fa-solid fa-paperclip"></i>上传文档</button>
-          <button type="button" @click="pickImage"><i class="fa-regular fa-image"></i>上传图片</button>
-          <button type="button" :aria-pressed="searchEnabled" @click="searchEnabled = !searchEnabled"><i class="fa-solid fa-globe"></i>联网搜索</button>
-          <button type="button" :aria-pressed="codeEnabled" @click="codeEnabled = !codeEnabled"><i class="fa-solid fa-code"></i>代码模式</button>
-        </div>
       </div>
     </div>
+    </component>
   </div>
 </template>
 
@@ -88,6 +87,7 @@
 import { ref, computed, nextTick, onBeforeUnmount, useId } from 'vue';
 import ModelSelector from './ModelSelector.vue';
 import AttachmentMenu from './AttachmentMenu.vue';
+import WelcomeExperience from './WelcomeExperience.vue';
 import './chat-composer.css';
 import coachMascot from '@/assets/fde-coach-mascot.png';
 import cloudLogo from '@/assets/logo.png';
@@ -100,7 +100,7 @@ const props = defineProps({
   currentModel: { type: String, default: '' },
 });
 
-const emit = defineEmits(['start-voice', 'send-quick', 'navigate', 'fill-input', 'send-with-attachments', 'change-model']);
+const emit = defineEmits(['start-voice', 'scenario', 'send-quick', 'navigate', 'fill-input', 'send-with-attachments', 'change-model']);
 
 const logoFilterId = useId();
 const inputText = ref('');
@@ -278,8 +278,8 @@ onBeforeUnmount(() => {
 function resizeInput() {
   const el = inputRef.value;
   if (!el) return;
-  el.style.height = props.branded ? '34px' : 'auto';
-  if (!props.branded) el.style.height = Math.min(el.scrollHeight, 132) + 'px';
+  el.style.height = 'auto';
+  el.style.height = Math.min(Math.max(el.scrollHeight, props.branded ? 66 : 34), 160) + 'px';
 }
 
 const fillInput = (text) => {
@@ -305,13 +305,7 @@ const handleSend = () => {
   attachments.value = [];
 };
 
-const coachCards = [
-  { key:'requirements', label:'医疗客户沟通', description:'练习向科室负责人挖掘需求', icon:'fa-solid fa-stethoscope', prompt:'我想练习医疗行业的需求沟通，请扮演科室负责人，与我进行 SPIN 需求挖掘陪练。' },
-  { key:'document', label:'企业客户沟通', description:'练习业务场景与痛点提问', icon:'fa-solid fa-building', prompt:'我想练习企业客户需求沟通，请扮演业务负责人，让我逐步挖掘你的问题与真实需求。' },
-  { key:'agent', label:'方案沟通演练', description:'练习表达方案、回应客户质疑', icon:'fa-solid fa-comments', prompt:'我想练习方案沟通，请扮演甲方客户，对我的方案提出真实的疑问和顾虑。' },
-  { key:'review', label:'沟通复盘', description:'分析提问方式与改进建议', icon:'fa-solid fa-magnifying-glass', prompt:'帮我复盘一段客户沟通，我会提供对话记录，请按 FDE 教练的六维评分给出建议。' },
-];
-const visibleCards = computed(() => props.coachMode ? coachCards : featureCards);
+const visibleCards = computed(() => featureCards);
 const featureCards = [
   { key:'requirements', label:'梳理需求', description:'把业务问题整理成需求清单', icon:'fa-solid fa-list-check', prompt:'帮我梳理核心需求和业务场景，我会先介绍项目背景。' },
   { key:'document', label:'生成文档', description:'完善 PRD、方案与汇报材料', icon:'fa-solid fa-file-lines', prompt:'帮我写一份 PRD 初稿，请先确认需要哪些项目资料。' },
@@ -322,6 +316,7 @@ const featureCards = [
 
 <style scoped>
 .chat-welcome { container-type:inline-size; }
+.welcome-project-layout{display:flex;flex-direction:column;flex:1;min-height:0}
 .welcome-scroll { display:flex; flex-direction:column; }
 .welcome-content { width:100%; max-width:740px; margin:auto; padding:28px 24px; }
 .welcome-hero { position:relative; display:flex; align-items:center; min-height:210px; gap:24px; border-radius:20px; background:#edf4ff; padding:0 20px; overflow:hidden; }
@@ -450,4 +445,37 @@ const featureCards = [
 .chat-welcome.chat-welcome--branded .welcome-task-panel{margin-top:20px;margin-bottom:0}
 .chat-welcome.chat-welcome--branded .welcome-input-dock{flex:0 0 auto;margin-top:auto;padding-top:14px;padding-bottom:0}
 
+/* The branded landing page has one scroll area and an in-flow, full-size composer. */
+.chat-welcome.chat-welcome--branded{display:block;padding:0;overflow-y:auto;scrollbar-width:thin}
+.chat-welcome.chat-welcome--branded .welcome-input-dock{padding:0;margin:0}
+.chat-welcome.chat-welcome--branded .fde-composer{display:flex;flex-direction:column;align-items:stretch;width:100%;max-width:none;min-height:154px;margin:0;padding:18px 20px 14px;border:1px solid #d5def0;border-radius:17px;box-shadow:0 12px 30px #5875b514}
+.chat-welcome.chat-welcome--branded .fde-composer:focus-within{border-color:#9bb0e7;box-shadow:0 8px 28px #5875b51c}
+.chat-welcome.chat-welcome--branded .fde-composer textarea{height:66px!important;min-height:66px;max-height:160px;padding:2px 0 12px;font-size:14px;line-height:1.8}
+.chat-welcome.chat-welcome--branded .fde-composer-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap}
+.chat-welcome.chat-welcome--branded .fde-composer-left{gap:3px}
+.chat-welcome.chat-welcome--branded .fde-composer-right{margin-left:auto;gap:10px}
+.chat-welcome.chat-welcome--branded .fde-send-button{width:39px;height:36px;border-radius:10px;background:#4f6fe9}
+.chat-welcome.chat-welcome--branded .fde-send-button:disabled{background:#9aaeed;color:#fff;opacity:.7}
+.chat-welcome.chat-welcome--branded .fde-voice-button{border:0;margin-left:0;color:#8a97ab}
+.chat-welcome.chat-welcome--branded :deep(.attachment-trigger){background:#f5f7fb;color:#8492aa;border-radius:8px;font-size:15px}
+.welcome-add-material{background:#f5f7fb;color:#7b8ba3;padding:8px;border:0;border-radius:6px;font-size:11px;cursor:pointer}
+.chat-welcome.chat-welcome--branded .welcome-tools{gap:18px;flex-wrap:wrap;padding-top:13px}
+.chat-welcome.chat-welcome--branded .welcome-tools button{padding:3px 0;background:transparent;border:0;border-radius:0;color:#8c9bb0;font-size:11px;gap:6px}
+.chat-welcome.chat-welcome--branded .welcome-tools button[aria-pressed=true]{color:#4f6fe9}
+.chat-welcome.chat-welcome--branded .welcome-tools i{font-size:12px}
+
+/* 一屏布局：输入区更紧凑，工具收进输入框内的小标签 */
+.chat-welcome.chat-welcome--branded .fde-composer{min-height:0;padding:14px 18px 12px}
+.chat-welcome.chat-welcome--branded .fde-composer textarea{height:52px!important;min-height:52px;padding:2px 0 6px}
+.chat-welcome.chat-welcome--branded .fde-composer-toolbar{margin-top:6px}
+.chat-welcome.chat-welcome--branded .fde-composer-left{gap:6px}
+.welcome-chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:0;border-radius:8px;background:#f5f7fb;color:#7b8ba3;font-size:12px;cursor:pointer;transition:background .15s,color .15s}
+.welcome-chip:hover,.welcome-chip[aria-pressed=true]{background:#e9f0ff;color:#4f6fe9}
+.welcome-chip i{font-size:12px}
+.chat-welcome.chat-welcome--branded .welcome-start-button{display:inline-flex;align-items:center;gap:8px;width:auto;padding:0 16px;font-size:13px;white-space:nowrap}
+/* 教练：单行输入 + 开始陪练 */
+.chat-welcome--coach.chat-welcome--branded .fde-composer{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px 10px 18px}
+.chat-welcome--coach.chat-welcome--branded .fde-composer textarea{flex:1;min-width:200px;height:40px!important;min-height:40px;padding:9px 0}
+.chat-welcome--coach.chat-welcome--branded .fde-composer-toolbar{margin-top:0;flex-wrap:nowrap}
+.chat-welcome--coach.chat-welcome--branded .fde-composer-attachments{order:-1;flex-basis:100%}
 </style>

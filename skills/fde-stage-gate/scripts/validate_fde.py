@@ -131,6 +131,14 @@ class Validator:
                 self.error("document_mismatch", path, f"文档缺少应有的编号、版本或章节：{token}")
         if re.search(r"\{\{[^}]+\}\}|待填写|示意", content):
             self.error("template_residue", path, "文档仍含模板占位符或示意内容")
+        # Stage-3 documents are the signed delivery: pending markers in the
+        # Markdown itself must fail too, not only those in project-record.json.
+        # A bare "待确认" cell/list item is an open item; "待确认 → 已确认" is a status flow.
+        if path.startswith("stage3") and (
+            re.search(r"待信息科提供|待补|\bTBD\b|\bTODO\b", content, re.I)
+            or re.search(r"(?:^|\|)\s*(?:[-*]\s*)?待确认\s*(?:\||$)", content, re.M)
+        ):
+            self.error("pending_stage3_document", path, "阶段三文档中仍有待确认或待补内容")
 
     def evidence(self, parent, key: str, path: str):
         value = self.field(parent, key, path)

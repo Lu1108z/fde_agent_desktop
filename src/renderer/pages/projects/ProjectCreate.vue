@@ -37,6 +37,7 @@
         </div>
 
         <!-- Submit button -->
+        <p v-if="error" class="mb-4 text-sm text-red-600" role="alert">{{ error }}</p>
         <button
           @click="handleSubmit"
           :disabled="!requirement.trim() || submitting"
@@ -68,20 +69,23 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 const requirement = ref('');
 const submitting = ref(false);
+const error = ref('');
 
 const handleSubmit = async () => {
   const text = requirement.value.trim();
   if (!text || submitting.value) return;
 
   submitting.value = true;
+  error.value = '';
   try {
     const name = text.slice(0, 20) + (text.length > 20 ? '...' : '');
     const result = await window.api.hermes.createProject({ name, requirement: text, projectType: 'fde-project' });
-    if (result && result.slug) {
-      router.push(`/projects/${result.slug}`);
-    }
+    if (!result?.slug || result.success === false) throw new Error(result?.error || '创建未完成，请重试。');
+    await router.push(`/projects/${result.slug}`);
   } catch (e) {
     console.error('Failed to create project:', e);
+    error.value = `创建失败：${e.message || '请检查项目服务后重试。'}`;
+  } finally {
     submitting.value = false;
   }
 };

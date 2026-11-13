@@ -183,13 +183,17 @@ const skillMeta = {
   'image-generator': { label: '图片生成', icon: 'fa-solid fa-image' },
   'video-generator': { label: '视频生成', icon: 'fa-solid fa-film' },
   '360-ppt-generator': { label: 'PPT 生成', icon: 'fa-solid fa-file-powerpoint' },
+  'ppt-template': { label: '模板 PPT', icon: 'fa-solid fa-file-powerpoint' },
   'business-architecture-image': { label: '商务架构图', icon: 'fa-solid fa-sitemap' },
   'dashboard-generator': { label: '大屏生成', icon: 'fa-solid fa-chart-line' },
   'fde-coach': { label: 'FDE 教练', icon: 'fa-solid fa-user-graduate' },
   'fireworks-tech-graph': { label: '技术图表', icon: 'fa-solid fa-diagram-project' },
   'md-export': { label: '文档导出', icon: 'fa-solid fa-file-export' },
   'product-doc-to-word': { label: '文档转 Word', icon: 'fa-solid fa-file-word' },
-  'contract-review': { label: '合同审查', icon: 'fa-solid fa-file-contract' },
+  'operation-manual': { label: '操作手册', icon: 'fa-solid fa-book-open' },
+  'product-whitepaper': { label: '产品白皮书', icon: 'fa-solid fa-file-invoice' },
+  'product-demo-film': { label: '宣传视频', icon: 'fa-solid fa-clapperboard' },
+  'product-introduction': { label: '产品介绍', icon: 'fa-solid fa-id-card' },
 };
 
 const displaySkills = computed(() => {

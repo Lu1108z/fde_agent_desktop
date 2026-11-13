@@ -1,408 +1,232 @@
 <template>
-  <div class="flex h-full min-h-0 es-bg">
-    <!-- ── 左侧:应用分类树 ────────────────────────── -->
-    <aside class="es-tree shrink-0 flex flex-col border-r">
-      <div class="px-3 pt-3.5 pb-2.5 border-b border-slate-100">
-        <div class="flex items-center gap-2 mb-2.5">
-          <span class="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-            <i class="fa-solid fa-store text-white text-[11px]"></i>
-          </span>
-          <span class="text-[12.5px] font-semibold text-slate-700">AI应用广场</span>
-        </div>
-        <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300 text-[10px]"></i>
-          <input
-            v-model="keyword"
-            type="text"
-            placeholder="搜索应用、场景、能力…"
-            class="w-full text-[12px] bg-slate-50 border border-transparent focus:bg-white focus:border-blue-400 rounded-md pl-7 pr-2.5 py-1.5 focus:outline-none transition"
-          />
+  <div class="sq-page h-full min-h-0 flex">
+    <!-- ── 左侧：分类导航 + 最近使用 ────────────────────────── -->
+    <aside class="sq-side shrink-0 flex flex-col">
+      <div class="sq-side__head">
+        <span class="sq-side__logo"><i class="fa-solid fa-store"></i></span>
+        <div class="min-w-0">
+          <div class="text-[15px] font-semibold text-slate-800">AI 应用广场</div>
+          <div class="text-[11.5px] text-slate-400">{{ visibleApps.length }} 个应用可召唤</div>
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto px-2 py-2 space-y-0.5">
+      <nav class="flex-1 min-h-0 overflow-y-auto px-3 pb-3" aria-label="应用分类">
+        <div class="sq-side__label">分类</div>
         <button
           v-for="cat in visibleCategories"
           :key="cat.id"
-          class="tree-node"
-          :class="active === cat.id ? 'tree-node--active' : ''"
+          class="sq-nav"
+          :class="active === cat.id ? 'sq-nav--on' : ''"
+          :aria-current="active === cat.id ? 'page' : undefined"
           @click="active = cat.id"
         >
-          <span class="tree-badge" :style="{ background: accent(cat.color) }">
-            <i :class="'fa-solid fa-' + cat.icon + ' text-[10px]'"></i>
-          </span>
-          <span class="flex-1 text-left truncate">{{ cat.name }}</span>
-          <span class="tree-count">{{ catCount(cat.id) }}</span>
+          <span class="sq-nav__icon" :style="{ color: accent(cat.color) }"><i :class="'fa-solid fa-' + cat.icon"></i></span>
+          <span class="flex-1 text-left truncate">{{ cat.id === 'all' ? '全部应用' : cat.name }}</span>
+          <span class="sq-nav__count">{{ catCount(cat.id) }}</span>
         </button>
-      </div>
 
-      <div class="px-4 py-3 border-t border-slate-100 text-[11px] text-slate-400">
-        <i class="fa-solid fa-circle-info mr-1"></i>共 <b class="text-slate-600">{{ visibleApps.length }}</b> 个 AI 应用
+        <template v-if="recentApps.length">
+          <div class="sq-side__label mt-5">最近召唤</div>
+          <button v-for="app in recentApps" :key="app.id" class="sq-nav" @click="openDetail(app)">
+            <AppAvatar :app="app" :size="24" />
+            <span class="flex-1 text-left truncate">{{ app.name }}</span>
+          </button>
+        </template>
+      </nav>
+
+      <div class="sq-side__foot">
+        <button class="sq-nav" :class="devMode ? 'sq-nav--on' : ''" :aria-pressed="devMode" @click="toggleDevMode">
+          <span class="sq-nav__icon"><i class="fa-solid fa-code"></i></span>
+          <span class="flex-1 text-left">开发者模式</span>
+          <span class="sq-switch" :class="devMode ? 'sq-switch--on' : ''"></span>
+        </button>
+        <button v-if="devMode" class="sq-create" @click="openEditor(null)"><i class="fa-solid fa-plus"></i>创建应用</button>
       </div>
     </aside>
 
-    <!-- ── 右侧:应用卡片 ────────────────────────── -->
+    <!-- ── 右侧 ────────────────────────── -->
     <div class="flex-1 min-w-0 overflow-y-auto">
-      <div class="px-6 py-6 lg:px-8">
-        <PageHero
-          :title="activeName"
-          :count="filtered.length"
-          description="发现、开发、发布和启动 AI 应用"
-          icon="fa-solid fa-store"
-          :image="heroImage"
-        >
-          <template #actions>
-            <button @click="toggleDevMode" class="btn-sm" :aria-pressed="devMode"><i class="fa-solid fa-code"></i>开发者</button>
-            <button v-if="devMode" @click="openEditor(null)" class="btn-sm-pri"><i class="fa-solid fa-plus"></i>创建</button>
-          </template>
-        </PageHero>
-
-        <div class="grid gap-3 mb-4" :class="devMode ? 'grid-cols-4' : 'grid-cols-3'">
-          <div v-for="s in statCards" :key="s.label" class="stat-card">
-            <div class="stat-icon" :style="{ background: s.bg }">
-              <i :class="'fa-solid ' + s.icon"></i>
-            </div>
-            <div>
-              <div class="text-[18px] font-bold text-slate-800 leading-none tracking-tight">{{ s.value }}</div>
-              <div class="text-[10px] text-slate-400 mt-1">{{ s.label }}</div>
-            </div>
+      <div class="sq-body">
+        <header class="sq-head">
+          <div class="min-w-0">
+            <h1 class="text-[22px] font-semibold text-slate-900">{{ activeTitle }}</h1>
+            <p class="text-[13px] text-slate-400 mt-1">{{ activeHint }}</p>
           </div>
-        </div>
+          <label class="sq-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input v-model="keyword" type="text" placeholder="搜索应用、场景、能力" />
+          </label>
+        </header>
+
+        <!-- 精选：全部 + 无搜索时展示 -->
+        <section v-if="showFeatured" class="sq-featured" aria-label="精选应用">
+          <button
+            v-for="app in featuredApps"
+            :key="app.id"
+            class="sq-feat"
+            :style="featStyle(app)"
+            @click="openDetail(app)"
+          >
+            <AppAvatar class="sq-feat__avatar" :app="app" :size="96" />
+            <span class="sq-feat__kicker">{{ categoryName(app.category) }}</span>
+            <span class="sq-feat__name">{{ app.name }}</span>
+            <span class="sq-feat__line">{{ app.tagline || app.summary }}</span>
+            <span class="sq-feat__go" @click.stop="launchApp(app)">召唤 <i class="fa-solid fa-arrow-right text-[11px]"></i></span>
+          </button>
+        </section>
 
         <!-- 已移除的内置专家（回收站，仅开发者模式） -->
-        <div
-          v-if="devMode && deletedBuiltins.length"
-          class="mb-4 rounded-xl border border-slate-200/70 bg-white/70 px-4 py-3"
-        >
-          <div class="flex items-center gap-2 mb-2">
-            <i class="fa-solid fa-trash-can-arrow-up text-[11px] text-slate-400"></i>
-            <span class="text-[11.5px] font-semibold text-slate-500">已移除的内置专家</span>
-            <span class="text-[10.5px] text-slate-400">{{ deletedBuiltins.length }} 个 · 可恢复</span>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <span
-              v-for="d in deletedBuiltins"
-              :key="d.id"
-              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11.5px] bg-transparent border border-slate-200 text-slate-500"
-            >
-              <i :class="'fa-solid fa-' + (d.icon || 'rocket') + ' text-[10px]'" :style="{ color: accent(d.color) }"></i>
-              {{ d.name }}
-              <button
-                @click="restoreBuiltin(d)"
-                class="ml-1 text-blue-500 hover:text-blue-700 active:scale-90 transition"
-                title="恢复"
-              >
-                <i class="fa-solid fa-rotate-left text-[10px]"></i>
-              </button>
-            </span>
-          </div>
+        <div v-if="devMode && deletedBuiltins.length" class="sq-trash">
+          <span class="text-[12px] text-slate-500"><i class="fa-solid fa-trash-can-arrow-up mr-1.5 text-slate-400"></i>已移除 {{ deletedBuiltins.length }} 个内置应用：</span>
+          <button v-for="d in deletedBuiltins" :key="d.id" class="sq-trash__item" title="恢复" @click="restoreBuiltin(d)">
+            {{ d.name }}<i class="fa-solid fa-rotate-left text-[10px] ml-1.5"></i>
+          </button>
         </div>
 
-        <div v-if="filtered.length" class="es-grid">
+        <h2 v-if="showFeatured && filtered.length" class="sq-sub">全部应用 <span>{{ filtered.length }}</span></h2>
+        <div v-if="filtered.length" class="sq-grid">
           <div
-            v-for="app in pagedItems"
+            v-for="app in filtered"
             :key="app.id"
-            class="es-card group"
+            class="sq-item"
+            role="button"
+            tabindex="0"
+            @click="openDetail(app)"
+            @keydown.enter="openDetail(app)"
           >
-            <div class="es-card__accent" :style="{ background: accent(app.color) }"></div>
-            <div class="flex items-start gap-3">
-              <span class="es-icon" :style="{ background: accent(app.color) }">
-                <i :class="'fa-solid fa-' + (app.icon || 'rocket')"></i>
-              </span>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-1.5">
-                  <h3 class="text-[13.5px] font-semibold text-slate-800 truncate group-hover:text-blue-700 transition-colors">{{ app.name }}</h3>
-                  <span class="src-badge shrink-0" :class="sourceBadge(app).cls">{{ sourceBadge(app).text }}</span>
-                </div>
-                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{{ getCategoryName(app.category) }}</span>
-                  <span
-                    v-for="tag in (app.bestFor || []).slice(0, 2)"
-                    :key="tag"
-                    class="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600"
-                  >{{ tag }}</span>
-                </div>
+            <AppAvatar :app="app" :size="64" />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <h3 class="sq-name truncate">{{ app.name }}</h3>
+                <span v-if="app.source === 'local' || app._edited" class="src-badge shrink-0" :class="sourceBadge(app).cls">{{ sourceBadge(app).text }}</span>
+              </div>
+              <p class="sq-desc truncate">{{ app.summary || app.tagline }}</p>
+              <div class="sq-tags">
+                <span v-for="tag in (app.bestFor || []).slice(0, 3)" :key="tag" class="sq-tag">{{ tag }}</span>
               </div>
             </div>
-            <p class="text-[12px] text-slate-500 mt-3 leading-relaxed line-clamp-2">{{ app.summary }}</p>
-            <div class="mt-2.5 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <button
-                  @click="openDetail(app)"
-                  class="text-[11px] text-slate-400 hover:text-blue-600 active:scale-95 transition-all cursor-pointer"
-                >
-                  <i class="fa-solid fa-circle-info mr-1"></i>查看详情
-                </button>
-                <button
-                  v-if="devMode && (app.source === 'local' || app.source === 'builtin')"
-                  @click.stop="openEditor(app)"
-                  class="w-6 h-6 rounded-md text-slate-300 hover:text-blue-600 hover:bg-blue-50 active:scale-90 transition-all cursor-pointer"
-                  title="编辑应用"
-                >
-                  <i class="fa-solid fa-pen text-[10px]"></i>
-                </button>
-              </div>
-              <button
-                v-if="app.status === 'published'"
-                @click.stop="launchApp(app)"
-                class="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-700 active:scale-95 transition-all cursor-pointer"
-              >
-                <i class="fa-solid fa-bolt text-[10px]"></i>启动应用
-              </button>
-              <button
-                v-else
-                @click.stop="openEditor(app)"
-                class="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 hover:text-amber-700 active:scale-95 transition-all cursor-pointer"
-              >
-                <i class="fa-solid fa-pen text-[10px]"></i>编辑
-              </button>
-            </div>
+            <button
+              v-if="app.status === 'published'"
+              class="sq-call"
+              @click.stop="launchApp(app)"
+            >召唤</button>
+            <button v-else class="sq-call sq-call--draft" @click.stop="openEditor(app)">编辑</button>
           </div>
         </div>
-        <div v-else class="text-center py-20 text-slate-300">
+        <div v-else class="text-center py-24 text-slate-300">
           <i class="fa-solid fa-inbox text-5xl mb-3"></i>
-          <p class="text-[13px]">该分类下暂无应用</p>
-        </div>
-
-        <!-- 分页条 -->
-        <div v-if="totalPages > 1" class="flex items-center justify-center gap-1 mt-6">
-          <button class="pgn" :disabled="currentPage <= 1" @click="currentPage--">
-            <i class="fa-solid fa-chevron-left text-[10px]"></i>
-          </button>
-          <button
-            v-for="p in totalPages" :key="p"
-            class="pgn" :class="p === currentPage ? 'pgn--cur' : ''"
-            @click="currentPage = p"
-          >{{ p }}</button>
-          <button class="pgn" :disabled="currentPage >= totalPages" @click="currentPage++">
-            <i class="fa-solid fa-chevron-right text-[10px]"></i>
-          </button>
+          <p class="text-[13px]">{{ keyword.trim() ? '没有找到匹配的应用' : '该分类下暂无应用' }}</p>
         </div>
       </div>
     </div>
 
-    <!-- ── 应用详情抽屉 ────────────────────────── -->
-    <transition name="drawer">
-      <div v-if="selected" class="fixed inset-0 z-50">
-        <div class="absolute inset-0 bg-slate-900/40" @click="selected = null"></div>
-        <aside class="absolute right-0 top-0 bottom-0 w-[640px] max-w-[92vw] glass-card shadow-2xl flex flex-col">
-          <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200/80 shrink-0">
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0" :style="{ background: accent(selected.color) }">
-                <i :class="'fa-solid fa-' + (selected.icon || 'rocket')"></i>
-              </span>
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5">
-                  <div class="text-[13px] font-semibold text-slate-800 truncate">{{ selected.name }}</div>
-                  <span class="src-badge shrink-0" :class="sourceBadge(selected).cls">{{ sourceBadge(selected).text }}</span>
-                </div>
-                <div class="text-[11px] text-slate-400">{{ getCategoryName(selected.category) }}</div>
-              </div>
-            </div>
-            <div class="flex items-center gap-1.5 shrink-0">
-              <template v-if="devMode && selected.source === 'local'">
-                <button
-                  @click="openEditor(selected)"
-                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 transition"
-                >
-                  <i class="fa-solid fa-pen text-[10px]"></i>编辑
-                </button>
-                <button
-                  @click="togglePublish(selected)"
-                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition"
-                  :class="selected.status === 'published'
-                    ? 'border-amber-200 text-amber-600 hover:bg-amber-50'
-                    : 'border-emerald-200 text-emerald-600 hover:bg-emerald-50'"
-                >
-                  <i class="fa-solid text-[10px]" :class="selected.status === 'published' ? 'fa-arrow-down' : 'fa-rocket'"></i>
-                  {{ selected.status === 'published' ? '下架' : '发布' }}
-                </button>
-                <button
-                  @click="removeApp(selected)"
-                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-danger/30 text-danger-deep hover:bg-danger-soft transition"
-                >
-                  <i class="fa-solid fa-trash text-[10px]"></i>删除
-                </button>
-              </template>
-              <template v-else-if="devMode && selected.source === 'builtin'">
-                <button
-                  @click="openEditor(selected)"
-                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 transition"
-                >
-                  <i class="fa-solid fa-pen text-[10px]"></i>编辑
-                </button>
-                <button
-                  v-if="selected._edited"
-                  @click="resetBuiltin(selected)"
-                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 transition"
-                >
-                  <i class="fa-solid fa-rotate-left text-[10px]"></i>恢复默认
-                </button>
-                <button
-                  @click="removeApp(selected)"
-                  class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border border-danger/30 text-danger-deep hover:bg-danger-soft transition"
-                >
-                  <i class="fa-solid fa-eye-slash text-[10px]"></i>移除
-                </button>
-              </template>
-              <button @click="selected = null" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 transition">
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-          </div>
+    <!-- ── 应用详情弹窗 ────────────────────────── -->
+    <transition name="modal">
+      <div v-if="selected" class="fixed inset-0 z-50 flex items-center justify-center p-6">
+        <div class="sq-mask absolute inset-0" @click="selected = null"></div>
+        <section class="sq-modal" role="dialog" aria-modal="true" :aria-label="selected.name">
+          <button class="sq-close" aria-label="关闭" @click="selected = null"><i class="fa-solid fa-xmark"></i></button>
 
-          <div class="flex-1 min-h-0 overflow-y-auto p-6">
-            <!-- tagline -->
-            <p class="text-[14px] font-medium text-slate-700 mb-4">{{ selected.tagline }}</p>
+          <div class="sq-modal__body">
+            <AppAvatar :app="selected" :size="72" />
+            <div class="flex items-center gap-2 mt-4">
+              <h2 class="text-[22px] font-semibold text-slate-900">{{ selected.name }}</h2>
+              <span class="src-badge" :class="sourceBadge(selected).cls">{{ sourceBadge(selected).text }}</span>
+            </div>
+            <p class="text-[14px] text-slate-400 mt-1.5 leading-relaxed">{{ selected.summary || selected.tagline }}</p>
 
-            <!-- 应用简介 -->
-            <div class="mb-5">
-              <h4 class="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <i class="fa-solid fa-circle-info mr-1.5 text-blue-500"></i>应用简介
-              </h4>
-              <p class="text-[13px] text-slate-600 leading-relaxed">{{ selected.summary }}</p>
+            <div v-if="selected.riskNotice" class="mt-4 p-3 rounded-xl bg-amber-50 text-[12.5px] text-amber-700 flex items-start gap-2">
+              <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i><span>{{ selected.riskNotice }}</span>
             </div>
 
-            <!-- 风险提醒 -->
-            <div v-if="selected.riskNotice" class="mb-5 p-3 rounded-lg bg-amber-50 border border-amber-200/60">
-              <p class="text-[12px] text-amber-700 flex items-start gap-2">
-                <i class="fa-solid fa-triangle-exclamation mt-0.5 shrink-0"></i>
-                <span>{{ selected.riskNotice }}</span>
-              </p>
-            </div>
-
-            <!-- 适用场景 -->
-            <div v-if="(selected.bestFor || []).length" class="mb-5">
-              <h4 class="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <i class="fa-solid fa-bullseye mr-1.5 text-blue-500"></i>适用场景
-              </h4>
+            <template v-if="(selected.bestFor || []).length">
+              <h4 class="sq-h">擅长领域</h4>
               <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="tag in selected.bestFor"
-                  :key="tag"
-                  class="px-2.5 py-1 rounded-lg text-[12px] bg-blue-50 text-blue-700 border border-blue-100"
-                >{{ tag }}</span>
+                <span v-for="tag in selected.bestFor" :key="tag" class="sq-chip">{{ tag }}</span>
               </div>
-            </div>
+            </template>
 
-            <!-- 核心能力 -->
-            <div v-if="capabilityLines.length" class="mb-5">
-              <h4 class="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <i class="fa-solid fa-list-check mr-1.5 text-blue-500"></i>核心能力
-              </h4>
+            <template v-if="capabilityLines.length">
+              <h4 class="sq-h">能帮你做</h4>
               <ul class="space-y-1.5">
-                <li
-                  v-for="(line, i) in capabilityLines"
-                  :key="i"
-                  class="text-[12.5px] text-slate-600 flex items-start gap-2"
-                >
-                  <i class="fa-solid fa-check text-[10px] text-blue-500 mt-1 shrink-0"></i>
-                  <span>{{ line }}</span>
+                <li v-for="(line, i) in capabilityLines" :key="i" class="text-[13px] text-slate-600 flex items-start gap-2">
+                  <i class="fa-solid fa-check text-[10px] text-blue-500 mt-1.5 shrink-0"></i><span>{{ line }}</span>
                 </li>
               </ul>
-            </div>
+            </template>
 
-            <!-- 推荐开场 -->
-            <div v-if="(selected.starters || []).length" class="mb-5">
-              <h4 class="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <i class="fa-solid fa-message mr-1.5 text-blue-500"></i>推荐开场
-              </h4>
-              <div class="space-y-2">
-                <button
-                  v-for="(q, i) in selected.starters"
-                  :key="i"
-                  @click="launchApp(selected)"
-                  class="w-full text-left px-3.5 py-2.5 rounded-lg bg-slate-50 hover:bg-blue-50 border border-slate-200/70 hover:border-blue-300 text-[12.5px] text-slate-600 hover:text-blue-700 transition-all"
-                >
-                  <i class="fa-solid fa-arrow-right text-[9px] text-blue-400 mr-2"></i>{{ q }}
+            <template v-if="(selected.starters || []).length">
+              <h4 class="sq-h">试试这样问我</h4>
+              <div class="space-y-2.5">
+                <button v-for="(q, i) in selected.starters" :key="i" class="sq-starter" @click="launchApp(selected, q)">
+                  <span class="flex-1 text-left">{{ q }}</span><i class="fa-solid fa-arrow-right text-[13px]"></i>
                 </button>
               </div>
-            </div>
+            </template>
 
-            <!-- 使用技能 -->
-            <div v-if="(selected.skills || []).length" class="mb-5">
-              <h4 class="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <i class="fa-solid fa-wand-magic-sparkles mr-1.5 text-blue-500"></i>使用技能
-              </h4>
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="s in selected.skills"
-                  :key="s"
-                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] bg-blue-50 text-blue-700 border border-blue-100"
-                >
-                  <i class="fa-solid fa-puzzle-piece text-[9px]"></i>{{ s }}
-                </span>
+            <template v-if="(selected.skills || []).length">
+              <h4 class="sq-h">内置技能 <span class="font-normal text-slate-400">{{ selected.skills.length }}</span></h4>
+              <div class="space-y-1">
+                <div v-for="s in selected.skills" :key="s" class="sq-skill">
+                  <span class="sq-skill__icon"><i class="fa-solid fa-puzzle-piece"></i></span>
+                  <span class="text-[14px] font-medium text-slate-800">{{ skillName(s) }}</span>
+                </div>
               </div>
-            </div>
+            </template>
+
+            <template v-if="hasBuiltinKnowledge && builtinKnowledge">
+              <h4 class="sq-h">内置知识库 <span class="font-normal text-slate-400">{{ builtinKnowledge.documents.length }} 份资料</span></h4>
+              <p class="text-[12.5px] text-slate-500 leading-relaxed">
+                <template v-if="selected.knowledge === 'clinical'">随应用提供，回答时自动检索疾病百科与卫健委临床路径并标注出处。共收录疾病 {{ (builtinKnowledge.stats.diseases || 0).toLocaleString() }} 条、临床路径 {{ (builtinKnowledge.stats.pathways || 0).toLocaleString() }} 份，内容仅供内部学习参考，不能用于诊断和用药。</template>
+                <template v-else>随应用提供，回答时自动检索并标注出处。另可按编码精确查询：DRG 编码 {{ (builtinKnowledge.stats.drgCodes || 0).toLocaleString() }} 条、DIP 病种 {{ (builtinKnowledge.stats.dipDiseases || 0).toLocaleString() }} 个、医疗服务项目 {{ (builtinKnowledge.stats.serviceItems || 0).toLocaleString() }} 项。</template>
+              </p>
+              <details v-for="group in builtinKnowledgeGroups" :key="group.topic" class="sq-kb">
+                <summary><i class="fa-solid fa-book-medical text-teal-600"></i><span class="flex-1">{{ group.topic }}</span><span class="text-slate-400">{{ group.documents.length }} 份</span></summary>
+                <ul>
+                  <li v-for="doc in group.documents" :key="doc.id">{{ doc.title }}</li>
+                </ul>
+              </details>
+            </template>
 
             <!-- 专家资产（仅开发者模式） -->
-            <div v-if="devMode" class="mb-5">
-              <h4 class="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <i class="fa-solid fa-database mr-1.5 text-blue-500"></i>专家资产
-              </h4>
-              <div class="grid grid-cols-2 gap-2.5 mb-2.5">
-                <div class="rounded-lg bg-transparent border border-slate-200/70 px-3 py-2.5">
-                  <div class="text-[11px] text-slate-400 mb-1">
-                    <i class="fa-solid fa-brain text-[10px] text-blue-500 mr-1.5"></i>长期记忆
-                  </div>
-                  <div class="text-[15px] font-bold text-slate-700 leading-none">{{ assetMemoryChars }} <span class="text-[11px] font-normal text-slate-400">字</span></div>
-                </div>
-                <div class="rounded-lg bg-transparent border border-slate-200/70 px-3 py-2.5">
-                  <div class="text-[11px] text-slate-400 mb-1">
-                    <i class="fa-solid fa-folder-open text-[10px] text-blue-500 mr-1.5"></i>知识库
-                  </div>
-                  <div class="text-[15px] font-bold text-slate-700 leading-none">{{ assetKnowledgeCount }} <span class="text-[11px] font-normal text-slate-400">个文件</span></div>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <button
-                  @click="openAssetDrawer('memory')"
-                  class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11.5px] font-medium border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600 transition"
-                >
-                  <i class="fa-solid fa-brain text-[10px] text-blue-500"></i>管理长期记忆
+            <template v-if="devMode">
+              <h4 class="sq-h">专家资产</h4>
+              <div class="grid grid-cols-2 gap-2.5">
+                <button class="sq-asset" @click="openAssetDrawer('memory')">
+                  <span class="text-[11.5px] text-slate-400"><i class="fa-solid fa-brain mr-1.5 text-blue-500"></i>长期记忆</span>
+                  <span class="text-[15px] font-semibold text-slate-700">{{ assetMemoryChars }} <small class="font-normal text-slate-400">字</small></span>
                 </button>
-                <button
-                  @click="openAssetDrawer('knowledge')"
-                  class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11.5px] font-medium border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600 transition"
-                >
-                  <i class="fa-solid fa-folder-open text-[10px] text-blue-500"></i>管理知识库
+                <button class="sq-asset" @click="openAssetDrawer('knowledge')">
+                  <span class="text-[11.5px] text-slate-400"><i class="fa-solid fa-folder-open mr-1.5 text-blue-500"></i>知识库</span>
+                  <span class="text-[15px] font-semibold text-slate-700">{{ assetKnowledgeCount }} <small class="font-normal text-slate-400">个文件</small></span>
+                </button>
+              </div>
+              <p class="text-[11.5px] text-slate-400 mt-3">
+                {{ (selected.developer && selected.developer.author) || '未知作者' }} · v{{ (selected.developer && selected.developer.version) || '1.0.0' }}
+              </p>
+            </template>
+          </div>
+
+          <footer class="sq-modal__foot">
+            <div v-if="devMode && (selected.source === 'local' || selected.source === 'builtin')" class="relative">
+              <button class="sq-more" aria-label="更多操作" :aria-expanded="moreOpen" @click="moreOpen = !moreOpen"><i class="fa-solid fa-ellipsis"></i></button>
+              <div v-if="moreOpen" class="sq-menu" @click="moreOpen = false">
+                <button @click="openEditor(selected)"><i class="fa-solid fa-pen"></i>编辑</button>
+                <button v-if="selected.source === 'local'" @click="togglePublish(selected)">
+                  <i class="fa-solid" :class="selected.status === 'published' ? 'fa-arrow-down' : 'fa-rocket'"></i>{{ selected.status === 'published' ? '下架' : '发布' }}
+                </button>
+                <button v-if="selected._edited" @click="resetBuiltin(selected)"><i class="fa-solid fa-rotate-left"></i>恢复默认</button>
+                <button class="sq-menu__danger" @click="removeApp(selected)">
+                  <i class="fa-solid" :class="selected.source === 'builtin' ? 'fa-eye-slash' : 'fa-trash'"></i>{{ selected.source === 'builtin' ? '从广场移除' : '删除' }}
                 </button>
               </div>
             </div>
-
-            <!-- 开发者信息 -->
-            <div class="mb-2">
-              <h4 class="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <i class="fa-solid fa-user-gear mr-1.5 text-blue-500"></i>开发者信息
-              </h4>
-              <div class="flex items-center gap-4 text-[12.5px] text-slate-600">
-                <span><i class="fa-solid fa-user text-[10px] text-slate-400 mr-1.5"></i>{{ (selected.developer && selected.developer.author) || '未知作者' }}</span>
-                <span><i class="fa-solid fa-tag text-[10px] text-slate-400 mr-1.5"></i>v{{ (selected.developer && selected.developer.version) || '1.0.0' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 底部 CTA -->
-          <div class="px-5 py-3 border-t border-slate-200/80 shrink-0">
-            <button
-              v-if="selected.status === 'published'"
-              @click="launchApp(selected)"
-              class="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold bg-blue-600 hover:bg-blue-700 active:scale-[0.97] text-white transition-all"
-            >
-              <i class="fa-solid fa-bolt text-[10px]"></i>启动该应用
-            </button>
-            <button
-              v-else
-              @click="openEditor(selected)"
-              class="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-[12px] font-semibold bg-amber-500 hover:bg-amber-600 active:scale-[0.97] text-white transition-all"
-            >
-              <i class="fa-solid fa-pen text-[10px]"></i>编辑应用
-            </button>
-          </div>
-        </aside>
+            <button v-if="selected.status === 'published'" class="sq-primary" @click="launchApp(selected)">对话</button>
+            <button v-else class="sq-primary" @click="openEditor(selected)">编辑应用</button>
+          </footer>
+        </section>
       </div>
     </transition>
-
     <!-- ── 应用编辑抽屉 ────────────────────────── -->
     <transition name="drawer">
       <div v-if="editing" class="fixed inset-0 z-[60]">
@@ -515,7 +339,7 @@
               </div>
               <div>
                 <label class="ed-label">绑定模型 <span class="font-normal text-slate-400">(可选)</span></label>
-                <input v-model="form.preferredModel" type="text" class="ed-input" placeholder="留空使用默认模型" />
+                <UiSelect field v-model="form.preferredModel" class="ed-input" :options="[{ value: '', label: '使用默认模型' }, ...FIXED_MODELS.map((m) => ({ value: m.id, label: m.label }))]" />
               </div>
             </div>
           </div>
@@ -695,15 +519,13 @@
 <script setup>
 import { useAccentColor } from '@/composables/useAccentColor.js';
 const { accent } = useAccentColor();
-import { ref, reactive, computed, watch, onMounted } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { FIXED_MODELS } from '@/constants/models.js';
+import AppAvatar from '@/components/apps/AppAvatar.vue';
 import { useRouter } from 'vue-router';
-import PageHero from '@/components/common/PageHero.vue';
-import { useHeroImage } from '@/composables/useHeroImage.js';
-const heroImage = useHeroImage('apps');
 import {
   aiAppCategories,
   builtinAiApps,
-  getAiAppCategoryName,
   buildAiAppOpeningPrompt,
 } from '@/data/ai-apps';
 
@@ -718,7 +540,6 @@ const devMode = ref(false);
 // eslint-disable-next-line no-unused-vars
 const _opening = buildAiAppOpeningPrompt;
 
-const getCategoryName = getAiAppCategoryName;
 
 // 业务分类(排除虚拟分类 + all)
 const virtualCatIds = ['all', 'my-published', 'my-drafts'];
@@ -828,21 +649,12 @@ function sourceBadge(app) {
   return { text: '内置', cls: 'src-badge--builtin' };
 }
 
-function catCount(catId) {
-  return filterByCategory(visibleApps.value, catId).length;
-}
-
 function filterByCategory(list, catId) {
   if (catId === 'all') return list;
   if (catId === 'my-published') return list.filter((a) => a.source === 'local' && a.status === 'published');
   if (catId === 'my-drafts') return list.filter((a) => a.source === 'local' && a.status === 'draft');
   return list.filter((a) => a.category === catId);
 }
-
-const activeName = computed(() => {
-  const cat = categories.find((c) => c.id === active.value);
-  return cat ? cat.name : '全部应用';
-});
 
 const filtered = computed(() => {
   let list = filterByCategory(visibleApps.value, active.value);
@@ -859,33 +671,51 @@ const filtered = computed(() => {
   return list;
 });
 
-watch([active, keyword, devMode], () => { currentPage.value = 1; });
+const activeCat = computed(() => categories.find((c) => c.id === active.value));
+const activeTitle = computed(() => (keyword.value.trim() ? `搜索「${keyword.value.trim()}」` : (active.value === 'all' ? '全部应用' : activeCat.value?.name || '全部应用')));
+const CAT_HINTS = {
+  all: '选一个专家，把产品资料变成宣传视频、PPT、产品介绍、白皮书、操作手册和 Demo',
+  marketing: '宣传视频、海报配图、方案 PPT、产品介绍，对外宣发一套齐',
+  docs: '白皮书、操作手册、可点击 Demo，产品交付文档一站完成',
+  industry: '医疗信息化标准与医保政策，有出处的行业知识',
+  'my-published': '你自己开发并发布到广场的应用',
+  'my-drafts': '还没发布的应用草稿，只在开发者模式可见',
+};
+const activeHint = computed(() => (keyword.value.trim() ? `找到 ${filtered.value.length} 个应用` : CAT_HINTS[active.value] || ''));
+const categoryName = (id) => categories.find((c) => c.id === id)?.name || '';
+function catCount(catId) { return filterByCategory(visibleApps.value, catId).length; }
 
-// ── 分页 ──
-const currentPage = ref(1);
-const pageSize = ref(12);
-const totalPages = computed(() => Math.max(1, Math.ceil(filtered.value.length / pageSize.value)));
-const pagedItems = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value;
-  return filtered.value.slice(start, start + pageSize.value);
+// 精选：每个业务分类取第一个，最多 3 个
+const featuredApps = computed(() => {
+  const seen = new Set();
+  return visibleApps.value.filter((a) => a.status === 'published' && a.category && !seen.has(a.category) && seen.add(a.category)).slice(0, 3);
 });
-watch(totalPages, (tp) => { if (currentPage.value > tp) currentPage.value = tp; });
+const showFeatured = computed(() => active.value === 'all' && !keyword.value.trim() && featuredApps.value.length >= 2);
+function featStyle(app) {
+  const c = accent(app?.color || '#2563eb');
+  return { '--feat': c };
+}
 
-const statCards = computed(() => {
-  const total = visibleApps.value.length;
-  const builtinCount = allApps.value.filter((a) => a.source === 'builtin').length;
-  const localPub = allApps.value.filter((a) => a.source === 'local' && a.status === 'published').length;
-  const draftCount = allApps.value.filter((a) => a.source === 'local' && a.status === 'draft').length;
-  const cards = [
-    { label: '应用总数', value: total,        icon: 'fa-layer-group', bg: 'var(--ui-brand)' },
-    { label: '内置应用', value: builtinCount, icon: 'fa-cubes',       bg: 'var(--ui-brand-dark)' },
-    { label: '本地发布', value: localPub,     icon: 'fa-rocket',      bg: '#059669' },
-  ];
-  if (devMode.value) {
-    cards.push({ label: '开发草稿', value: draftCount, icon: 'fa-pen-ruler', bg: '#d97706' });
-  }
-  return cards;
-});
+// 最近召唤：只存在本机，方便回到常用应用
+const RECENT_KEY = 'fde-apps-recent';
+const recentIds = ref([]);
+try { recentIds.value = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { recentIds.value = []; }
+const recentApps = computed(() => recentIds.value.map((id) => visibleApps.value.find((a) => a.id === id)).filter(Boolean).slice(0, 5));
+function rememberRecent(app) {
+  recentIds.value = [app.id, ...recentIds.value.filter((id) => id !== app.id)].slice(0, 8);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds.value)); } catch { /* 本地存储不可用时忽略 */ }
+}
+
+// 技能 id → 显示名（技能清单里没有就显示 id）
+function skillName(id) {
+  return allSkills.value.find((s) => s.id === id || s.name === id)?.name || id;
+}
+
+const moreOpen = ref(false);
+watch(selected, () => { moreOpen.value = false; });
+function onEsc(e) { if (e.key === 'Escape' && selected.value && !editing.value && !assetDrawerOpen.value) selected.value = null; }
+onMounted(() => window.addEventListener('keydown', onEsc));
+onBeforeUnmount(() => window.removeEventListener('keydown', onEsc));
 
 const capabilityLines = computed(() => {
   if (!selected.value?.capabilities) return [];
@@ -895,8 +725,31 @@ const capabilityLines = computed(() => {
     .filter(Boolean);
 });
 
+// 内置知识库目录（只读）：加载失败时详情页不显示这一节
+const builtinKnowledge = ref(null);
+const hasBuiltinKnowledge = computed(() => selected.value?.knowledge === 'med' || selected.value?.knowledge === 'clinical');
+const builtinKnowledgeGroups = computed(() => {
+  const groups = new Map();
+  for (const doc of builtinKnowledge.value?.documents || []) {
+    if (!groups.has(doc.topic)) groups.set(doc.topic, []);
+    groups.get(doc.topic).push(doc);
+  }
+  return [...groups].map(([topic, documents]) => ({ topic, documents }));
+});
+async function loadBuiltinKnowledge(kind) {
+  if (builtinKnowledge.value) return;
+  try {
+    const api = window.api?.hermes;
+    const res = kind === 'clinical' ? await api?.clinicalKnowledgeCatalog?.() : await api?.medKnowledgeCatalog();
+    if (res?.success) builtinKnowledge.value = res;
+  } catch (e) {
+    builtinKnowledge.value = null;
+  }
+}
+
 function openDetail(app) {
   selected.value = app;
+  if (app?.knowledge === 'med' || app?.knowledge === 'clinical') { builtinKnowledge.value = null; loadBuiltinKnowledge(app.knowledge); }
   assetMemoryContent.value = '';
   assetKnowledgeFiles.value = [];
   if (devMode.value && app?.id) {
@@ -906,9 +759,10 @@ function openDetail(app) {
   }
 }
 
-function launchApp(app) {
+function launchApp(app, ask) {
   selected.value = null;
-  router.push({ path: '/chat', query: { app: app.id, source: app.source || 'builtin' } });
+  rememberRecent(app);
+  router.push(ask ? { path: `/apps/${app.id}`, query: { ask } } : `/apps/${app.id}`);
 }
 
 // ── Toast ──
@@ -928,7 +782,7 @@ const editingBuiltinId = ref(''); // 非空 = 正在编辑内置专家（保存�
 const form = reactive({
   id: '',
   name: '',
-  category: 'enterprise',
+  category: 'docs',
   icon: 'rocket',
   color: 'var(--ui-brand)',
   tagline: '',
@@ -948,7 +802,7 @@ const form = reactive({
 function resetForm() {
   form.id = '';
   form.name = '';
-  form.category = 'enterprise';
+  form.category = 'docs';
   form.icon = 'rocket';
   form.color = '#2563eb';
   form.tagline = '';
@@ -972,7 +826,7 @@ function openEditor(app) {
     editingBuiltinId.value = app.source === 'builtin' ? app.id : '';
     form.id = app.source === 'local' ? (app.id || '') : '';
     form.name = app.name || '';
-    form.category = businessCategories.some((c) => c.id === app.category) ? app.category : 'enterprise';
+    form.category = businessCategories.some((c) => c.id === app.category) ? app.category : 'docs';
     form.icon = app.icon || 'rocket';
     form.color = app.color || '#2563eb';
     form.tagline = app.tagline || '';
@@ -1307,152 +1161,101 @@ async function openAssetDir(type) {
 </script>
 
 <style scoped>
-.es-bg {
-  background: var(--color-content-bg);
-}
-.es-tree { width: 240px; background: color-mix(in srgb, hsl(var(--background)) 92%, hsl(var(--primary)) 4%) !important; border-color: var(--color-sidebar-border) !important; }
+.sq-page { background: hsl(var(--background)); }
 
-.es-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
+/* 左侧导航 */
+.sq-side { width: 232px; border-right: 1px solid var(--ui-line-2); background: color-mix(in srgb, var(--ui-bg-3) 70%, hsl(var(--background))); }
+.sq-side__head { display: flex; align-items: center; gap: 10px; padding: 22px 18px 18px; }
+.sq-side__logo { width: 36px; height: 36px; border-radius: 11px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px; background: linear-gradient(135deg, var(--ui-brand-light), var(--ui-brand-deep)); flex-shrink: 0; }
+.sq-side__label { padding: 8px 10px 6px; font-size: 11.5px; color: var(--ui-text-3); letter-spacing: .04em; }
+.sq-nav { width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 13.5px; color: var(--ui-ink-3); transition: background .15s, color .15s; }
+.sq-nav:hover { background: var(--ui-bg-2); color: var(--ui-ink); }
+.sq-nav--on { background: hsl(var(--background)); color: var(--ui-ink); font-weight: 600; box-shadow: 0 1px 3px rgb(15 23 42 / 8%); }
+.sq-nav__icon { width: 18px; text-align: center; font-size: 13px; color: var(--ui-text-2); flex-shrink: 0; }
+.sq-nav__count { font-size: 11.5px; color: var(--ui-text-3); font-weight: 400; }
+.sq-side__foot { padding: 10px 12px 14px; border-top: 1px solid var(--ui-line-2); display: flex; flex-direction: column; gap: 6px; }
+.sq-switch { position: relative; width: 28px; height: 16px; border-radius: 999px; background: var(--ui-line); transition: background .15s; flex-shrink: 0; }
+.sq-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.sq-switch--on { background: var(--ui-brand); }
+.sq-switch--on::after { transform: translateX(12px); }
+.sq-create { display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; border-radius: 10px; background: var(--ui-brand); color: #fff; font-size: 13px; }
+.sq-create:hover { background: var(--ui-brand-dark); }
 
-/* 分页按钮 */
-.pgn {
-  min-width: 32px;
-  height: 32px;
-  padding: 0 9px;
-  border-radius: 8px;
-  border: 1px solid var(--ui-line-2);
-  background: #fff;
-  color: var(--ui-text-2);
-  font-size: 13px;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-.pgn:hover:not(:disabled) { border-color: var(--ui-brand-light); color: var(--ui-brand); }
-.pgn:active:not(:disabled) { transform: scale(0.92); }
-.pgn--cur { background: var(--ui-brand); border-color: var(--ui-brand); color: #fff; font-weight: 600; }
-.pgn:disabled { opacity: 0.4; cursor: not-allowed; }
+/* 右侧头部 */
+.sq-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 0 16px; margin-bottom: 20px; }
+.sq-search { display: flex; align-items: center; gap: 8px; width: 260px; height: 38px; padding: 0 12px; border: 1px solid var(--ui-line-2); border-radius: 10px; color: var(--ui-text-3); font-size: 12px; flex-shrink: 0; transition: border-color .15s; }
+.sq-search:focus-within { border-color: var(--ui-brand-light); }
+.sq-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 13px; color: var(--ui-ink); }
 
-.tree-node {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
-  border-radius: 9px;
-  font-size: 12.5px;
-  color: var(--ui-text);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, transform 0.15s;
-}
-.tree-node:hover { background: var(--color-sidebar-elevated); color: var(--color-sidebar-text-strong); }
-.tree-node:hover .tree-badge { transform: scale(1.06); }
-.tree-node:active { transform: scale(0.97); }
-.tree-node--active {
-  background: var(--color-sidebar-elevated);
-  color: var(--color-sidebar-text-strong);
-  font-weight: 600;
-}
-.tree-badge {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  flex-shrink: 0;
-  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.14);
-  transition: transform 0.15s;
-}
-.tree-count {
-  font-size: 10.5px;
-  color: var(--ui-text-3);
-  background: var(--ui-bg-2);
-  border-radius: 999px;
-  padding: 1px 7px;
-  flex-shrink: 0;
-}
-.tree-node--active .tree-count { color: var(--color-sidebar-text-strong); background: var(--color-sidebar-elevated); }
+/* 精选卡 */
+.sq-featured { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 0 16px; margin-bottom: 28px; }
+.sq-feat { position: relative; display: flex; flex-direction: column; align-items: flex-start; min-height: 168px; padding: 20px 22px; border-radius: 20px; text-align: left; overflow: hidden;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--feat) 16%, hsl(var(--background))) 0%, color-mix(in srgb, var(--feat) 5%, hsl(var(--background))) 100%);
+  border: 1px solid color-mix(in srgb, var(--feat) 14%, transparent); transition: transform .2s, box-shadow .2s; }
+.sq-feat:hover { transform: translateY(-2px); box-shadow: 0 12px 28px color-mix(in srgb, var(--feat) 18%, transparent); }
+.sq-feat__avatar { position: absolute; right: 18px; bottom: 18px; box-shadow: 0 8px 22px color-mix(in srgb, var(--feat) 22%, transparent); }
+.sq-feat__kicker { font-size: 11.5px; color: var(--feat); font-weight: 600; letter-spacing: .04em; }
+.sq-feat__name { margin-top: 8px; font-size: 18px; font-weight: 600; color: var(--ui-ink); }
+.sq-feat__line { margin-top: 6px; font-size: 13px; line-height: 1.6; color: var(--ui-text); max-width: calc(100% - 110px); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sq-feat__go { margin-top: auto; padding-top: 14px; font-size: 13px; font-weight: 500; color: var(--feat); }
+.sq-feat__go:hover { text-decoration: underline; }
+.sq-sub { padding: 0 16px; margin-bottom: 4px; font-size: 15px; font-weight: 600; color: var(--ui-ink); }
+.sq-sub span { margin-left: 4px; font-weight: 400; color: var(--ui-text-3); font-size: 13px; }
 
-.stat-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #ffffff, var(--ui-brand-soft));
-  border: 1px solid var(--ui-bg-2);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-  transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
-}
-.stat-card:hover {
-  box-shadow: 0 6px 16px hsl(var(--primary) / 8%);
-  transform: translateY(-1px);
-  border-color: var(--ui-brand-soft-2);
-}
-.stat-card:active { transform: scale(0.97); }
-.stat-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 13px;
-  flex-shrink: 0;
-}
+/* 列表：三列，左头像 / 中文字 / 右召唤 */
+.sq-body { padding: 26px 20px 36px; max-width: 1480px; }
+.sq-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 4px 12px; }
+.sq-item { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 16px; cursor: pointer; transition: background .15s; }
+.sq-item:hover { background: var(--ui-bg-3); }
+.sq-item:focus-visible { outline: 2px solid var(--ui-brand-light); outline-offset: -2px; }
+.sq-name { font-size: 16px; font-weight: 600; color: var(--ui-ink); }
+.sq-desc { font-size: 13px; color: var(--ui-text-2); margin-top: 4px; }
+.sq-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; overflow: hidden; height: 22px; }
+.sq-tag { flex-shrink: 0; padding: 2px 7px; border-radius: 6px; background: var(--ui-bg-2); font-size: 11.5px; color: var(--ui-text-3); }
+.sq-call { flex-shrink: 0; padding: 7px 14px; border: 1px solid var(--ui-line-2); border-radius: 10px; background: hsl(var(--background)); font-size: 13px; color: var(--ui-ink-2); transition: border-color .15s, color .15s, background .15s; }
+.sq-call:hover { border-color: var(--ui-brand); color: #fff; background: var(--ui-brand); }
+.sq-call--draft { color: #d97706; }
+.sq-trash { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 16px 8px; }
+.sq-trash__item { padding: 3px 10px; border-radius: 8px; border: 1px dashed var(--ui-line); font-size: 12px; color: var(--ui-text); }
+.sq-trash__item:hover { color: var(--ui-brand); border-color: var(--ui-brand-light); }
 
-.es-card {
-  position: relative;
-  display: block;
-  width: 100%;
-  background: #fff;
-  border: 1px solid var(--ui-line-2);
-  border-radius: 12px;
-  padding: 14px;
-  overflow: hidden;
-  transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
-}
-.es-card__accent {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  opacity: 0;
-  transition: opacity 0.22s ease;
-}
-.es-card:hover {
-  box-shadow: 0 8px 20px rgba(30, 58, 138, 0.10);
-  transform: translateY(-2px);
-  border-color: var(--ui-brand-soft-2);
-}
-.es-card:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(30, 58, 138, 0.08); }
-.es-card:hover .es-card__accent { opacity: 1; }
+/* 详情弹窗 */
+.sq-mask { background: rgb(15 23 42 / 28%); backdrop-filter: blur(6px); }
+.sq-modal { position: relative; width: 560px; max-width: 100%; max-height: min(780px, 100%); display: flex; flex-direction: column; background: hsl(var(--background)); border-radius: 28px; box-shadow: 0 24px 64px rgb(15 23 42 / 18%); overflow: hidden; }
+.sq-close { position: absolute; top: 20px; right: 20px; z-index: 1; width: 32px; height: 32px; border-radius: 8px; color: var(--ui-text); font-size: 16px; }
+.sq-close:hover { background: var(--ui-bg-2); color: var(--ui-ink); }
+.sq-modal__body { flex: 1; min-height: 0; overflow-y: auto; padding: 28px 32px 12px; }
+.sq-h { margin: 22px 0 12px; font-size: 15px; font-weight: 600; color: var(--ui-ink); }
+.sq-chip { padding: 6px 12px; border-radius: 999px; background: var(--ui-bg-2); font-size: 13px; color: var(--ui-ink-3); }
+.sq-starter { width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: 14px; background: var(--ui-bg-2); font-size: 13.5px; color: var(--ui-ink-2); transition: background .15s, color .15s; }
+.sq-starter:hover { background: var(--ui-brand-soft); color: var(--ui-brand-deep); }
+.sq-skill { display: flex; align-items: center; gap: 14px; padding: 8px 0; }
+.sq-skill__icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #fff7ed; color: #ea8a3a; font-size: 14px; flex-shrink: 0; }
+.sq-kb { margin-top: 8px; border: 1px solid var(--ui-line-2); border-radius: 12px; font-size: 13px; color: #334155; }
+.sq-kb summary { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; }
+.sq-kb ul { margin: 0; padding: 0 12px 10px 33px; list-style: disc; line-height: 1.8; font-size: 12.5px; color: #64748b; }
+.sq-asset { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--ui-line-2); transition: border-color .15s; }
+.sq-asset:hover { border-color: var(--ui-brand-light); }
+.sq-modal__foot { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 24px 22px; }
+.sq-more { width: 44px; height: 40px; border-radius: 12px; border: 1px solid var(--ui-line-2); color: var(--ui-ink-3); }
+.sq-more:hover { border-color: var(--ui-line); }
+.sq-menu { position: absolute; bottom: calc(100% + 6px); right: 0; min-width: 150px; padding: 6px; border-radius: 12px; background: hsl(var(--background)); border: 1px solid var(--ui-line-2); box-shadow: 0 12px 32px rgb(15 23 42 / 14%); }
+.sq-menu button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; font-size: 13px; color: var(--ui-ink-3); text-align: left; }
+.sq-menu button i { width: 14px; font-size: 12px; color: var(--ui-text-3); }
+.sq-menu button:hover { background: var(--ui-bg-2); }
+.sq-menu .sq-menu__danger, .sq-menu .sq-menu__danger i { color: #dc2626; }
+.sq-primary { min-width: 88px; height: 40px; padding: 0 22px; border-radius: 12px; background: var(--ui-brand); color: #fff; font-size: 14px; font-weight: 500; transition: background .15s; }
+.sq-primary:hover { background: var(--ui-brand-dark); }
+.modal-enter-active, .modal-leave-active { transition: opacity .18s; }
+.modal-enter-active .sq-modal, .modal-leave-active .sq-modal { transition: transform .2s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; }
+.modal-enter-from .sq-modal, .modal-leave-to .sq-modal { transform: scale(.96) translateY(8px); }
 
-.es-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 15px;
-  flex-shrink: 0;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  min-height: 34px;
+@media (max-width: 1100px) { .sq-featured { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sq-featured .sq-feat:nth-child(3) { display: none; } }
+@media (max-width: 900px) {
+  .sq-side { width: 200px; }
+  .sq-head { flex-direction: column; align-items: stretch; }
+  .sq-search { width: 100%; }
 }
 
 .drawer-enter-active, .drawer-leave-active { transition: opacity 0.2s; }

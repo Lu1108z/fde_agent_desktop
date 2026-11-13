@@ -1,0 +1,375 @@
+{
+ "project": {
+  "id": "P-FIXTURE",
+  "name": "测试夹具项目（运营决策）",
+  "client": "测试医院（模拟）"
+ },
+ "organization": [
+  {
+   "name": "刘振华",
+   "title": "副院长（分管运营、财务、医保）",
+   "projectRole": "最终决策人",
+   "concern": "全院运营数是否一套、月报能否按期、DRG 亏损能否压降",
+   "decisionMaker": true,
+   "contact": "2026-06-03 启动会当面确认"
+  },
+  {
+   "name": "陈立文",
+   "title": "运营管理部主任",
+   "projectRole": "业务负责人",
+   "concern": "月报人力占用、指标口径统一、异常闭环",
+   "decisionMaker": false,
+   "contact": "2026-06-03 启动会，日常对接人"
+  },
+  {
+   "name": "王琳",
+   "title": "运营管理部专员",
+   "projectRole": "关键操作员",
+   "concern": "取数与核对工作量、月报初稿可用度",
+   "decisionMaker": false,
+   "contact": "2026-06-03 启动会确认"
+  },
+  {
+   "name": "赵敏",
+   "title": "财务处副处长",
+   "projectRole": "数据提供方（收入成本）",
+   "concern": "HRP 月结与成本核算口径不外流",
+   "decisionMaker": false,
+   "contact": "2026-05-27 访谈，2026-06-03 复核"
+  },
+  {
+   "name": "孙浩",
+   "title": "医务处 DRG 办主任",
+   "projectRole": "数据提供方（DRG 入组）",
+   "concern": "病组盈亏测算与费用结构是否可信",
+   "decisionMaker": false,
+   "contact": "2026-05-27 访谈，2026-06-03 复核"
+  },
+  {
+   "name": "钱永安",
+   "title": "信息中心主任",
+   "projectRole": "IT 联系人",
+   "concern": "院内数据不出院、接口与权限",
+   "decisionMaker": false,
+   "contact": "2026-06-03 启动会确认"
+  }
+ ],
+ "round": {
+  "id": "R-01",
+  "date": "2026-06-03",
+  "topic": "项目启动与需求初访：运营决策智能体首期范围",
+  "participants": [
+   "刘振华",
+   "陈立文",
+   "王琳",
+   "赵敏",
+   "孙浩",
+   "钱永安"
+  ],
+  "decisionMaker": "刘振华",
+  "businessOwner": "陈立文",
+  "operator": "王琳（运营管理部专员）",
+  "itContact": "钱永安（信息中心主任）",
+  "businessGoal": "把全院运营指标合成一套口径，月报从 5 个工作日压到 2 个工作日内出初稿，异常当周发现，院领导问数当天可答。",
+  "asIs": "4 名专员手工从 HIS、HRP、病案系统导出 Excel 汇总，月报约 5 个工作日、常超期；异常在月报中才发现，滞后 3~4 周；临时问数平均 1.5 个工作日响应。",
+  "pain": "口径三套（财务、医务、运营）、异常滞后、月报占满人力、87 个 DRG 亏损病组只能季度抽查、院领导临时问数等待久。",
+  "desiredOutcome": "统一口径的运营指标 + 月报初稿自动生成 + 异常自动研判推送 + 自然语言问数 + DRG 病组盈亏结构分析。",
+  "scenario": "运营管理部按月编报全院运营分析，日常盯科室指标异常，院领导按需问数，DRG 办按月分析亏损病组。",
+  "conclusion": "首期纳入统一口径月报、异常预警、自然语言问数、DRG 病组分析、运营看板、数据权限与审计六项；移动端推送与绩效测算列入后续。",
+  "nextActions": "运营部提供 2026 年 4 月月报与口径草案；信息中心提供 CDR 费用明细与床位日报字段清单；DRG 办提供入组明细导出样例。",
+  "aiCapabilityConclusion": "确认四项 AI 能力：月报初稿生成、指标异常研判、自然语言问数、DRG 病组归因分析；AI 结论均为草稿态，由运营专员与科主任确认。",
+  "aiValue": "月报编制从 5 个工作日压到 2 个工作日以内；异常发现从滞后 3~4 周缩短到当周；问数响应从 1.5 个工作日缩短到当天。",
+  "requirements": [
+   {
+    "id": "REQ-01",
+    "description": "按院级统一口径自动汇总 9 项核心运营指标，并生成月度运营分析报告初稿",
+    "priority": "P0",
+    "inScope": true,
+    "involvesAi": true,
+    "constraint": "依赖口径表经院长办公会审定（D-06）"
+   },
+   {
+    "id": "REQ-02",
+    "description": "每日扫描科室运营指标，发现异常并给出归因与推送",
+    "priority": "P0",
+    "inScope": true,
+    "involvesAi": true,
+    "constraint": "阈值初稿由运营部给定，上线后按月校准"
+   },
+   {
+    "id": "REQ-03",
+    "description": "院领导用自然语言提问运营数据，回答附口径说明与数据来源",
+    "priority": "P1",
+    "inScope": true,
+    "involvesAi": true,
+    "constraint": "仅对已授权指标开放，不返回患者明细"
+   },
+   {
+    "id": "REQ-04",
+    "description": "按月测算 DRG 病组盈亏并分析费用结构，标出亏损病组与改进方向",
+    "priority": "P1",
+    "inScope": true,
+    "involvesAi": true,
+    "constraint": "依赖 DRG 办按月导出入组明细（D-04）"
+   },
+   {
+    "id": "REQ-05",
+    "description": "运营看板：全院与科室指标驾驶舱，支持指标下钻与同比环比",
+    "priority": "P1",
+    "inScope": true,
+    "involvesAi": false,
+    "constraint": "指标全部来自 REQ-01 的统一口径"
+   },
+   {
+    "id": "REQ-06",
+    "description": "运营异常与月报通过企业微信推送给科主任与院领导",
+    "priority": "P2",
+    "inScope": false,
+    "involvesAi": false,
+    "constraint": "企业微信未与院内系统打通，列入后续"
+   },
+   {
+    "id": "REQ-07",
+    "description": "基于运营指标的科室绩效测算与分配建议",
+    "priority": "P2",
+    "inScope": false,
+    "involvesAi": false,
+    "constraint": "绩效方案属财务处权限，另行立项"
+   },
+   {
+    "id": "REQ-08",
+    "description": "按院领导、职能科室、临床科室三级分权，操作留痕可审计",
+    "priority": "P0",
+    "inScope": true,
+    "involvesAi": false,
+    "constraint": "数据不出院，院内部署"
+   }
+  ],
+  "processNodes": [
+   {
+    "id": "PROC-01",
+    "name": "各系统导出数据",
+    "role": "运营专员",
+    "input": "HIS、HRP、病案系统报表",
+    "action": "手工导出 Excel",
+    "output": "原始数据表",
+    "system": "HIS、HRP/HR 系统、线下文件",
+    "exception": "系统未结账需等待",
+    "aiInsertion": "自动取数替代导出"
+   },
+   {
+    "id": "PROC-02",
+    "name": "口径核对",
+    "role": "运营专员",
+    "input": "原始数据表",
+    "action": "与财务、医务逐项核对",
+    "output": "一致数据",
+    "system": "线下文件",
+    "exception": "三方口径分歧需开会",
+    "aiInsertion": "按口径表自动计算并标注版本"
+   },
+   {
+    "id": "PROC-03",
+    "name": "汇总指标",
+    "role": "运营专员",
+    "input": "一致数据",
+    "action": "Excel 公式计算 9 项指标",
+    "output": "指标表",
+    "system": "线下文件",
+    "exception": "公式错误导致返工",
+    "aiInsertion": "指标引擎按月生成并自检"
+   },
+   {
+    "id": "PROC-04",
+    "name": "撰写分析",
+    "role": "运营专员",
+    "input": "指标表",
+    "action": "写同比环比与原因分析",
+    "output": "月报草稿",
+    "system": "线下文件",
+    "exception": "原因说不清",
+    "aiInsertion": "生成月报初稿供审核"
+   },
+   {
+    "id": "PROC-05",
+    "name": "月结与成本核算",
+    "role": "财务处",
+    "input": "收费与成本数据",
+    "action": "结账、按四类三级分摊",
+    "output": "收入成本表",
+    "system": "HRP/HR 系统",
+    "exception": "延迟结账",
+    "aiInsertion": "收入类先出，成本类次月10日补齐"
+   },
+   {
+    "id": "PROC-06",
+    "name": "发现异常",
+    "role": "运营专员",
+    "input": "月报指标",
+    "action": "人工比对找出异常科室",
+    "output": "异常清单",
+    "system": "线下文件",
+    "exception": "漏判",
+    "aiInsertion": "每日扫描并推送异常"
+   },
+   {
+    "id": "PROC-07",
+    "name": "异常归因",
+    "role": "运营专员",
+    "input": "异常清单",
+    "action": "查明细找原因",
+    "output": "归因说明",
+    "system": "HIS",
+    "exception": "无法归因",
+    "aiInsertion": "给出候选原因与证据"
+   },
+   {
+    "id": "PROC-08",
+    "name": "临时问数",
+    "role": "院领导",
+    "input": "运营问题",
+    "action": "微信或电话提出",
+    "output": "取数需求",
+    "system": "无",
+    "exception": "无记录",
+    "aiInsertion": "自然语言问数并附口径"
+   },
+   {
+    "id": "PROC-09",
+    "name": "DRG 亏损病组分析",
+    "role": "DRG 办主任",
+    "input": "入组明细",
+    "action": "季度抽查并做费用结构分析",
+    "output": "亏损清单",
+    "system": "线下文件",
+    "exception": "覆盖不全",
+    "aiInsertion": "按月全量测算并给出改进方向"
+   }
+  ],
+  "dataItems": [
+   {
+    "id": "D-01",
+    "name": "就诊与床位日报",
+    "sourceSystem": "CDR",
+    "vendor": "集成平台",
+    "content": "门急诊挂号、出入院、床位占用与开放床日",
+    "method": "只读 View",
+    "availability": "可提供",
+    "frequency": "每日",
+    "owner": "信息中心 钱永安",
+    "readinessAiImpact": "就绪，支撑月报与异常预警的日粒度"
+   },
+   {
+    "id": "D-02",
+    "name": "住院费用明细",
+    "sourceSystem": "CDR",
+    "vendor": "集成平台",
+    "content": "药、耗、检查、手术、护理费用明细",
+    "method": "只读 View",
+    "availability": "可提供（覆盖范围待字段清单确认）",
+    "frequency": "每日",
+    "owner": "信息中心 钱永安",
+    "readinessAiImpact": "决定药占比与耗占比能否自动计算"
+   },
+   {
+    "id": "D-03",
+    "name": "科室收入与成本核算结果",
+    "sourceSystem": "HRP/HR 系统",
+    "vendor": "东软",
+    "content": "科室收入、四类三级成本分摊结果",
+    "method": "只读 View",
+    "availability": "可提供（次月 10 日出数）",
+    "frequency": "每月",
+    "owner": "财务处 赵敏",
+    "readinessAiImpact": "成本类指标晚于收入类 5 天，月报需分段出数"
+   },
+   {
+    "id": "D-04",
+    "name": "DRG 入组明细",
+    "sourceSystem": "线下文件",
+    "vendor": "病案系统导出",
+    "content": "DRG 编码、病组名称、主责科室、入组例数、例均费用、支付标准",
+    "method": "文件导入",
+    "availability": "可提供（按月导出）",
+    "frequency": "每月",
+    "owner": "医务处 DRG 办 孙浩",
+    "readinessAiImpact": "决定 DRG 病组分析能否按月而非按季"
+   },
+   {
+    "id": "D-05",
+    "name": "科室与院区字典",
+    "sourceSystem": "CDR",
+    "vendor": "集成平台",
+    "content": "科室编码、院区、开放床位",
+    "method": "只读 View",
+    "availability": "可提供",
+    "frequency": "每月",
+    "owner": "信息中心 钱永安",
+    "readinessAiImpact": "支撑科室维度汇总与两级汇总"
+   },
+   {
+    "id": "D-06",
+    "name": "院级指标口径表",
+    "sourceSystem": "线下文件",
+    "vendor": "运营管理部",
+    "content": "9 项核心指标定义、公式、过滤条件、分母口径",
+    "method": "文件导入",
+    "availability": "可提供（v0.3 草案，待院长办公会审定）",
+    "frequency": "按版本",
+    "owner": "运营管理部 陈立文",
+    "readinessAiImpact": "口径表版本决定所有指标数字，必须先定版本"
+   },
+   {
+    "id": "D-07",
+    "name": "人员与通知对象",
+    "sourceSystem": "HRP/HR 系统",
+    "vendor": "东软",
+    "content": "科主任、运营专员、院领导名单与科室归属",
+    "method": "只读 View",
+    "availability": "可提供",
+    "frequency": "每月",
+    "owner": "人事处",
+    "readinessAiImpact": "决定异常推送对象是否准确"
+   }
+  ],
+  "acceptanceDraft": "月报初稿在次月 11 日前生成（成本数据次月 10 日出数）；异常在指标变化后 1 个工作日内推送；自然语言问数当天应答；四个目标值由运营部与院办在本轮核定。",
+  "acceptanceMetrics": [
+   {
+    "name": "月报初稿生成时效",
+    "target": "次月 11 日 12:00 前生成，编制工时由 5 个工作日降至 2 个工作日以内",
+    "judge": "运营管理部 陈立文",
+    "aiCriterion": "初稿通过专员审核，指标数字与人工复核一致率 ≥99%"
+   },
+   {
+    "name": "指标异常发现时效",
+    "target": "异常发生后 1 个工作日内推送，较现状 3~4 周大幅提前",
+    "judge": "运营管理部 王琳",
+    "aiCriterion": "推送异常中经科主任确认为真实异常的占比 ≥80%"
+   },
+   {
+    "name": "自然语言问数响应",
+    "target": "当天应答率 ≥90%，口径说明完整率 100%",
+    "judge": "副院长 刘振华",
+    "aiCriterion": "回答与运营管理部人工复核结果一致的准确率 ≥95%"
+   },
+   {
+    "name": "DRG 病组分析覆盖",
+    "target": "按月覆盖全部入组病组，亏损病组识别率 100%",
+    "judge": "医务处 DRG 办 孙浩",
+    "aiCriterion": "测算盈亏与分组器结果偏差 ≤1%"
+   }
+  ],
+  "openItems": [
+   {
+    "item": "口径表 v0.3 由院长办公会审定并冻结版本",
+    "owner": "陈立文",
+    "status": "pending"
+   }
+  ],
+  "confirmation": {
+   "status": "pending",
+   "date": "",
+   "evidence": ""
+  }
+ }
+}

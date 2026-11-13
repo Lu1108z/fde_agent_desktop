@@ -18,6 +18,7 @@ function filesBelow(root, relative) {
 
 // 旧版把没有任何交付物的新项目直接初始化为阶段二，读取时纠正这个起点。
 function normalizeProjectStart(meta, root) {
+  if (meta.workflowMode === 'product-flow-v1') return meta;
   if (meta.projectType !== 'fde-project' || meta.stage !== 2 || meta.stageReviews?.[1]?.state === 'confirmed' || meta.researchPreparation?.state === 'ready' || Object.keys(meta.deliverableReviews || {}).length) return meta;
   if (['stage2', 'stage3', 'prototype'].some(dir => filesBelow(root, dir).length)) return meta;
   if (['spec.md', 'prd.md', 'prd2.md', 'index.html'].some(name => fs.existsSync(path.join(root, name)) && fs.statSync(path.join(root, name)).size > 0)) return meta;

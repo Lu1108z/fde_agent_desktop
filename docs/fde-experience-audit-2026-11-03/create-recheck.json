@@ -1,0 +1,23 @@
+[
+  {
+    "case": "B01",
+    "first": {
+      "slug": "ai",
+      "name": "为甲医院建设AI运营分析平台"
+    },
+    "second": {
+      "slug": "ai",
+      "name": "为甲医院建设AI运营分析平台",
+      "requirement": "甲医院需求"
+    },
+    "projectCount": 1
+  },
+  {
+    "case": "B02-first",
+    "error": "Failed to create project: 模拟ACP暂不可用"
+  },
+  {
+    "case": "B02-retry",
+    "error": "Failed to create project: Project \"crm\" already exists"
+  }
+]

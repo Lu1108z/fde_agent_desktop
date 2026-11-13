@@ -2,13 +2,13 @@
   <div class="agent-workspace flex-1 flex min-h-0 overflow-hidden relative" :class="{ 'agent-workspace--branded': !projectSlug }">
     <!-- Left: Session list -->
     <SessionList
-      v-show="showSessionPanel && projects.length > 0"
+      v-show="showSessionPanel && (!projectSlug || projects.length > 0)"
       :projects="projects"
       :coach-mode="coachMode"
       :project-mode="!!projectSlug"
       :current-slug="currentSlug"
       :move-targets="moveTargets"
-      :busy-slug="(isStreaming || voiceActive) ? currentSlug : ''"
+      :busy-slug="scenarioBusy ? (scenarioSessionSlug || '__starting__') : (isStreaming || voiceActive) ? currentSlug : ''"
       @updated="conversationUpdated"
       @deleted="conversationDeleted"
       @close="showSessionPanel = false"
@@ -19,7 +19,8 @@
     <!-- Center: Chat area
          min-h-0 必须有：flex 子项默认 min-height:auto 会被消息列表撑高，
          ChatPanel 内的 overflow-y-auto 就算不出可滚区域，对话滑不动。 -->
-    <div class="flex-1 min-w-0 min-h-0 flex flex-col">
+    <CoachScenarioRoom v-if="activeScenario" :key="scenarioRoomKey" :scene="activeScenario" :session-slug="scenarioSessionSlug" :available-models="availableModels" :current-model="currentModel" @change-model="handleChangeModel" @close="closeScenario" @created="scenarioCreated" @updated="loadProjects" @busy="scenarioBusy = $event" />
+    <div v-else class="flex-1 min-w-0 min-h-0 flex flex-col">
       <header v-if="projectSlug || messages.length || messagesLoading" class="chat-page-header">
         <div class="chat-heading">
           <span class="chat-heading-icon"><i :class="coachMode ? 'fa-solid fa-headset' : 'fa-regular fa-comments'"></i></span>
@@ -53,6 +54,7 @@
         :available-models="availableModels"
         :current-model="currentModel"
         @start-voice="startVoiceCall"
+        @scenario="openScenario"
         @send="handleSend"
         @send-quick="handleQuickSend"
         @send-with-attachments="handleSendWithAttachments"
@@ -64,7 +66,7 @@
       />
     </div>
 
-    <CoachVoiceMode v-if="coachMode" ref="voiceModeRef" :messages="messages" :streaming="isStreaming" :slug="currentSlug" :send="handleVoiceSend" :interrupt="handleCancel" @active="voiceActive = $event" />
+    <CoachVoiceMode v-if="coachMode && !activeScenario" ref="voiceModeRef" :messages="messages" :streaming="isStreaming" :slug="currentSlug" :send="handleVoiceSend" :interrupt="handleCancel" @active="voiceActive = $event" />
 
     <!-- Right: Preview panel or Info sidebar -->
     <DeliverablePreviewPanel
@@ -74,7 +76,7 @@
       @close="previewFile = null"
     />
     <InfoSidebar
-      v-else
+      v-else-if="!activeScenario"
       v-show="showInfoPanel"
       :slug="currentSlug"
       :project-meta="currentMeta"
@@ -109,6 +111,8 @@ import { skillPresentation, skillDestination, skillOpeningPrompt } from '@/data/
 import SessionList from '@/components/agent/SessionList.vue';
 import ChatPanel from '@/components/agent/ChatPanel.vue';
 import CoachVoiceMode from '@/components/agent/CoachVoiceMode.vue';
+import CoachScenarioRoom from '@/components/agent/CoachScenarioRoom.vue';
+import coachScenarios from '../../../shared/coach-scenarios.json';
 import InfoSidebar from '@/components/agent/InfoSidebar.vue';
 import DeliverablePreviewPanel from '@/components/common/DeliverablePreviewPanel.vue';
 import { isMultimodalModel } from '@/composables/useChatComposer';
@@ -136,6 +140,23 @@ const rememberConversation = slug => setActiveConversation(conversationMode.valu
 const projects = ref([]);
 const moveTargets = ref([]);
 const currentSlug = ref('');
+const activeScenario = ref(null), scenarioSessionSlug = ref(''), scenarioBusy = ref(false), scenarioRoomKey = ref(0);
+function openScenario(id, slug = '') {
+  if (isStreaming.value || voiceActive.value || scenarioBusy.value) return;
+  const scene = coachScenarios.find(item => item.id === id);
+  if (!scene) return;
+  activeScenario.value = scene; scenarioSessionSlug.value = slug; scenarioRoomKey.value++;
+  currentSlug.value = slug; showInfoPanel.value = false; previewFile.value = null;
+}
+function closeScenario() {
+  if (scenarioBusy.value) return;
+  activeScenario.value = null; scenarioSessionSlug.value = ''; startNewChat();
+}
+function scenarioCreated(data) {
+  currentSlug.value = data.slug; scenarioSessionSlug.value = data.slug;
+  currentProjectName.value = data.name; currentMeta.value = { ...data, projectType: 'fde-coach' };
+  loadProjects();
+}
 watch(currentSlug, rememberConversation, { flush: 'sync' });
 const currentProjectName = ref('');
 const skillLaunchNotice = ref('');
@@ -261,9 +282,11 @@ async function conversationDeleted(slug) {
 // --- Select / load a project ---
 let projectLoadId = 0;
 const selectProject = async (slug, opts = {}) => {
+  if (scenarioBusy.value) return;
   if (isStreaming.value && slug !== currentSlug.value) return;
   if (!projects.value.some(project => project.slug === slug)) return;
   if (slug === currentSlug.value && !opts.force) return;
+  activeScenario.value = null; scenarioSessionSlug.value = '';
   const loadId = ++projectLoadId;
   const background = opts.background === true;
   currentSlug.value = slug;
@@ -281,9 +304,13 @@ const selectProject = async (slug, opts = {}) => {
   }
 
   try {
-    const data = await window.api.hermes.loadProject(slug, { readOnly: background });
+    const data = await window.api.hermes.loadProject(slug, { readOnly: background || props.coachMode });
     if (disposed || slug !== currentSlug.value || loadId !== projectLoadId || (background && isStreaming.value)) return;
     if (data) {
+      if (props.coachMode && data.coachScenario) {
+        const scene = coachScenarios.find(item => item.id === data.coachScenario.id && item.version === data.coachScenario.version);
+        if (scene) { currentMeta.value = data; currentProjectName.value = data.name; openScenario(scene.id, slug); return; }
+      }
       currentMeta.value = data;
       currentProjectName.value = data.conversationName || data.name || slug;
       resolveAppSkills();  // 老会话缺 skills 时按内置定义回填，避免技能区回退全局库
@@ -314,7 +341,8 @@ const selectProject = async (slug, opts = {}) => {
 
 // --- Start new chat ---
 const startNewChat = () => {
-  if (isStreaming.value) return;
+  if (isStreaming.value || scenarioBusy.value) return;
+  activeScenario.value = null; scenarioSessionSlug.value = '';
   projectLoadId++;
   messagesLoading.value = false;
   currentSlug.value = '';
@@ -820,8 +848,8 @@ const loadModels = async (retries = 5) => {
 const handleChangeModel = async (modelId) => {
   // 乐观更新：立即把胶囊显示切过去，不等后端回执（体验上"点了就变"）
   currentModel.value = modelId;
-  if (!currentSlug.value) {
-    // 无活动会话时也持久化，下次启动生效
+  if (!currentSlug.value || activeScenario.value) {
+    // Designed scenarios use the direct coaching API, not an ACP session.
     try {
       await window.api?.hermes?.setConfigModel?.(modelId);
     } catch (e) {
@@ -1219,7 +1247,7 @@ watch(() => route.path, (p) => {
 // 生成中不刷新，否则会覆盖掉正在流式写入的消息。
 let focusRefresh = null;
 function refreshCurrentOnFocus() {
-  if (!pageActive.value || disposed || !currentSlug.value || isStreaming.value || messagesLoading.value || focusRefresh) return;
+  if (!pageActive.value || disposed || activeScenario.value || !currentSlug.value || isStreaming.value || messagesLoading.value || focusRefresh) return;
   const slug = currentSlug.value;
   focusRefresh = (async () => {
     await loadProjects();
@@ -1248,8 +1276,8 @@ onUnmounted(() => {
 <style scoped>
 .agent-workspace { background:#fff; }
 .chat-header-actions .coach-voice-entry { display:flex; align-items:center; width:auto; gap:6px; padding:0 12px; font-size:12px; color:#2563eb; }
-.agent-workspace--branded { background:#eef5ff url('@/assets/chat-welcome-background.png') center / cover no-repeat; }
-.agent-workspace--branded :deep(.session-list) { width:240px; background:rgba(255,255,255,.7); }
+.agent-workspace--branded { background:#f4f6fa; }
+.agent-workspace--branded :deep(.session-list) { width:222px; background:#fff; }
 .agent-workspace--branded :deep(.chat-surface) { background:transparent; }
 .agent-workspace--branded :deep(.chat-surface--welcome .chat-scroll) { padding:0; scrollbar-gutter:auto; }
 .agent-workspace--branded .skill-launch-notice { padding:10px 24px; flex-shrink:0; font-size:12px; color:#476996; background:#f0f6ff; }

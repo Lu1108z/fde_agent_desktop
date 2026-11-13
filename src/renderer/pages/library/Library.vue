@@ -106,7 +106,7 @@ const modalTitle=computed(()=>({space:'新建资料空间',folder:'新建文件�
 const availableFolders=computed(()=>spaceEntries.value.filter(e=>e.kind==='folder'&&!e.deletedAt&&e.id!==modal.value?.item?.id));
 const mayLeave=async()=>!documentRef.value||await documentRef.value.beforeLeave();
 async function call(promise){const res=await promise;if(!res?.success)throw Error(res?.error||'操作失败');return res;}
-async function refresh(){try{const data=await call(window.api?.library?.list?.());spaces.value=data.spaces.filter(s=>!s.deletedAt);deletedSpaces.value=data.spaces.filter(s=>s.deletedAt);entries.value=data.entries;if(!currentSpace.value)spaceId.value=spaces.value[0]?.id;}catch(e){error.value=window.api?.library?e.message:'请在 FDE 桌面窗口中使用资料库。';}finally{loading.value=false;}}
+async function refresh(){try{const data=await call(window.api?.library?.list?.());spaces.value=data.spaces.filter(s=>!s.deletedAt&&s.id!=='promo');deletedSpaces.value=data.spaces.filter(s=>s.deletedAt);entries.value=data.entries;if(!currentSpace.value)spaceId.value=spaces.value[0]?.id;}catch(e){error.value=window.api?.library?e.message:'请在 FDE 桌面窗口中使用资料库。';}finally{loading.value=false;}}
 async function selectSpace(id){if(!await mayLeave())return;spaceId.value=id;expandedSpaces.value.add(id);folderId.value=null;selected.value=null;trashView.value=false;search.value='';fullScreen.value=false;fileFilter.value='all';router.replace({path:'/library',query:{space:id}});}
 async function goFolder(id){if(id){const item=entries.value.find(e=>e.id===id&&!e.deletedAt);if(item)await openItem(item);return;}await selectSpace(spaceId.value);}
 async function showTrash(){if(!await mayLeave())return;selected.value=null;trashView.value=true;search.value='';fileFilter.value='all';}

@@ -4,7 +4,7 @@
       <div class="document-context"><slot name="navigation"></slot><span class="document-status"><i :class="editing?'fa-solid fa-pen':'fa-regular fa-file-lines'"></i>{{editing?'正在编辑':doc?.format==='link'?'云端原件':typeLabel}}<span v-if="saving" class="unsaved">保存中…</span><span v-else-if="dirty" class="unsaved">待保存</span><span v-else-if="saved" class="saved">已自动保存</span></span></div>
       <div class="document-actions"><button v-if="canEdit&&!editing" class="edit-button" @click="startEditing"><i class="fa-solid fa-pen"></i>直接编辑</button><template v-if="editing"><button class="edit-button" :disabled="saving" @click="save"><i class="fa-solid fa-check"></i>{{saving?'保存中…':'完成编辑'}}</button></template><button v-if="!readonly" @click="showVersions"><i class="fa-solid fa-clock-rotate-left"></i>历史版本</button><button v-if="!readonly" @click="showProjects"><i class="fa-solid fa-link"></i>关联项目</button><button v-if="doc?.format!=='link'" @click="action('export')"><i class="fa-solid fa-download"></i>{{doc?.format==='html'?'导出 Word':'下载原件'}}</button><button v-if="doc?.format!=='link'" @click="action('open')"><i class="fa-solid fa-arrow-up-right-from-square"></i>打开原件</button><button v-if="item.sourceUrl" @click="openSource"><i class="fa-solid fa-arrow-up-right-from-square"></i>极库云原件</button><slot name="view-actions"></slot></div>
     </div>
-    <p v-if="doc?.previewNotice" class="preview-notice">{{doc.previewNotice}}</p>
+    <p v-if="doc?.previewNotice&&!(doc.format==='slides'&&doc.url&&!slidesFailed)" class="preview-notice">{{doc.previewNotice}}</p>
     <p v-if="error" class="document-error" role="alert">{{error}} <button v-if="conflict" @click="reloadOriginal">读取最新原件</button></p>
     <div v-if="versionsOpen" class="document-extra"><header><strong>历史版本</strong><button @click="versionsOpen=false">关闭</button></header><p v-if="!versions.length">此文档还没有历史版本</p><div v-for="version in versions" :key="version.id"><span>{{new Date(version.createdAt).toLocaleString('zh-CN')}} · {{version.label}}</span><button :disabled="saving" @click="restoreVersion(version)">恢复此版</button></div></div>
     <div v-if="projectsOpen" class="document-extra"><header><strong>关联项目 · 使用同一份原件</strong><button @click="projectsOpen=false">关闭</button></header><label v-for="project in projects" :key="project.slug"><input type="checkbox" v-model="projectSlugs" :value="project.slug"> {{project.name}}</label><p v-if="!projects.length">先创建项目，再关联资料</p><button class="edit-button" @click="saveProjects">保存关联</button></div>
@@ -16,9 +16,11 @@
         <div class="sheet-grid"><table v-if="activeSheet?.rows.length"><thead><tr><th>#</th><th v-for="column in sheetColumns" :key="column">{{columnName(column)}}</th></tr></thead><tbody><tr v-for="row in pageRows" :key="row.number"><th>{{row.number}}</th><td v-for="column in sheetColumns" :key="column" :title="cell(row,column)?.formula? '公式：'+cell(row,column).formula : String(cell(row,column)?.value||'')">{{cell(row,column)?.value ?? ''}}</td></tr></tbody></table><p v-else>此工作表暂无内容</p></div>
         <div class="sheet-pager"><span>{{activeSheet?.rows.length||0}} 行 · {{sheetColumns.length}} 列</span><button :disabled="rowPage===0" @click="rowPage--">上一页</button><span>{{rowPage+1}} / {{Math.max(1,Math.ceil((activeSheet?.rows.length||0)/200))}}</span><button :disabled="(rowPage+1)*200>=(activeSheet?.rows.length||0)" @click="rowPage++">下一页</button></div>
       </div>
+      <PptxSlides v-else-if="doc.format==='slides'&&doc.url&&!slidesFailed" :key="doc.url" :url="doc.url" @failed="slidesFailed=true" />
       <div v-else-if="doc.format==='slides'" class="slides-preview"><section v-for="slide in doc.slides" :key="slide.number" class="slide-page"><span class="slide-number">{{slide.number}} / {{doc.slides.length}}</span><h2>{{slide.paragraphs[0]||'幻灯片 '+slide.number}}</h2><p v-for="(paragraph,index) in slide.paragraphs.slice(1)" :key="index">{{paragraph}}</p><div class="slide-images"><img v-for="(source,index) in slide.images" :key="index" :src="source" :alt="'幻灯片 '+slide.number+' 图片 '+(index+1)" loading="lazy" /></div></section></div>
       <div v-else-if="doc.format==='archive'" class="archive-preview"><p>压缩包包含 {{doc.files.length}} 个文件和文件夹</p><div v-for="(file,index) in doc.files" :key="index"><i :class="file.directory?'fa-solid fa-folder-open':'fa-regular fa-file'"></i><span>{{file.name}}</span><small>{{file.directory?'文件夹':formatSize(file.size)}}</small></div></div>
       <iframe v-else-if="doc.format==='web'" :srcdoc="doc.content" title="HTML 文件预览" sandbox="" class="pdf-preview"></iframe>
+      <DocxPages v-else-if="docxOriginal" :key="doc.originalUrl" :url="doc.originalUrl" @failed="docxFailed=true" />
       <div v-else-if="doc.format==='html'" class="document-scroll" @click="followLink"><article v-if="editing" ref="editor" class="document-paper" contenteditable="true" role="textbox" aria-label="编辑资料正文" aria-multiline="true" spellcheck="false" v-html="initialContent" @input="changed" @mouseup="rememberSelection" @keyup="rememberSelection"></article><article v-else class="document-paper" v-html="safeContent"></article><slot name="related-files" :editing="editing"></slot></div>
       <textarea v-else-if="doc.format==='text'&&editing" v-model="text" class="text-editor" aria-label="编辑文本正文" @input="changed"></textarea>
       <pre v-else-if="doc.format==='text'" class="text-preview">{{doc.content}}</pre>
@@ -33,6 +35,8 @@
 </template>
 <script setup>
 import {ref,computed,nextTick,onMounted,onBeforeUnmount} from 'vue';
+import PptxSlides from './PptxSlides.vue';
+import DocxPages from './DocxPages.vue';
 const props=defineProps({item:{type:Object,required:true},autoEdit:{type:Boolean,default:false},readonly:Boolean,api:Object}),emit=defineEmits(['saved','selection']);
 const readingRoot=ref(null);
 function captureReadingSelection(event){
@@ -43,7 +47,7 @@ function captureReadingSelection(event){
   if(!readingRoot.value?.contains(range.startContainer)||!readingRoot.value?.contains(range.endContainer))return;
   emit('selection',{text:selection.toString().trim()});
 }
-const doc=ref(null),loading=ref(true),error=ref(''),editing=ref(false),saving=ref(false),saved=ref(false),dirty=ref(false),editor=ref(null),initialContent=ref(''),text=ref(''),fontSize=ref(12),formatNotice=ref(''),sheetIndex=ref(0),rowPage=ref(0),mediaError=ref(false);
+const doc=ref(null),loading=ref(true),error=ref(''),editing=ref(false),saving=ref(false),saved=ref(false),dirty=ref(false),editor=ref(null),initialContent=ref(''),text=ref(''),fontSize=ref(12),formatNotice=ref(''),sheetIndex=ref(0),rowPage=ref(0),mediaError=ref(false),slidesFailed=ref(false),docxFailed=ref(false);
 const sizes=[8,9,10,10.5,11,12,14,16,18,20,22,24,28,32,36,48,72];let selection=null;
 const service=props.api||window.api.library;
 const conflict=ref(false),versionsOpen=ref(false),versions=ref([]),projectsOpen=ref(false),projects=ref([]),projectSlugs=ref([]);
@@ -53,6 +57,7 @@ function currentContent(){return doc.value?.format==='html'?(editor.value?.inner
 function keepDraft(){lastDraftContent=currentContent();try{localStorage.setItem(draftKey,JSON.stringify({content:lastDraftContent,token:doc.value?.token}));}catch(_){} }
 function scheduleSave(){clearTimeout(autosaveTimer);if(!disposed)autosaveTimer=setTimeout(()=>{autosaveTimer=null;void persist();},650);}
 function clean(content){const document=new DOMParser().parseFromString(content||'','text/html');document.querySelectorAll('script,style,iframe,object,embed,form,input,button,link,meta').forEach(n=>n.remove());document.querySelectorAll('*').forEach(n=>Array.from(n.attributes).forEach(a=>{if(a.name.startsWith('on')||['contenteditable','autofocus'].includes(a.name)||(['href','src'].includes(a.name)&&/^\s*(javascript|vbscript):/i.test(a.value)))n.removeAttribute(a.name);}));return document.body.innerHTML;}
+const docxOriginal=computed(()=>!editing.value&&!docxFailed.value&&doc.value?.format==='html'&&doc.value?.ext==='docx'&&!!doc.value?.originalUrl);
 const activeSheet=computed(()=>doc.value?.sheets?.[sheetIndex.value]);
 function columnIndex(cell){if(cell.index!==undefined)return cell.index;let index=0;for(const letter of (cell.ref||'A').match(/^[A-Z]+/i)?.[0]?.toUpperCase()||'A')index=index*26+letter.charCodeAt(0)-64;return index-1;}
 function columnName(index){let name='';for(index++;index>0;index=Math.floor((index-1)/26))name=String.fromCharCode(65+(index-1)%26)+name;return name;}

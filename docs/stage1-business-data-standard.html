@@ -1,0 +1,420 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><script type="module">import m from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";m.initialize({startOnLoad:true,theme:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"default"});</script></head><body>
+<title>FDE 业务与数据摸底标准</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* 规范文档：左侧固定目录 + 右侧正文，表格和图在各自容器内横向滚动 */
+:root{
+  --bg:#f6f7f9; --paper:#ffffff; --ink:#18212f; --ink-2:#465163; --ink-3:#7a8597;
+  --line:#e2e6ec; --tint:#eef3f8; --accent:#1d5a8c; --accent-soft:#e3edf6;
+  --ok:#23824f; --ok-soft:#e5f3eb; --warn:#a86414; --warn-soft:#fbf0e1; --muted-soft:#eef0f3;
+  --f-display:"Noto Serif SC","Songti SC","STSong",serif;
+  --f-body:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161c; --paper:#1a2029; --ink:#e7ebf1; --ink-2:#b4bdca; --ink-3:#8590a0;
+  --line:#2c3440; --tint:#202834; --accent:#7fb3e0; --accent-soft:#1e3347;
+  --ok:#6cc595; --ok-soft:#1a3326; --warn:#e2a95d; --warn-soft:#3a2a15; --muted-soft:#242b35; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161c; --paper:#1a2029; --ink:#e7ebf1; --ink-2:#b4bdca; --ink-3:#8590a0;
+  --line:#2c3440; --tint:#202834; --accent:#7fb3e0; --accent-soft:#1e3347;
+  --ok:#6cc595; --ok-soft:#1a3326; --warn:#e2a95d; --warn-soft:#3a2a15; --muted-soft:#242b35; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.75}
+.wrap{max-width:1180px;margin:0 auto;padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:220px minmax(0,1fr);gap:48px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;font-size:13px}
+nav.toc p{margin:0 0 10px;font-size:12px;letter-spacing:.08em;color:var(--ink-3)}
+nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;counter-reset:t}
+nav.toc a{display:flex;gap:8px;padding:5px 8px;border-radius:6px;color:var(--ink-2);text-decoration:none}
+nav.toc a:hover,nav.toc a:focus-visible{background:var(--tint);color:var(--accent);outline:none}
+nav.toc a span{font-family:var(--f-mono);color:var(--ink-3);min-width:18px}
+main{min-width:0}
+header.doc{padding-bottom:28px;border-bottom:1px solid var(--line);margin-bottom:36px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px;color:var(--ink-3);margin:0 0 14px}
+.meta b{font-weight:600;color:var(--ink-2)}
+h1{font-family:var(--f-display);font-size:34px;line-height:1.3;margin:0 0 14px;text-wrap:balance;letter-spacing:.01em}
+.lede{font-size:17px;color:var(--ink-2);max-width:44em;margin:0}
+.thesis{margin-top:22px;padding:16px 20px;background:var(--accent-soft);border-radius:8px;color:var(--ink);max-width:48em}
+.thesis strong{color:var(--accent)}
+section{margin-bottom:52px;scroll-margin-top:24px}
+h2{font-family:var(--f-display);font-size:23px;margin:0 0 6px;display:flex;gap:12px;align-items:baseline;text-wrap:balance}
+h2 .no{font-family:var(--f-mono);font-size:15px;color:var(--accent);font-weight:600}
+h3{font-size:16px;margin:28px 0 10px}
+.sub{color:var(--ink-3);margin:0 0 18px;font-size:14px}
+p{margin:0 0 12px;max-width:46em}
+ul.plain{margin:0 0 12px;padding-left:20px;max-width:46em}
+ul.plain li{margin-bottom:4px}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+code{background:var(--muted-soft);padding:1px 5px;border-radius:4px}
+.rules{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.rules li{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-width:0}
+.rules b{display:block;margin-bottom:4px}
+.rules .k{font-family:var(--f-mono);font-size:12px;color:var(--accent);margin-right:6px}
+.rules span{color:var(--ink-2);font-size:14px}
+.tbl{overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:8px;margin:0 0 14px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;line-height:1.6}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--tint);color:var(--ink-2);font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.k{white-space:nowrap;font-weight:600}
+td .mono{color:var(--accent)}
+.req{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;line-height:18px;white-space:nowrap}
+.req.must{background:var(--accent-soft);color:var(--accent)}
+.req.opt{background:var(--muted-soft);color:var(--ink-3)}
+.lv{display:inline-flex;align-items:center;gap:6px;font-weight:600;white-space:nowrap}
+.sw{width:30px;height:14px;border-radius:3px;border:2px solid currentColor;flex:none}
+.sw.dash{border-style:dashed}
+.lv.c1{color:var(--ok)} .lv.c2{color:var(--accent)} .lv.c3{color:var(--warn)} .lv.c4{color:var(--ink-3)}
+.fig{background:var(--paper);border:1px solid var(--line);border-radius:8px;margin:0 0 14px;overflow:hidden}
+.fig-h{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-2);background:var(--tint)}
+.fig-h b{color:var(--ink)}
+.fig pre.mermaid{margin:0;padding:18px;overflow-x:auto;background:var(--paper);text-align:center}
+.note{font-size:13.5px;color:var(--ink-2);border-left:3px solid var(--warn);background:var(--warn-soft);padding:10px 14px;border-radius:0 6px 6px 0;margin:0 0 14px;max-width:none}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 14px}
+.flow div{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-size:13.5px;min-width:0}
+.flow div b{display:block;font-size:12px;color:var(--ink-3);font-weight:500;margin-bottom:2px}
+.flow div.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.check{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.check li{display:flex;gap:10px;align-items:flex-start;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:14px}
+.check li::before{content:"";flex:none;width:14px;height:14px;margin-top:5px;border:1.5px solid var(--ink-3);border-radius:3px}
+.open{counter-reset:o;list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.open li{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 16px;font-size:14px;counter-increment:o;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px}
+.open li::before{content:"Q" counter(o);font-family:var(--f-mono);color:var(--warn);font-weight:600;grid-row:span 2}
+.open li b{display:block}
+.open li span{color:var(--ink-2)}
+footer{color:var(--ink-3);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (max-width:900px){.wrap{grid-template-columns:1fr;gap:24px;padding-block:24px 60px}nav.toc{position:static}nav.toc ol{flex-direction:row;flex-wrap:wrap}.rules{grid-template-columns:1fr}.flow{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:27px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="目录">
+  <p>目录</p>
+  <ol>
+    <li><a href="#why"><span>1</span>目的与范围</a></li>
+    <li><a href="#rules"><span>2</span>总原则</a></li>
+    <li><a href="#trust"><span>3</span>可信度分级</a></li>
+    <li><a href="#outputs"><span>4</span>三份产出</a></li>
+    <li><a href="#bizflow"><span>5</span>业务流转图</a></li>
+    <li><a href="#dataflow"><span>6</span>数据流程图</a></li>
+    <li><a href="#datareq"><span>7</span>数据需求清单</a></li>
+    <li><a href="#dict"><span>8</span>统一词表</a></li>
+    <li><a href="#ids"><span>9</span>编号与文件</a></li>
+    <li><a href="#done"><span>10</span>完成标准</a></li>
+    <li><a href="#open"><span>11</span>待确认事项</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="doc">
+  <p class="meta"><span><b>版本</b> v0.1 草案</span><span><b>状态</b> 待评审</span><span><b>适用</b> FDE 阶段一 · 行业调研</span><span><b>日期</b> 2026-10-31</span></p>
+  <h1>FDE 业务与数据摸底标准</h1>
+  <p class="lede">规定阶段一怎样画业务流转图、数据流程图，怎样列数据需求清单，为 SDR 数据底座的接入与映射提前打底。</p>
+  <p class="thesis">一句话：<strong>阶段一除了准备访谈，还要交出三份初版产出</strong>，即业务流转图、数据流程图、数据需求清单。三份产出统一编号、标明可信度，阶段二、三直接沿用，不重新整理。</p>
+</header>
+
+<section id="why">
+  <h2><span class="no">1</span>目的与范围</h2>
+  <p>智能体要工作，靠的是数据。医院数据分散在 HIS、EMR、LIS、PACS 等系统里，各厂商字段不一致，客户也不开放直连。SDR 数据底座负责把这些数据接进来，映射成标准数据，再提供给智能体使用。</p>
+  <p>现在阶段一只有「数据系统」一个调研维度，SDR 相关工作要到阶段三（实施计划、数据口径）才出现。进场后才发现系统接不通、数据拿不到，返工成本最高。本标准把业务和数据摸底提前到阶段一，<b>只做到系统和数据类别这一层</b>，字段级映射仍在阶段二、三完成。</p>
+  <ul class="plain">
+    <li><b>适用：</b>所有 FDE 项目的阶段一，由 FDE 项目经理负责，AI 生成初稿。</li>
+    <li><b>不覆盖：</b>字段映射、取数 SQL、脱敏规则配置，以及正式的网络与部署方案。</li>
+  </ul>
+</section>
+
+<section id="rules">
+  <h2><span class="no">2</span>总原则</h2>
+  <p class="sub">六条规则，所有产出都必须遵守。</p>
+  <ul class="rules">
+    <li><b><span class="k">R1</span>智能体只走 SDR</b><span>任何图和清单里，智能体都不直连医院数据库。有 CDR 就让 SDR 抽 CDR，没有 CDR 就由 SDR 逐个对接业务系统。</span></li>
+    <li><b><span class="k">R2</span>数据不出内网，只出结果</b><span>SDR 部署在内网，以只读 View 取数，主动向外出站。图上的连线方向永远是内网指向外网。</span></li>
+    <li><b><span class="k">R3</span>每条信息都标可信度</b><span>资料原文、客户确认和 AI 推测要分开标注，推测内容不能当作事实画进图里。分级见第 3 节。</span></li>
+    <li><b><span class="k">R4</span>每条信息都可追溯</b><span>资料陈述必须写来源文件，客户确认必须写确认人和场合，AI 推测必须写推断依据。</span></li>
+    <li><b><span class="k">R5</span>资料不全照常产出</b><span>缺失的信息不留白，转成待确认事项，带进首轮访谈。产出不阻止进入下一阶段。</span></li>
+    <li><b><span class="k">R6</span>编号贯穿全程</b><span>流程节点、系统、数据项、待确认问题统一编号。阶段二、三只能新增编号，不能改号。</span></li>
+  </ul>
+</section>
+
+<section id="trust">
+  <h2><span class="no">3</span>可信度分级</h2>
+  <p class="sub">图和表使用同一套四级标注，读者一眼能分清哪些已经确定。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>等级</th><th>含义</th><th>需要的依据</th><th>图上画法</th><th>表中写法</th></tr></thead>
+    <tbody>
+      <tr><td><span class="lv c1"><i class="sw"></i>已确认</span></td><td>客户书面或在会议上确认</td><td>确认人 + 日期 + 场合</td><td>实线，绿色边框</td><td><code>已确认</code></td></tr>
+      <tr><td><span class="lv c2"><i class="sw"></i>资料陈述</span></td><td>客户提供的资料里明确写了</td><td>来源文件路径</td><td>实线，默认颜色</td><td><code>资料</code></td></tr>
+      <tr><td><span class="lv c3"><i class="sw dash"></i>AI 推测</span></td><td>根据行业经验推断，未经核实</td><td>推断依据</td><td>虚线，橙色边框</td><td><code>推测</code></td></tr>
+      <tr><td><span class="lv c4"><i class="sw dash"></i>待确认</span></td><td>不知道，必须问客户</td><td>对应的待确认编号</td><td>虚线，名称后加「？」</td><td><code>待确认</code> + Q 编号</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">阶段一的产出通常以「资料陈述」和「AI 推测」为主，这是正常的。首轮访谈后，再逐条升级为「已确认」。</p>
+</section>
+
+<section id="outputs">
+  <h2><span class="no">4</span>三份产出</h2>
+  <p class="sub">放在阶段一第 4 步「准备访谈与数据摸底」。顺序固定：先出三份产出，再生成访谈提纲，这样提纲能直接带上需要核实的流程和数据问题。</p>
+  <div class="flow" aria-label="阶段一第 4 步内的顺序">
+    <div class="on"><b>① 先画</b>业务流转图</div>
+    <div class="on"><b>② 再画</b>数据流程图</div>
+    <div class="on"><b>③ 列出</b>数据需求清单</div>
+    <div><b>④ 汇总</b>首轮访谈提纲</div>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>产出</th><th>回答的问题</th><th>文件</th><th>向后承接</th></tr></thead>
+    <tbody>
+      <tr><td class="k">业务流转图</td><td>谁在什么环节做什么，在哪里交接，痛点在哪</td><td><code>stage1/business-flow.md</code></td><td>阶段二 · 对接确认表 4.4 流程表</td></tr>
+      <tr><td class="k">数据流程图</td><td>数据从哪些系统来，怎样经过 SDR 到达智能体，哪里可能接不通</td><td><code>stage1/data-flow.md</code></td><td>阶段三 · 实施计划「环境与 SDR 准备」</td></tr>
+      <tr><td class="k">数据需求清单</td><td>智能体要用哪些数据，可能来自哪里，对应 SDR 的哪个数据域</td><td><code>stage1/data-requirements.md</code></td><td>阶段二 · 对接确认表 4.5；阶段三 · 业务数据口径</td></tr>
+    </tbody>
+  </table></div>
+  <p>两张图使用 Mermaid 文本格式，AI 能生成，人能直接修改，也能保存版本、比较差异，桌面端可以直接渲染显示。</p>
+</section>
+
+<section id="bizflow">
+  <h2><span class="no">5</span>业务流转图</h2>
+  <p class="sub">画的是客户现在的做法，不是我们设想的新流程。每张图只画一个业务场景。</p>
+
+  <h3>5.1 必含要素</h3>
+  <ul class="plain">
+    <li><b>泳道：</b>一个角色或科室一条泳道，按业务实际先后从左到右排列。</li>
+    <li><b>主流程：</b>不超过 15 个节点，超出部分拆成子流程单独画。</li>
+    <li><b>系统操作：</b>在哪个系统里操作，写在节点上（例：<code>HIS 录入</code>）；线下操作写「线下」或「Excel」。</li>
+    <li><b>交接点：</b>跨泳道的连线必须写交接的是什么（例：<code>排班表</code>）。</li>
+    <li><b>痛点：</b>用痛点节点标出客户提到或推测存在的问题，并对应「核心痛点」维度。</li>
+  </ul>
+
+  <h3>5.2 节点类型</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>类型</th><th>Mermaid 写法</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td class="k">开始 / 结束</td><td><code>([文字])</code></td><td>流程起点和终点，每张图各一个</td></tr>
+      <tr><td class="k">处理</td><td><code>[文字]</code></td><td>人做的一个动作，动词开头，例：「编制排班表」</td></tr>
+      <tr><td class="k">判断</td><td><code>{文字}</code></td><td>有分支的环节，出口连线必须写条件</td></tr>
+      <tr><td class="k">系统</td><td><code>[(文字)]</code></td><td>数据落在哪个系统，例：「HR 系统」</td></tr>
+      <tr><td class="k">痛点</td><td><code>:::pain</code></td><td>挂在相关节点上，写清问题和影响</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>5.3 示例（医院排班与考勤，示意）</h3>
+  <div class="fig">
+    <div class="fig-h"><b>P · 科室排班到薪酬核算</b><span>实线 = 资料陈述 · 虚线 = AI 推测</span></div>
+<pre class="mermaid">
+flowchart LR
+  classDef guess stroke-dasharray:5 4,stroke:#c27a1e
+  classDef pain stroke:#c27a1e,stroke-width:2px
+  subgraph L1[护士长]
+    P01([月初开始排班]) --> P02[P-02 编制排班表&lt;br/&gt;Excel]
+  end
+  subgraph L2[人事处]
+    P03{P-03 审核排班} -->|通过| P04[P-04 发布排班]
+    P03 -->|退回| P02
+  end
+  subgraph L3[职工]
+    P05[P-05 考勤机打卡]
+  end
+  subgraph L4[财务处]
+    P06[P-06 汇总考勤&lt;br/&gt;核算薪酬？]:::guess --> P07([月末发放])
+  end
+  P02 -->|排班表| P03
+  P04 --> P05
+  P05 -->|打卡记录| P06
+  X1[痛点：排班靠 Excel&lt;br/&gt;与考勤对不上]:::pain -.- P02
+</pre>
+  </div>
+
+  <h3>5.4 节点表</h3>
+  <p>图下方附节点表，<b>列与阶段二对接确认表 4.4 一致</b>，阶段一只需填前 7 列，其余列阶段二补齐。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>编号</th><th>节点 / 环节</th><th>执行角色</th><th>输入</th><th>处理动作</th><th>输出</th><th>涉及系统</th><th>可信度</th><th>异常 / 例外</th><th>AI 嵌入</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">P-02</td><td>编制排班表</td><td>护士长</td><td>人员名单、休假申请</td><td>按班次排人</td><td>月排班表</td><td>Excel（线下）</td><td>资料</td><td class="mono">阶段二</td><td class="mono">阶段二</td></tr>
+      <tr><td class="mono">P-06</td><td>汇总考勤</td><td>财务处</td><td>打卡记录、排班表</td><td>核对出勤</td><td>考勤汇总</td><td>待确认（Q-03）</td><td>推测</td><td class="mono">阶段二</td><td class="mono">阶段二</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="dataflow">
+  <h2><span class="no">6</span>数据流程图</h2>
+  <p class="sub">画的是数据怎么进入 SDR、怎么到达智能体。结构固定，每个项目只替换内容。</p>
+
+  <h3>6.1 固定分层（从左到右）</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>层</th><th>放什么</th><th>规则</th></tr></thead>
+    <tbody>
+      <tr><td class="k">① 数据源层</td><td>HIS、EMR、LIS、PACS、HR、考勤，以及线下 Excel 等</td><td>每个系统一个节点，写名称、厂商、接入方式</td></tr>
+      <tr><td class="k">② CDR（可选）</td><td>医院已建的临床数据中心</td><td>必须判断有、无或未知。有 CDR 时，被 CDR 覆盖的系统改从 CDR 接入</td></tr>
+      <tr><td class="k">③ SDR 数据底座</td><td>数据治理层、服务平台层、服务网关层</td><td>三层名称固定，不展开内部组件</td></tr>
+      <tr><td class="k">④ 智能体</td><td>纳米Work 工作台上的智能体</td><td>写本项目涉及的智能体名称；不确定时写场景</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>6.2 必须标出的信息</h3>
+  <ul class="plain">
+    <li><b>网络边界：</b>用框画出医院内网，数据源层和 SDR 都在框内。</li>
+    <li><b>接入方式：</b>只读 View、接口、文件导入、从 CDR 抽取，四选一；不知道就写「待确认」并给出 Q 编号。</li>
+    <li><b>连线内容：</b>每条连线写传的是哪类数据，用第 8 节的数据域名称。</li>
+    <li><b>出站方向：</b>SDR 到智能体的连线写「只出结果 · 主动出站」，方向从内网指向外网。</li>
+    <li><b>风险点：</b>接不通、不开放、厂商不配合等情况，用痛点样式标出。</li>
+  </ul>
+
+  <h3>6.3 示例（无 CDR 的医院，示意）</h3>
+  <div class="fig">
+    <div class="fig-h"><b>数据流 · 人事排班场景</b><span>虚线 = AI 推测或待确认</span></div>
+<pre class="mermaid">
+flowchart LR
+  classDef guess stroke-dasharray:5 4,stroke:#c27a1e
+  classDef pain stroke:#c27a1e,stroke-width:2px
+  subgraph IN[医院内网 · 业务网]
+    S01[S-01 HIS&lt;br/&gt;只读 View]
+    S02[S-02 HR 系统&lt;br/&gt;接入方式？Q-01]:::guess
+    S03[S-03 考勤系统&lt;br/&gt;厂商？Q-02]:::guess
+    S04[S-04 排班 Excel&lt;br/&gt;文件导入]
+    CDR{{CDR：无}}
+    subgraph SDR[SDR 数据底座]
+      G1[数据治理层&lt;br/&gt;清洗 · 映射标准数据]
+      G2[服务平台层&lt;br/&gt;脱敏 · 审计]
+      G3[服务网关层&lt;br/&gt;MCP / HTTP · TLS]
+      G1 --> G2 --> G3
+    end
+  end
+  AG[智能体&lt;br/&gt;智能排班助手]
+  S01 -->|组织科室 · 人员| G1
+  S02 -.->|人员 · 合同| G1
+  S03 -.->|排班考勤| G1
+  S04 -->|排班考勤| G1
+  G3 ==>|只出结果 · 主动出站| AG
+  R1[风险：考勤厂商&lt;br/&gt;可能不开放接口]:::pain -.- S03
+</pre>
+  </div>
+  <p class="note">示例中「智能体在内网还是在 360 私有云」先按外部出站画。现有培训材料里两种画法都有，需要公司统一口径，见待确认事项 Q2。</p>
+</section>
+
+<section id="datareq">
+  <h2><span class="no">7</span>数据需求清单</h2>
+  <p class="sub">从智能体要做的事倒推需要哪些数据，一行一个数据项。两张图看流向，这张表用来逐项确认。</p>
+
+  <h3>7.1 字段</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>字段</th><th>阶段一</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td class="k">编号</td><td><span class="req must">必填</span></td><td><code>D-01</code> 起，全程不变</td></tr>
+      <tr><td class="k">用途 / 智能体场景</td><td><span class="req must">必填</span></td><td>这份数据用来做什么，例：「自动生成排班建议」</td></tr>
+      <tr><td class="k">SDR 数据域</td><td><span class="req must">必填</span></td><td>从第 8 节词表里选，不能自造</td></tr>
+      <tr><td class="k">数据内容</td><td><span class="req must">必填</span></td><td>举 3～5 个关键内容，例：「工号、科室、职称、班次」，不写字段名</td></tr>
+      <tr><td class="k">可能来源系统</td><td><span class="req must">必填</span></td><td>填 S 编号；不知道就写「待确认」</td></tr>
+      <tr><td class="k">接入方式</td><td><span class="req must">必填</span></td><td>只读 View / 接口 / 文件导入 / 从 CDR 抽取 / 待确认</td></tr>
+      <tr><td class="k">可信度</td><td><span class="req must">必填</span></td><td>四级之一，附依据</td></tr>
+      <tr><td class="k">敏感级别（初判）</td><td><span class="req opt">选填</span></td><td>含患者身份或个人隐私的标「敏感」，正式分级在 SDR 配置时确定</td></tr>
+      <tr><td class="k">确认人 / 待确认编号</td><td><span class="req opt">选填</span></td><td>应向谁确认，例：「信息科」，或填 Q 编号</td></tr>
+      <tr><td class="k">更新频率</td><td><span class="req opt">选填</span></td><td>实时 / 每日 / 每月；阶段二补齐</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>7.2 示例</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>编号</th><th>用途</th><th>SDR 数据域</th><th>数据内容</th><th>来源</th><th>接入方式</th><th>可信度</th><th>确认人</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">D-01</td><td>排班建议</td><td>人员</td><td>工号、科室、职称、资质</td><td class="mono">S-02</td><td>待确认</td><td>推测</td><td>信息科 · Q-01</td></tr>
+      <tr><td class="mono">D-02</td><td>排班建议</td><td>排班考勤</td><td>历史排班、班次规则</td><td class="mono">S-04</td><td>文件导入</td><td>资料</td><td>护理部</td></tr>
+      <tr><td class="mono">D-03</td><td>考勤异常提醒</td><td>排班考勤</td><td>打卡时间、请假记录</td><td class="mono">S-03</td><td>待确认</td><td>待确认</td><td>人事处 · Q-02</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>7.3 与后续阶段的字段对应</h3>
+  <p>阶段一的字段原样带入后续表格，后续表格只补列，不改已有内容。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>阶段一 · 数据需求清单</th><th>阶段二 · 对接确认表 4.5</th><th>阶段三 · 业务数据口径</th></tr></thead>
+    <tbody>
+      <tr><td>编号 D-xx</td><td>序号（沿用 D-xx）</td><td>数据集编码（关联 D-xx）</td></tr>
+      <tr><td>SDR 数据域 + 数据内容</td><td>数据项 · 数据内容</td><td>数据集 · 输出字段</td></tr>
+      <tr><td>可能来源系统</td><td>源系统 / 厂商</td><td>来源系统 · 来源表</td></tr>
+      <tr><td>接入方式</td><td>对接方式 · 可否提供</td><td>标准库复用或新增 · 取数 SQL</td></tr>
+      <tr><td>确认人</td><td>责任人</td><td>责任人 · 核对证据</td></tr>
+      <tr><td>更新频率（选填）</td><td>更新频率</td><td>更新频率 · 时间规则</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="dict">
+  <h2><span class="no">8</span>统一词表</h2>
+  <p class="sub">AI 和人都只用词表里的名称，不同项目的产出才能对比和复用。</p>
+
+  <h3>8.1 系统字典</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>标准名称</th><th>常见别名</th><th>主要数据</th></tr></thead>
+    <tbody>
+      <tr><td class="k">HIS</td><td>医院信息系统、挂号收费系统</td><td>患者、就诊、医嘱、费用、组织科室</td></tr>
+      <tr><td class="k">EMR</td><td>电子病历</td><td>诊断、病历文书</td></tr>
+      <tr><td class="k">LIS</td><td>检验系统</td><td>检验</td></tr>
+      <tr><td class="k">PACS / RIS</td><td>影像系统、放射信息系统</td><td>检查</td></tr>
+      <tr><td class="k">手麻系统</td><td>手术麻醉系统</td><td>手术麻醉</td></tr>
+      <tr><td class="k">护理系统</td><td>移动护理</td><td>护理</td></tr>
+      <tr><td class="k">HRP / HR 系统</td><td>人力资源系统</td><td>人员、排班考勤</td></tr>
+      <tr><td class="k">CDR</td><td>临床数据中心、集成平台</td><td>汇总上述临床数据（多数医院没有）</td></tr>
+      <tr><td class="k">线下文件</td><td>Excel、纸质台账</td><td>任意，接入方式只能是文件导入</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>8.2 SDR 数据域（暂定）</h3>
+  <p>在拿到 SDR 标准库正式清单前，先使用下面 14 个数据域。正式清单到位后整体替换，旧编号保留对应关系。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>分组</th><th>数据域</th></tr></thead>
+    <tbody>
+      <tr><td class="k">患者与诊疗</td><td>患者主索引 · 就诊 · 诊断 · 医嘱 · 检验 · 检查 · 手术麻醉 · 护理</td></tr>
+      <tr><td class="k">运营</td><td>药品 · 费用 · 设备物资</td></tr>
+      <tr><td class="k">组织与人员</td><td>组织科室 · 人员 · 排班考勤</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="ids">
+  <h2><span class="no">9</span>编号与文件</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>对象</th><th>编号</th><th>出现在</th><th>规则</th></tr></thead>
+    <tbody>
+      <tr><td class="k">流程节点</td><td class="mono">P-01</td><td>业务流转图、节点表</td><td>多个场景时加场景前缀，例 <code>P1-03</code></td></tr>
+      <tr><td class="k">系统</td><td class="mono">S-01</td><td>数据流程图、数据需求清单</td><td>一个系统在整个项目里只有一个编号</td></tr>
+      <tr><td class="k">数据项</td><td class="mono">D-01</td><td>数据需求清单</td><td>阶段二、三沿用，作废的标「作废」，不删除</td></tr>
+      <tr><td class="k">待确认问题</td><td class="mono">Q-01</td><td>三份产出、访谈提纲</td><td>与阶段一已有的待确认事项共用一个序列</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="plain">
+    <li><b>文件：</b>三份产出都是 Markdown，图放在 <code>```mermaid</code> 代码块里，表格紧跟在图后面。</li>
+    <li><b>版本：</b>首版 v0.1；访谈后更新为 v0.2，依此类推。每次修改时，旧版本存入历史目录。</li>
+    <li><b>文件头：</b>每份文件开头写项目、版本、日期、编写人，以及「资料来源」清单。</li>
+  </ul>
+</section>
+
+<section id="done">
+  <h2><span class="no">10</span>完成标准</h2>
+  <p class="sub">满足下面几条，才能标为「阶段一已完成」。没有满足也可以进入阶段二，未完成项会自动写进交接记录。</p>
+  <ul class="check">
+    <li>至少一张业务流转图覆盖本项目的主场景，痛点已标出。</li>
+    <li>数据流程图标出了内网边界、CDR 有无、每个系统的接入方式，以及出站方向。</li>
+    <li>智能体用到的每类数据在清单里都有一行，并且 SDR 数据域都来自词表。</li>
+    <li>所有「推测」和「待确认」都有依据或 Q 编号，Q 编号已带进首轮访谈提纲。</li>
+    <li>没有任何连线让智能体直连医院系统，没有任何连线从外网指向内网。</li>
+  </ul>
+</section>
+
+<section id="open">
+  <h2><span class="no">11</span>待公司确认事项</h2>
+  <p class="sub">这些问题会影响规范内容，需要 SDR 团队或管理层拍板。</p>
+  <ol class="open">
+    <li><b>SDR 标准库有没有正式的数据域清单？</b><span>有的话，用它替换第 8.2 节的 14 个暂定数据域，数据需求清单就能映射到真实标准。</span></li>
+    <li><b>智能体运行在哪里？</b><span>培训材料里，一处写「360 私有云实例在内网，数据不出这道墙」，另一处写「360 私有云在外网，SDR 主动出站」。数据流程图需要统一一种画法。</span></li>
+    <li><b>SDR 三层的名称是否固定为数据治理层、服务平台层、服务网关层？</b><span>这是现有架构图 skill 的写法，培训材料只写了后两层。</span></li>
+    <li><b>敏感分级 L1–L4 的定义能否给到阶段一？</b><span>能给的话，「敏感级别」从选填改为必填，阶段一就能初判。</span></li>
+    <li><b>阶段一的完成标准要不要成为硬门禁？</b><span>本草案按「不阻塞，写进交接记录」设计，与现有阶段一规则一致。</span></li>
+  </ol>
+</section>
+
+<footer>FDE 产设大师 · 阶段一规范草案 v0.1。评审通过后，将落地为三个阶段一 Skill，并加入桌面端阶段一流程的第 4 步。</footer>
+</main>
+</div>
+
+</body></html>

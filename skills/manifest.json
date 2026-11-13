@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-15T10:24:12.844Z",
+  "generatedAt": "2026-11-12T06:50:51.050Z",
   "source": "product-lobster-desktop/skills",
   "groups": [
     {
@@ -7,7 +7,7 @@
       "name": "产品文档",
       "icon": "file-lines",
       "color": "#2563eb",
-      "count": 4
+      "count": 7
     },
     {
       "id": "prototype",
@@ -21,7 +21,7 @@
       "name": "汇报出图",
       "icon": "image",
       "color": "#3b82f6",
-      "count": 4
+      "count": 6
     },
     {
       "id": "dataviz",
@@ -49,7 +49,7 @@
       "name": "通用工具",
       "icon": "toolbox",
       "color": "#64748b",
-      "count": 10
+      "count": 19
     }
   ],
   "skills": [
@@ -98,6 +98,17 @@
       "description": "根据 FDE 阶段二逐轮需求确认表，构建 AI 需求能力清单并逐项定义效果指标、输入输出、数据依赖与人工兜底。适用于第二阶段第二类正式交付。"
     },
     {
+      "id": "fde-business-flow",
+      "name": "fde-business-flow",
+      "file": "SKILL.md",
+      "group": "general",
+      "icon": "toolbox",
+      "color": "#64748b",
+      "version": "0.1.0",
+      "summary": "FDE 阶段一《业务流转图》。",
+      "description": "FDE 阶段一《业务流转图》。按角色泳道画出客户现有业务流程（Mermaid），标注系统操作、交接内容、痛点和可信度，并附与阶段二对接确认表 §4 同列的节点表。"
+    },
+    {
       "id": "fde-contact-form",
       "name": "fde-contact-form",
       "file": "SKILL.md",
@@ -109,6 +120,28 @@
       "description": "按 FDE 阶段二规范，依据会议纪要、访谈记录和客户资料，逐轮编制并核查《需求与数据对接确认表（含组织关系）》。适用于启动会、需求访谈、数据对接和当轮确认；不用于阶段三最终需求签字。"
     },
     {
+      "id": "fde-customer-background",
+      "name": "fde-customer-background",
+      "file": "SKILL.md",
+      "group": "general",
+      "icon": "toolbox",
+      "color": "#64748b",
+      "version": "0.1.0",
+      "summary": "FDE 阶段一客户背景分析。",
+      "description": "FDE 阶段一客户背景分析。汇总客户概况、组织角色、现有流程与系统、已知诉求和信息缺口，每条注明来源。"
+    },
+    {
+      "id": "fde-data-flow",
+      "name": "fde-data-flow",
+      "file": "SKILL.md",
+      "group": "general",
+      "icon": "toolbox",
+      "color": "#64748b",
+      "version": "0.1.0",
+      "summary": "FDE 阶段一《数据流程图》。",
+      "description": "FDE 阶段一《数据流程图》。以 SDR 数据底座为中心，按固定分层画出数据源、CDR、SDR 三层到智能体的数据流（Mermaid），标出内网边界、接入方式、出站方向和接入风险。"
+    },
+    {
       "id": "fde-data-metrics",
       "name": "fde-data-metrics",
       "file": "SKILL.md",
@@ -118,6 +151,17 @@
       "version": "",
       "summary": "编制 FDE 阶段三业务数据集及指标口径，核对数据来源、SQL、过滤去重时间规则、敏感权限和研发交付证据。",
       "description": "编制 FDE 阶段三业务数据集及指标口径，核对数据来源、SQL、过滤去重时间规则、敏感权限和研发交付证据。"
+    },
+    {
+      "id": "fde-data-requirements",
+      "name": "fde-data-requirements",
+      "file": "SKILL.md",
+      "group": "general",
+      "icon": "toolbox",
+      "color": "#64748b",
+      "version": "0.1.0",
+      "summary": "FDE 阶段一《数据需求清单》。",
+      "description": "FDE 阶段一《数据需求清单》。从智能体要做的事倒推所需数据，一行一个数据项，对应 SDR 数据域、来源系统和接入方式，字段可直接带入阶段二 §4.5 与阶段三业务数据口径。"
     },
     {
       "id": "fde-final-requirements",
@@ -140,6 +184,28 @@
       "version": "",
       "summary": "依据阶段三已确认需求及资源准备情况，制定 FDE 产品实施任务、环境与 SDR 准备、依赖、日期和里程碑。",
       "description": "依据阶段三已确认需求及资源准备情况，制定 FDE 产品实施任务、环境与 SDR 准备、依赖、日期和里程碑。"
+    },
+    {
+      "id": "fde-industry-research",
+      "name": "fde-industry-research",
+      "file": "SKILL.md",
+      "group": "general",
+      "icon": "toolbox",
+      "color": "#64748b",
+      "version": "0.1.0",
+      "summary": "FDE 阶段一行业预研。",
+      "description": "FDE 阶段一行业预研。基于项目行业与方向，整理行业背景、政策、术语、常见痛点、典型做法与对标案例，为客户访谈备弹。"
+    },
+    {
+      "id": "fde-interview-outline",
+      "name": "fde-interview-outline",
+      "file": "SKILL.md",
+      "group": "general",
+      "icon": "toolbox",
+      "color": "#64748b",
+      "version": "0.1.0",
+      "summary": "FDE 阶段一《首轮访谈提纲》。",
+      "description": "FDE 阶段一《首轮访谈提纲》。基于调研准备要点和待确认问题，规划访谈对象、业务问题、数据问题、预期讨论内容和待确认事项。"
     },
     {
       "id": "fde-prd-final",
@@ -175,6 +241,28 @@
       "description": "把阶段二原型按已签需求和定稿 PRD 修订为阶段三可运行、可归档的产品原型 Demo，核对功能覆盖与主流程。"
     },
     {
+      "id": "fde-research-brief",
+      "name": "fde-research-brief",
+      "file": "SKILL.md",
+      "group": "general",
+      "icon": "toolbox",
+      "color": "#64748b",
+      "version": "0.1.0",
+      "summary": "FDE 阶段一《调研准备要点》。",
+      "description": "FDE 阶段一《调研准备要点》。汇总客户背景、行业特点、拟调研业务、已知信息与需要验证的假设，形成进场前的一页准备材料。"
+    },
+    {
+      "id": "fde-research-intake",
+      "name": "fde-research-intake",
+      "file": "SKILL.md",
+      "group": "general",
+      "icon": "toolbox",
+      "color": "#64748b",
+      "version": "0.1.0",
+      "summary": "FDE 阶段一资料解析。",
+      "description": "FDE 阶段一资料解析。读取客户资料（医院介绍、需求文档、聊天记录等），把信息分成\"已经知道 / 可能需要了解 / 尚未确认\"三类，并评估六个调研维度的完整度。"
+    },
+    {
       "id": "fde-stage-gate",
       "name": "fde-stage-gate",
       "file": "SKILL.md",
@@ -186,6 +274,17 @@
       "description": "初始化 FDE 阶段二、三项目交付结构，逐件检查九类正式交付物，并执行阶段放行校验。用于规范复核和验收，不能替代客户签字、信息科核对或真实 Eval。"
     },
     {
+      "id": "med-knowledge-qa",
+      "name": "med-knowledge-qa",
+      "file": "SKILL.md",
+      "group": "general",
+      "icon": "book-medical",
+      "color": "#64748b",
+      "version": "0.1.0",
+      "summary": "医疗行业专家的内置知识库问答。",
+      "description": "医疗行业专家的内置知识库问答。按「先检索、再作答、逐条标出处」回答卫生信息数据元、数据安全分级、电子病历评级、DRG/DIP 3.0、医保编码与医疗服务项目问题；资料没覆盖就明说，不编造条款、编码或数字。用户追问编码、条款原文、页码，或本轮附带资料不够时使用。"
+    },
+    {
       "id": "md-export",
       "name": "md-export",
       "file": "SKILL.md",
@@ -195,6 +294,17 @@
       "version": "",
       "summary": "Use when user says 转PDF/生成PDF/导出PDF/转Word/生成Word/导出Word/转成word/md转pdf/md转word/出个PDF版/出个W…",
       "description": "Use when user says 转PDF/生成PDF/导出PDF/转Word/生成Word/导出Word/转成word/md转pdf/md转word/出个PDF版/出个Word版/export PDF/export Word/把这个转成PDF/把这个转成word. Converts Markdown to a styled PDF or Word (.docx) document with 360 brand styling, full Chinese font support, embedded images, and formatted tables. Auto-detects target format (PDF vs Word) from the user's request."
+    },
+    {
+      "id": "operation-manual",
+      "name": "operation-manual",
+      "file": "SKILL.md",
+      "group": "product-doc",
+      "icon": "book-open",
+      "color": "#2563eb",
+      "version": "",
+      "summary": "根据产品 Demo、本地网页、在线系统、培训文档及参考模板，制作或修订配有界面截图的中文产品操作手册，交付可编辑 Word 和 PDF。",
+      "description": "根据产品 Demo、本地网页、在线系统、培训文档及参考模板，制作或修订配有界面截图的中文产品操作手册，交付可编辑 Word 和 PDF。适用于“根据这个 demo 做操作手册”“按这个模板写用户手册”“修改手册、删章节、通用化、替换截图”等任务。"
     },
     {
       "id": "product-doc-to-word",
@@ -219,6 +329,17 @@
       "description": "Use ONLY when user explicitly wants a LIGHTWEIGHT 功能清单 (feature list) without full PRD depth — e.g. 生成精简功能清单/只要功能清单/快速出功能清单/功能列表. Produces 需求概述 + 产品架构 + 功能模块清单（功能名+一句话说明），without per-feature business-logic tables, without diagrams. For a full PRD (每个功能点业务逻辑 + 架构图 + 流程图 + 数据字典 + 非功能需求), use `product-prd-allinone` instead. Accepts ANY input form (a sentence, a doc, prototype HTML, a directory). Output: Markdown (+ optional Word)."
     },
     {
+      "id": "product-introduction",
+      "name": "product-introduction",
+      "file": "SKILL.md",
+      "group": "product-doc",
+      "icon": "id-card",
+      "color": "#2563eb",
+      "version": "",
+      "summary": "根据产品资料、方案、Demo或已有文案，沿用已确认的四份医疗智能体产品介绍成品，撰写和制作简洁的客户宣发Word。",
+      "description": "根据产品资料、方案、Demo或已有文案，沿用已确认的四份医疗智能体产品介绍成品，撰写和制作简洁的客户宣发Word。固定产品定位、适用客户、需求痛点、核心能力与价值、可选案例及部署方式，直接保留成品页眉Logo、蓝色标题、自动编号、配图和成效表样式。适用于“做产品介绍”“按这些成品写产品介绍”“统一产品介绍格式”“补充产品案例”等任务。"
+    },
+    {
       "id": "product-prd-allinone",
       "name": "product-prd-allinone",
       "file": "SKILL.md",
@@ -228,6 +349,17 @@
       "version": "",
       "summary": "Use when user says 生成PRD/写PRD/产品需求文档/生成产品需求文档/写产品文档/生成功能清单/出功能清单/产品功能需求/出产品清单.",
       "description": "Use when user says 生成PRD/写PRD/产品需求文档/生成产品需求文档/写产品文档/生成功能清单/出功能清单/产品功能需求/出产品清单. This is the DEFAULT for any 产品需求文档/PRD request. Accepts ANY input form: a single sentence describing a product idea, a requirements doc, prototype files (HTML), a paragraph of text, a meeting transcript, or a directory of files. One self-contained skill that produces a complete PRD (产品需求文档) AND its diagrams in one flow: 需求概述 + 产品架构（自动生成商务架构图）+ 功能清单 + 每个功能点的业务逻辑（结构化字段）+ 核心业务流程（自动生成流程图/时序图）+ 页面交互 + 数据字典 + 非功能性需求 + 需求对照 + 演进。Diagram generation is built in — architecture image via image-generator, flow/sequence diagrams via handcrafted SVG + rsvg-convert. Output: Markdown + images/（PNG）, optional Word. (For a lightweight feature list with no business-logic tables and no diagrams, use `product-feature-spec` instead.)"
+    },
+    {
+      "id": "product-whitepaper",
+      "name": "product-whitepaper",
+      "file": "SKILL.md",
+      "group": "product-doc",
+      "icon": "file-invoice",
+      "color": "#2563eb",
+      "version": "",
+      "summary": "根据产品资料、Demo、操作手册、方案或参考白皮书，撰写和制作面向客户的中文产品白皮书，覆盖产品定位、适用客户、业务痛点、核心能力与价值、配图及部署方式，并输出可编辑 Word。",
+      "description": "根据产品资料、Demo、操作手册、方案或参考白皮书，撰写和制作面向客户的中文产品白皮书，覆盖产品定位、适用客户、业务痛点、核心能力与价值、配图及部署方式，并输出可编辑 Word。适用于“制作白皮书”“按体检报告解读智能体白皮书模板制作”“改写产品介绍为白皮书”“统一白皮书格式”等任务。"
     },
     {
       "id": "prototype-generator",
@@ -294,6 +426,28 @@
       "version": "",
       "summary": "Use when the user wants to generate an image, create a picture, make an illustration, de…",
       "description": "Use when the user wants to generate an image, create a picture, make an illustration, design a cover, or do image-to-image editing."
+    },
+    {
+      "id": "ppt-template",
+      "name": "ppt-template",
+      "file": "SKILL.md",
+      "group": "report-image",
+      "icon": "file-powerpoint",
+      "color": "#3b82f6",
+      "version": "",
+      "summary": "制作包含行业痛点、产品介绍、核心功能与工作流程、AI介入前后Before/After对比的产品方案PPT，也可统一已有PPT格式。",
+      "description": "制作包含行业痛点、产品介绍、核心功能与工作流程、AI介入前后Before/After对比的产品方案PPT，也可统一已有PPT格式。内容参考用于学习业务流程与叙事，视觉沿用已确认的纳米Work蓝白模板、字体、Logo与卡片风格。适用于产品宣发方案、智能体功能、协同闭环、客户价值与部署，以及产品包、矩阵、全家福和路线图。全部为原生可编辑文字和图形，不调用生图接口；要 360 品牌模板或 AI 海报风格时用 360-ppt-generator。"
+    },
+    {
+      "id": "product-demo-film",
+      "name": "product-demo-film",
+      "file": "SKILL.md",
+      "group": "report-image",
+      "icon": "clapperboard",
+      "color": "#3b82f6",
+      "version": "",
+      "summary": "Plan, produce, or revise promotional and product demo videos from scripts, UI, and refer…",
+      "description": "Plan, produce, or revise promotional and product demo videos from scripts, UI, and reference footage. Use for storyboards, branded covers, corner logos and product titles, end cards, voice-over, captions, and timed exports."
     },
     {
       "id": "brainstorming",

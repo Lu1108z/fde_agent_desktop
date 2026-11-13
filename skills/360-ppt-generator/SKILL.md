@@ -30,7 +30,7 @@ description: Generates 360-branded PPT presentations in text mode, poster mode, 
 
 **Use**: 360 品牌 PPT、培训课件、代理商材料、产品介绍、`.pptx` 输出需 360 品牌一致性。
 
-**Don't Use**: 非 360 品牌通用 PPT（用 `powerpoint-ppt`）、仅编辑现有 PPT、需要动画/视频/音频。
+**Don't Use**: 纳米Work 蓝白行业模板的产品方案、按标准模板统一已有 PPT（用 `ppt-template`）、需要动画/视频/音频。
 
 ## 环境依赖
 

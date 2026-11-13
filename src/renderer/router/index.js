@@ -12,10 +12,13 @@ import ProjectOnline from '@/pages/projects/ProjectOnline.vue';
 import ProjectCreate from '@/pages/projects/ProjectCreate.vue';
 import ProjectDetail from '@/pages/projects/ProjectDetail.vue';
 import TeamLibrary from '@/pages/library/TeamLibrary.vue';
+import PromoMaterials from '@/pages/library/PromoMaterials.vue';
+import AgentPlatform from '@/pages/agent-platform/AgentPlatform.vue';
 import Knowledge from '@/pages/knowledge/Knowledge.vue';
 import Skills from '@/pages/skills/Skills.vue';
 import Settings from '@/pages/settings/Settings.vue';
 import ExpertSquare from '@/pages/experts/ExpertSquare.vue';
+import AppChat from '@/pages/experts/AppChat.vue';
 import CodeRepository from '@/pages/code/CodeRepository.vue';
 import CodeWorkspaceList from '@/pages/code/CodeWorkspaceList.vue';
 import CodeWorkspace from '@/pages/code/CodeWorkspace.vue';
@@ -44,9 +47,12 @@ const router = createRouter({
         { path: 'projects/:slug', component: ProjectDetail, props: true },
         { path: 'experts', component: ExpertSquare },
         { path: 'apps', component: ExpertSquare },
+        { path: 'apps/:appId', component: AppChat, props: true },
         { path: 'library', redirect: () => ({ path: '/library/team' }) },
         { path: 'library/team', component: TeamLibrary },
+        { path: 'library/promo', component: PromoMaterials },
         { path: 'library/repository', component: CodeRepository },
+        { path: 'agent-platform', component: AgentPlatform },
         { path: 'knowledge', component: Knowledge },
         { path: 'skills', component: Skills },
         { path: 'settings', component: Settings },

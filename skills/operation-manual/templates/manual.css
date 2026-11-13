@@ -1,0 +1,25 @@
+@page {size: var(--page-width) var(--page-height);margin:0}
+*{box-sizing:border-box}
+body{margin:0;color:#25314b;font-family:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:var(--page-width);height:var(--page-height);padding:62pt 62.4pt 45pt;position:relative;break-after:page;background:white}
+.page:last-child{break-after:auto}
+h1{font-size:18pt;line-height:1.5;margin:0 0 18pt;padding-bottom:18pt;border-bottom:1.5pt solid #3167ff;font-weight:600}
+h2{font-size:11.8pt;line-height:1.55;margin:12pt 0 7pt;font-weight:600;color:#364154}
+p{font-size:10.45pt;line-height:1.85;margin:0 0 9pt}
+ol,ul{font-size:10.45pt;line-height:1.8;padding-left:19pt;margin:5pt 0 10pt}
+li{margin-bottom:4pt}ul li::marker{color:#3167ff}
+table{width:100%;border-collapse:collapse;table-layout:fixed;margin:10pt 0 12pt;font-size:9.5pt;line-height:1.65}
+th,td{border:.6pt solid #bac5d7;padding:7pt 6pt;vertical-align:top;overflow-wrap:anywhere}
+th{color:#2356d7;background:#edf3ff;font-weight:600;text-align:center}
+.note{background:#edf3ff;border-left:3pt solid #2356d7;padding:9pt 10pt;margin:10pt 0 0;font-size:9.8pt;line-height:1.8}
+.note strong{color:#2356d7}
+.figures{display:flex;justify-content:center;gap:15pt;margin:10pt 0 12pt}
+figure{flex:1;text-align:center;margin:0;min-width:0}
+figure img{max-width:100%;object-fit:contain;display:block;margin:auto}
+figcaption{font-size:8.7pt;color:#64718a;line-height:1.5;margin-top:7pt}
+.footer{position:absolute;bottom:23pt;left:62.4pt;right:62.4pt;font-size:8pt;color:#8892a4;display:flex;justify-content:space-between;gap:8pt}
+.cover{text-align:center;padding-top:106pt}
+.en{font-family:Arial,sans-serif;color:#2863ff;font-weight:bold;font-size:11pt;line-height:1.5}
+.cover-title{font-size:29pt;font-weight:600;color:#202b45;margin-top:31pt;line-height:1.4}
+.subtitle{font-size:11pt;color:#77839b;margin-top:62pt;line-height:1.8}
+.cover table{margin-top:40pt;text-align:left}

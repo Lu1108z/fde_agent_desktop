@@ -29,3 +29,21 @@ export async function verifyPrototypeSkillOutputs(api, slug, directory = 'protot
   const names = new Set((listing.files || []).filter(file => !file.isDirectory).map(file => String(file.relPath || file.name).replace(/\\/g, '/')));
   for (const file of ['image/icon.png', 'image/bot.png']) if (!names.has(file)) throw Error(`原型未包含技能指定图片：${directory}/${file}`);
 }
+
+// 原型版面检查 + 自动补内容：生成后按 1440×900 实际渲染，页面只铺半屏/横向溢出/脚本报错时，
+// 把具体问题交给 AI 修一轮再复检；仍不合格就报错，不把半成品当完成。
+export function layoutRepairPrompt(directory, issues) {
+  return `【原型版面自动检查未通过】在 ${directory}/ 下按 1440×900 实际渲染后发现：\n${issues.map(i => '- ' + i).join('\n')}\n`
+    + '请只修改上面列出的页面，按 prototype-generator 的「首屏铺满」铁律补足内容：首页/总览页至少三行内容区块（KPI 行 + 两行图表/列表/智能体卡片）；列表页至少 10 条真实感 mock 数据并带分页，表格下方可补统计/图表卡片；配置/权限页补说明、统计或日志区块。'
+    + '新增数据写进 data/*.json，用真实业务字段，不写"示例""占位"。不要用加大 padding、min-height 或空白卡片撑高度。改完保持其余页面不变。';
+}
+export async function ensurePrototypeLayout(api, slug, directory, repair) {
+  if (!api?.hermes?.checkPrototypeLayout) return { skipped: true, issues: [] };
+  let result = await api.hermes.checkPrototypeLayout(slug, directory);
+  if (!result?.success) return { skipped: true, issues: [], error: result?.error };
+  if (!result.issues.length || !repair) return result;
+  await repair(layoutRepairPrompt(directory, result.issues));
+  result = await api.hermes.checkPrototypeLayout(slug, directory);
+  if (result?.success && result.issues.length) throw Error(`原型版面检查仍未通过（已自动修复一轮）：${result.issues.slice(0, 3).join('；')}。已生成内容已保留，可在原型 tab 里查看后继续修改。`);
+  return result;
+}
