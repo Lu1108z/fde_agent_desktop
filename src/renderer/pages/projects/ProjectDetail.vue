@@ -921,7 +921,7 @@
 <script setup>
 import { projectKnowledgeChat } from '../../composables/projectKnowledgeChat.js';
 import { createProjectDiscussions } from '../../composables/projectDiscussions.js';
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, onActivated, onDeactivated, watch, nextTick } from 'vue';
 import { trackPrompt, getInflightPrompt } from '../../composables/promptInflight.js';
 import { useRoute, onBeforeRouteLeave } from 'vue-router';
 import { marked } from 'marked';
@@ -3912,6 +3912,28 @@ onUnmounted(() => {
   if (streamEndTimer) clearTimeout(streamEndTimer);
   if (typewriterTimer) clearTimeout(typewriterTimer);
   if (thoughtFlushTimer) clearTimeout(thoughtFlushTimer);
+});
+
+// 页面切走后保留在后台（AI 生成不中断）。再回来时：恢复键盘监听、刷新文件类数据，
+// 并处理从别处跳过来带的 ?tab= / ?stage=&deliverable=（实例已存在，不会再走 onMounted）。
+let projectActivatedOnce = false;
+onDeactivated(() => { window.removeEventListener('keydown', handleDocumentReaderKeydown, true); });
+onActivated(() => {
+  if (!projectActivatedOnce) { projectActivatedOnce = true; return; }
+  window.addEventListener('keydown', handleDocumentReaderKeydown, true);
+  loadLinkedConversations();
+  refreshPrototypeFiles();
+  loadDeliverablesForStage(currentStage.value);
+  const queryTab = route.query.tab;
+  if (queryTab && (queryTab === 'knowledge' || tabs.value.some(t => t.key === queryTab))) activeTab.value = queryTab;
+  const requestedStage = Number(route.query.stage);
+  const requestedDeliverable = String(route.query.deliverable || '');
+  if (requestedDeliverable && Number.isInteger(requestedStage) && requestedStage >= 1 && requestedStage <= progressStage.value && deliverablesForStage(requestedStage).some(d => d.key === requestedDeliverable)) {
+    currentStage.value = requestedStage;
+    activeTab.value = 'workspace';
+    workflowOpen.value = false;
+    deliverableSelected.value = requestedDeliverable;
+  }
 });
 
 // Watch tab changes to load relevant data

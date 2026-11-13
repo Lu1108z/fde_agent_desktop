@@ -349,7 +349,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, computed, reactive, onMounted, onUnmounted, onActivated, onDeactivated, nextTick, watch } from 'vue';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
@@ -1172,6 +1172,16 @@ onMounted(async () => {
   window.addEventListener('resize', fitTerminal);
   if (window.api?.hermes?.onSessionUpdate) unsubUpdate = window.api.hermes.onSessionUpdate(handleSessionUpdate);
   if (window.api?.hermes?.onPermissionRequest) unsubPerm = window.api.hermes.onPermissionRequest(handlePermissionRequest);
+});
+
+// 切到别的页面时保留在后台（对话、终端都不中断）；回来后重新适配终端尺寸并刷新文件树
+let codeActivatedOnce = false;
+onDeactivated(() => { window.removeEventListener('resize', fitTerminal); });
+onActivated(() => {
+  if (!codeActivatedOnce) { codeActivatedOnce = true; return; }
+  window.addEventListener('resize', fitTerminal);
+  fitTerminal();
+  refreshTree();
 });
 
 onUnmounted(() => {

@@ -153,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, onActivated } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatPanel from '@/components/agent/ChatPanel.vue';
 import KnowledgeReferences from '@/components/apps/KnowledgeReferences.vue';
@@ -191,7 +191,7 @@ function onEsc(e) { if (e.key === 'Escape') { switcherOpen.value = false; detail
 function switchApp(item) {
   switcherOpen.value = false;
   if (item.id === props.appId) return;
-  if (isStreaming.value) return;
+  // 每个专家是独立页面并保留在后台，正在回复也可以切走，回来接着看
   router.push(`/apps/${item.id}`);
 }
 
@@ -431,14 +431,31 @@ onMounted(async () => {
   apps.value = await loadPublishedAiApps();
   loadSessions();
   loadModels();
-  // 从项目页进入：?project=<slug> 预选关联项目，?session=<slug> 直接打开历史对话
-  if (route.query.project) linkedProject.value = String(route.query.project);
-  const first = route.query.ask ? String(route.query.ask) : '';
-  const open = route.query.session ? String(route.query.session) : '';
-  if (route.query.project || first || open) router.replace({ path: route.path });
-  if (open) { await loadSessions(); const s = sessions.value.find((x) => x.slug === open); if (s) openSession(s); }
-  else if (first) send(first);
-  else nextTick(() => draftRef.value?.focus());
+  await applyRouteQuery(true);
+});
+// 从项目页进入：?project=<slug> 预选关联项目，?session=<slug> 直接打开历史对话，?ask= 直接提问。
+// 页面切走后会保留在后台（回复不中断），再次进入时不会重新挂载，所以激活时也要处理一次。
+async function applyRouteQuery(mounted = false) {
+  const q = route.query;
+  const project = q.project ? String(q.project) : '';
+  const first = q.ask ? String(q.ask) : '';
+  const open = q.session ? String(q.session) : '';
+  if (project || first || open) router.replace({ path: route.path });
+  if (isStreaming.value) return; // 正在回复：保持当前对话，不被跳转参数打断
+  if (open) {
+    if (open === currentSlug.value) return;
+    await loadSessions(); const s = sessions.value.find((x) => x.slug === open); if (s) openSession(s);
+    return;
+  }
+  if (project) { if (currentSlug.value && currentMeta.value?.linkedProject !== project) newChat(); linkedProject.value = project; }
+  if (first) { if (currentSlug.value) newChat(); send(first); }
+  else if (mounted || project) nextTick(() => draftRef.value?.focus());
+}
+let activatedOnce = false;
+onActivated(() => {
+  if (!activatedOnce) { activatedOnce = true; return; } // 首次激活紧跟 onMounted，已处理
+  loadSessions();
+  applyRouteQuery();
 });
 onUnmounted(() => {
   disposed = true;

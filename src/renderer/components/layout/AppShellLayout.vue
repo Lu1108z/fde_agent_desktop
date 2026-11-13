@@ -56,7 +56,7 @@
             <span>{{ item.label }}</span>
           </RouterLink>
           <div v-if="item.children?.length" :id="'header-subnav-' + item.to.slice(1)" class="header-subnav" :aria-hidden="openNav !== item.to" :inert="openNav !== item.to">
-            <RouterLink v-for="child in item.children" :key="child.to" :to="child.to" class="header-subnav-link" :class="child.match(route.path) ? 'header-subnav-link--active' : ''">
+            <RouterLink v-for="child in item.children" :key="child.to" :to="navTarget(child.to)" class="header-subnav-link" :class="child.match(route.path) ? 'header-subnav-link--active' : ''">
               <i :class="child.icon" aria-hidden="true"></i>
               <span>{{ child.label }}</span>
             </RouterLink>
@@ -81,7 +81,8 @@
 
     <main class="app-content">
       <RouterView v-slot="{ Component, route: pageRoute }">
-        <KeepAlive include="AgentHome,Coach,AgentPlatform">
+        <!-- 对话类页面切走后保留在后台：AI 正在回复时去别的页面不会打断，回来还是原样 -->
+        <KeepAlive :include="KEEP_ALIVE_PAGES" :max="12">
           <component :is="Component" :key="pageRoute.path" />
         </KeepAlive>
       </RouterView>
@@ -125,6 +126,13 @@ const engineTitle = computed(() =>
 );
 
 const isSettingsRoute = computed(() => route.path === '/settings');
+
+const KEEP_ALIVE_PAGES = ['AgentHome', 'Coach', 'AgentPlatform', 'AppChat', 'ProjectDetail', 'CodeWorkspace'];
+// 「AI 应用广场」记住上次打开的专家对话，点进去直接回到那里（对话页左上角可回广场）
+const lastAppChat = ref('');
+// 主动回到广场（对话页左上角返回）就不再记住
+watch(() => route.path, (p) => { if (/^\/apps\/[^/]+$/.test(p)) lastAppChat.value = p; else if (p === '/apps' || p === '/experts') lastAppChat.value = ''; }, { immediate: true });
+const navTarget = (to) => (to === '/apps' && lastAppChat.value ? lastAppChat.value : to);
 
 // 项目入口默认进入第一项项目进度，次级页面通过悬停/键盘聚焦菜单访问。
 const primaryNav = [
