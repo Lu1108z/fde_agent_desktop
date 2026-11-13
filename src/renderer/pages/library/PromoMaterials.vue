@@ -148,6 +148,12 @@ async function loadThumbs(list) {
   }
 }
 const COVER_ORDER = ['ppt', 'pdf', 'video', 'word', 'other'];
+// 物料列表固定顺序：先按类型（和上方筛选标签一致：PPT → 视频 → Word → PDF → 其他），同类按名称。
+// 以前按修改时间排，改了哪个哪个就跑到前面，每个智能体的顺序都不一样。
+const LIST_ORDER = ['ppt', 'video', 'word', 'pdf', 'other'];
+function byKindThenName(a, b) {
+  return (LIST_ORDER.indexOf(kindOf(a)) - LIST_ORDER.indexOf(kindOf(b))) || baseName(a).localeCompare(baseName(b), 'zh', { numeric: true });
+}
 function coverItem(id) { return [...itemsOf(id)].sort((a, b) => COVER_ORDER.indexOf(kindOf(a)) - COVER_ORDER.indexOf(kindOf(b)))[0]; }
 function coverOf(id) { const item = coverItem(id); return item && thumbs.value[item.id]; }
 const baseName = item => item.ext && item.title.toLowerCase().endsWith('.' + String(item.ext).toLowerCase()) ? item.title.slice(0, -item.ext.length - 1) : item.title;
@@ -183,7 +189,7 @@ watch(visibleAgents, list => {
   if (!list.some(agent => agent.id === agentId.value)) selectAgent(list[0]?.id || '');
   if (q.value && list.some(agent => life(agent).status === 'offline')) showOffline.value = true;
 });
-const visibleItems = computed(() => itemsOf(agentId.value).filter(i => filter.value === 'all' || kindOf(i) === filter.value).filter(i => !q.value || i.title.toLowerCase().includes(q.value) || currentAgent.value?.title.toLowerCase().includes(q.value)).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt))));
+const visibleItems = computed(() => itemsOf(agentId.value).filter(i => filter.value === 'all' || kindOf(i) === filter.value).filter(i => !q.value || i.title.toLowerCase().includes(q.value) || currentAgent.value?.title.toLowerCase().includes(q.value)).sort(byKindThenName));
 const size = v => !v ? '—' : v > 1048576 ? `${(v / 1048576).toFixed(1)} MB` : `${Math.ceil(v / 1024)} KB`;
 const date = v => v ? new Date(v).toLocaleDateString('zh-CN') : '';
 async function call(promise) { const r = await promise; if (!r?.success) throw new Error(r?.error || '操作失败'); return r; }
