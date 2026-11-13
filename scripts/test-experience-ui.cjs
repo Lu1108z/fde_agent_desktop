@@ -38,7 +38,7 @@ const {createMaterialLibrary}=require('../src/main/material-library');
   await page.goto('http://127.0.0.1:43917/#/settings');
   const key=page.getByPlaceholder('请输入 360 API Key');await key.fill('test-A');await page.getByRole('button',{name:'测试连接'}).click();
   await page.getByText(/DeepSeek V4.1 Flash：连接正常.*Claude Opus 5.5：连接正常/).waitFor();
-  assert.deepEqual(calls.filter(c=>c.m==='testConnection').map(c=>c.args[0].model).sort(),['anthropic/claude-opus-5-5','deepseek/deepseek-v4.1-flash']);
+  assert.deepEqual(calls.filter(c=>c.m==='testConnection').map(c=>c.args[0].model).sort(),['anthropic/claude-opus-5-5','deepseek/deepseek-v4.1-flash','openai/gpt-6-sol']);
   await key.fill('test-B');assert.equal(await page.getByText(/：连接正常/).count(),0);
   holdTest=true;await page.getByRole('button',{name:'测试连接'}).click();await page.waitForFunction(()=>document.body.innerText.includes('测试中'));
   await key.fill('test-C');await page.waitForFunction(()=>document.querySelector('input[type=password]').value==='test-C');

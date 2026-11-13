@@ -267,6 +267,9 @@ function writeConfigModel(modelId) {
         /^([ \t]+)default:[ \t]*.+$/m,
         (_full, indent) => `${indent}default: ${modelId}`
       );
+      // 上下文窗口跟着模型走（DeepSeek / Claude 1M，GPT-6 Sol 小一些）；写大了长任务会超窗报错
+      const ctx = (typeof FIXED_MODELS !== 'undefined' ? FIXED_MODELS : []).find((m) => m.id === modelId)?.contextLength;
+      if (ctx) content = content.replace(/^([ \t]+)context_length:[ \t]*\d+[ \t]*$/m, (_full, indent) => `${indent}context_length: ${ctx}`);
     } else {
       // 没有可识别的 model.default 结构：补一个最小 model 块（沿用现有 provider/base_url 若存在则不动）。
       const block = `model:\n  provider: custom\n  default: ${modelId}\n`;
@@ -383,6 +386,7 @@ function writeConfigProviderKey(apiKey, baseUrl, model, opts = {}) {
       const lines = [];
       if (apiMode && apiMode !== 'auto') lines.push(`api_mode: ${apiMode}`);
       if (extraHeaders) lines.push(extraHeaders);
+      if (opts.extraBody) lines.push(opts.extraBody);
       if (lines.length) content = insertAfterFirstProviderName(content, lines.join('\n'));
     }
 
@@ -394,7 +398,7 @@ function writeConfigProviderKey(apiKey, baseUrl, model, opts = {}) {
   }
 }
 
-// 删除 custom_providers 条目里已有的 api_mode: / extra_headers: 块(含其下缩进子行)。
+// 删除 custom_providers 条目里已有的 api_mode: / extra_headers: / extra_body: 块(含其下缩进子行)。
 // 只删这两个键,不碰条目其它字段。extra_headers 的子行形如 "      name: value",
 // 比父级多一层缩进;遇到同级或更浅缩进的非空行即视为块结束。
 function stripProviderProtocolBlock(content) {
@@ -411,7 +415,7 @@ function stripProviderProtocolBlock(content) {
       }
       if (skipIndent > 0) continue;
     }
-    const m = line.match(/^([ \t]+)(api_mode|extra_headers):/);
+    const m = line.match(/^([ \t]+)(api_mode|extra_headers|extra_body):/);
     if (m) { skipIndent = m[1].length; continue; }
     out.push(line);
   }
@@ -519,14 +523,19 @@ function buildGatewayHeaders(apiKey, authMode = 'bearer', extraHeaders = {}, api
 const GATEWAY_PROFILES_PATH = path.join(PRODUCT_LOBSTER_HOME, 'gateway-profiles.json');
 
 // --- 固定模型 -----------------------------------------------------------------
-// 管理员统一定好网关和模型，使用的人不能改：网关固定 360，下拉框只有这两个模型，
+// 管理员统一定好网关和模型，使用的人不能改：网关固定 360，下拉框只有这几个模型，
 // 设置页 / 首启向导只填 API Key。每次启动都把 config.yaml 收敛回这份清单，
 // 用户手改 config.yaml 或旧版本留下的其它模型都会被纠正。
 const FIXED_GATEWAY = { name: '360 网关', baseUrl: 'https://api.360.cn/v1', apiMode: 'chat_completions', authMode: 'bearer', stripVendorPrefix: false };
 const FIXED_MODELS = [
   { id: 'deepseek/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash', contextLength: 1000000 },
   { id: 'anthropic/claude-opus-5-5', label: 'Claude Opus 5.5', contextLength: 1000000 },
+  { id: 'openai/gpt-6-sol', label: 'GPT-6 Sol', contextLength: 400000 },
 ];
+// 360 网关上的 gpt-6-sol 在 /chat/completions 里「带工具 + 默认推理」会直接 400
+// （Function tools with reasoning_effort are not supported），必须显式 reasoning_effort: none。
+// DeepSeek / Claude 收到这个参数也正常，所以统一写进 custom_providers 的 extra_body，每轮请求都带。
+const FIXED_EXTRA_BODY_BLOCK = 'extra_body:\n  reasoning_effort: "none"';
 const FIXED_MODEL_IDS = FIXED_MODELS.map((m) => m.id);
 const isFixedModel = (id) => FIXED_MODEL_IDS.includes(stripModelPrefix(id));
 
@@ -644,7 +653,7 @@ function enforceFixedModels() {
     writeGatewayProfiles({ version: 1, activeId: profile.id, profiles: [profile] });
     const keep = isFixedModel(readConfigModel()) ? stripModelPrefix(readConfigModel()) : FIXED_MODEL_IDS[0];
     writeConfigProviderKey(apiKey, FIXED_GATEWAY.baseUrl, [keep, ...FIXED_MODEL_IDS.filter((m) => m !== keep)], {
-      stripVendorPrefix: false, replaceModels: true, apiMode: FIXED_GATEWAY.apiMode, authMode: FIXED_GATEWAY.authMode, extraHeaders: {},
+      stripVendorPrefix: false, replaceModels: true, apiMode: FIXED_GATEWAY.apiMode, authMode: FIXED_GATEWAY.authMode, extraHeaders: {}, extraBody: FIXED_EXTRA_BODY_BLOCK,
     });
     upsertEnvVars({ OPENAI_API_KEY: apiKey, OPENAI_BASE_URL: FIXED_GATEWAY.baseUrl, ANTHROPIC_API_KEY: null, HERMES_MODEL: null });
   } catch (e) {
@@ -4696,8 +4705,9 @@ ipcMain.handle('env:test-connection', async (_event, params) => {
   const r = await postChatCompletion({
     apiKey, baseUrl, model,
     messages: [{ role: 'user', content: 'ping' }],
-    maxTokens: apiMode === 'codex_responses' ? 16 : 1,
-    timeoutMs: 8000,
+    // GPT-6 Sol 这类推理模型 max_tokens 太小会 400（来不及给出回答），给足 32；8 秒对它也偏紧
+    maxTokens: apiMode === 'codex_responses' ? 16 : 32,
+    timeoutMs: 15000,
     apiMode, authMode, extraHeaders,
   });
   if (r.ok) return { ok: true, latencyMs: r.latencyMs };
@@ -4850,6 +4860,7 @@ ipcMain.handle('gateway:activate-profile', async (_event, { id } = {}) => {
       apiMode: normalizeGatewayMode(profile.apiMode, profile.baseUrl),
       authMode: profile.authMode || 'bearer',
       extraHeaders: profile.extraHeaders || {},
+      extraBody: FIXED_EXTRA_BODY_BLOCK,
     });
     if (!written) return { success: false, error: '写入 config.yaml 失败' };
 
