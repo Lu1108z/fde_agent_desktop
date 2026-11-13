@@ -1588,6 +1588,7 @@ function createSplashWindow() {
     transparent: true,
     frame: false,
     alwaysOnTop: true,
+    hasShadow: false,
     resizable: false,
     webPreferences: {
       nodeIntegration: false,

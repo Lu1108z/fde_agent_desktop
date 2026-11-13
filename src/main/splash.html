@@ -19,11 +19,8 @@
     .splash-container {
       width: 760px;
       height: 520px;
-      border-radius: 24px;
-      background: linear-gradient(180deg, #eef2f9 0%, #f7f9fc 100%);
+      background: transparent;
       position: relative;
-      overflow: hidden;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.6);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -48,7 +45,8 @@
       50% { box-shadow: 0 0 16px rgba(29, 78, 216, 0.8); }
     }
 
-    /* 光晕背景 - 深蓝色调 */
+    /* 光晕背景：外层不再画底色，光晕会露在卡片外面形成“第二个框”，隐藏 */
+    .blob-1, .blob-2 { display: none; }
     .blob-1 {
       position: absolute;
       top: -150px;
@@ -80,11 +78,9 @@
       z-index: 1;
       width: 700px;
       height: 440px;
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      background: linear-gradient(180deg, #ffffff 0%, #f5f8fd 100%);
       border-radius: 24px;
-      box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.08), 0 10px 15px -3px rgba(15, 23, 42, 0.04);
+      box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.22), 0 4px 10px rgba(15, 23, 42, 0.08);
       border: 1px solid rgba(255, 255, 255, 0.8);
       display: flex;
       flex-direction: column;
