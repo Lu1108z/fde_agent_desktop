@@ -12,6 +12,7 @@ import ProjectOnline from '@/pages/projects/ProjectOnline.vue';
 import ProjectCreate from '@/pages/projects/ProjectCreate.vue';
 import ProjectDetail from '@/pages/projects/ProjectDetail.vue';
 import TeamLibrary from '@/pages/library/TeamLibrary.vue';
+import Library from '@/pages/library/Library.vue';
 import PromoMaterials from '@/pages/library/PromoMaterials.vue';
 import AgentPlatform from '@/pages/agent-platform/AgentPlatform.vue';
 import Knowledge from '@/pages/knowledge/Knowledge.vue';
@@ -48,7 +49,8 @@ const router = createRouter({
         { path: 'experts', component: ExpertSquare },
         { path: 'apps', component: ExpertSquare },
         { path: 'apps/:appId', component: AppChat, props: true },
-        { path: 'library', redirect: () => ({ path: '/library/team' }) },
+        // 老的资料库（agents/projects 两个空间）保留：升级前的资料都在里面，不能因为改版就找不到入口
+        { path: 'library', component: Library },
         { path: 'library/team', component: TeamLibrary },
         { path: 'library/promo', component: PromoMaterials },
         { path: 'library/repository', component: CodeRepository },
