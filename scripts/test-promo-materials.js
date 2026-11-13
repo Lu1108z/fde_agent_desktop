@@ -47,6 +47,13 @@ await page.locator('.main-h').getByRole('button',{name:'上传物料'}).click();
 assert.equal(await page.locator('.card').count(),pendingUpload.length);pass(`上传 ${pendingUpload.length} 份物料，按卡片展示`);
 await page.locator('.filters button').filter({hasText:'Word'}).click();assert.equal(await page.locator('.card').count(),1);
 await page.locator('.filters button').filter({hasText:'全部'}).click();pass('按类型筛选');
+// 全部物料：另一个智能体也放一份，总览里两边的物料都在，并标出所属智能体；刷新后默认进总览
+{const other=await lib.create({spaceId:'promo',parentId:null,title:'另一个智能体',kind:'folder'});await lib.upload({spaceId:'promo',parentId:other.id,paths:[docx],title:'另一份介绍.docx'});
+await page.reload();await page.locator('.main-h h1').filter({hasText:'全部物料'}).waitFor();
+assert.equal(await page.locator('.card').count(),pendingUpload.length+1,'总览没有包含所有智能体的物料');
+assert.ok((await page.locator('.card-agent').allInnerTexts()).some(t=>t.includes('另一个智能体')),'总览卡片未标出所属智能体');
+assert.equal(await page.locator('.main-h').getByRole('button',{name:'上传物料'}).count(),0);
+lib.trash(other.id);await page.reload();await page.locator('.agent').filter({hasText:'智能排班助手'}).click();await page.locator('.main-h h1').filter({hasText:'智能排班助手'}).waitFor();pass('全部物料：所有智能体的物料一起展示并标出所属');}
 await page.waitForFunction(()=>document.querySelectorAll('.card .thumb img').length>=2,null,{timeout:30000}).catch(()=>{});await page.waitForTimeout(600);await page.screenshot({path:'/tmp/fde-promo-grid.png'});
 // Word 在线预览
 await page.locator('.card').filter({hasText:path.basename(docx,'.docx').replace(/\.Word$/,'')}).locator('.card-main').click();

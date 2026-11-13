@@ -153,7 +153,6 @@ const primaryNav = [
   ] },
   { to: '/library/team', label: '资源', icon: 'fa-solid fa-book-open', match: (p) => p.startsWith('/library') || p === '/knowledge' || p === '/skills', children: [
     { to: '/library/team', label: '团队资料库', icon: 'fa-solid fa-folder-open', match: p => p === '/library/team' },
-    { to: '/library', label: '资料库', icon: 'fa-solid fa-box-archive', match: p => p === '/library' },
     { to: '/library/promo', label: '宣传物料', icon: 'fa-solid fa-photo-film', match: p => p === '/library/promo' },
     { to: '/library/repository', label: '代码仓', icon: 'fa-solid fa-code-branch', match: p => p === '/library/repository' },
     { to: '/knowledge', label: '知识中心', icon: 'fa-solid fa-book-open', match: (p) => p === '/knowledge' },

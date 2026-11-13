@@ -5,6 +5,10 @@
       <div class="side-h"><strong>智能体</strong><t-button size="small" variant="text" theme="primary" :disabled="busy" @click="openCreate"><template #icon><i class="fa-solid fa-plus"></i></template>新建</t-button></div>
       <t-input v-model="keyword" size="small" clearable placeholder="搜索智能体或物料" class="side-search"><template #prefix-icon><i class="fa-solid fa-magnifying-glass"></i></template></t-input>
       <nav class="agent-list" aria-label="智能体">
+        <button v-if="agents.length" class="agent-all" :class="{ on: isAll }" @click="selectAgent(ALL)">
+          <span class="agent-cover"><i class="fa-solid fa-layer-group"></i></span>
+          <span class="agent-txt"><strong>全部物料</strong><small>{{ summary(ALL) }}</small></span>
+        </button>
         <template v-for="group in agentGroups" :key="group.id">
            <button v-if="group.id === 'offline'" class="group-h" :aria-expanded="showOffline" @click="showOffline = !showOffline"><i class="fa-solid" :class="showOffline ? 'fa-chevron-down' : 'fa-chevron-right'"></i>推广结束<span>{{ group.agents.length }}</span></button>
           <template v-if="group.id !== 'offline' || showOffline">
@@ -18,6 +22,8 @@
         <p v-else-if="!loading && !visibleAgents.length" class="side-empty">没有匹配的智能体</p>
       </nav>
       <t-button variant="text" @click="trashOpen = true"><i class="fa-regular fa-trash-can"></i>物料回收站（{{ trashItems.length }}）</t-button>
+      <!-- 老版本「资料库」（智能体标品 / 项目管理两个空间）已不在菜单里；里面还有资料时才给入口，升级前的文件仍能打开 -->
+      <t-button v-if="oldLibraryCount" variant="text" title="更早版本的资料库，里面的文件还在" @click="router.push('/library')"><i class="fa-solid fa-box-archive"></i>旧版资料库（{{ oldLibraryCount }}）</t-button>
     </aside>
 
     <main class="promo-main">
@@ -26,14 +32,18 @@
       <!-- 预览单个物料：复用资料库阅读器（PPT/Word/视频/PDF 都能在线看），顶部给下载 -->
       <section v-else-if="previewing" class="viewer">
         <header class="viewer-h">
-          <t-button variant="text" @click="previewing = null"><template #icon><i class="fa-solid fa-arrow-left"></i></template>返回{{ currentAgent?.title }}</t-button>
+          <t-button variant="text" @click="previewing = null"><template #icon><i class="fa-solid fa-arrow-left"></i></template>返回{{ isAll ? '全部物料' : currentAgent?.title }}</t-button>
           <span class="viewer-title" :title="previewing.title"><span class="kind" :class="kindOf(previewing)">{{ KIND_LABEL[kindOf(previewing)] }}</span>{{ previewing.title }}</span>
           <t-button variant="outline" theme="danger" @click="removeItem(previewing)"><template #icon><i class="fa-regular fa-trash-can"></i></template>删除</t-button>
           <t-button theme="primary" @click="download(previewing)"><template #icon><i class="fa-solid fa-download"></i></template>下载到本地</t-button>
         </header>
         <LibraryDocument :key="previewing.id" :item="previewing" readonly class="viewer-body" />
       </section>
-      <template v-else-if="currentAgent">
+      <template v-else-if="currentAgent || isAll">
+        <header v-if="isAll" class="main-h">
+          <div class="main-h-txt"><span class="eyebrow">宣传物料总览</span><h1>全部物料</h1><p>{{ agents.length }} 个智能体，共 {{ counts(ALL).total }} 份 · 点封面在线预览，上传请先在左侧选择智能体</p></div>
+        </header>
+        <template v-else>
         <header class="main-h">
           <div class="main-h-txt"><span class="eyebrow">智能体宣传物料</span><h1>{{ currentAgent.title }}</h1><p>{{ counts(currentAgent.id).total ? `共 ${counts(currentAgent.id).total} 份 · 点封面在线预览，可下载到本地` : '还没有物料，上传 PPT、视频或 Word' }}</p></div>
           <div class="main-actions">
@@ -63,11 +73,12 @@
             </div>
           </template>
         </section>
+        </template>
         <div class="filters" role="tablist">
           <button v-for="f in FILTERS" :key="f.id" role="tab" :aria-selected="filter === f.id" :class="{ on: filter === f.id }" @click="filter = f.id">{{ f.label }}<span>{{ f.id === 'all' ? counts(agentId).total : counts(agentId)[f.id] }}</span></button>
         </div>
-        <div v-if="!visibleItems.length" class="drop-empty" role="button" tabindex="0" @click="q ? keyword = '' : upload()" @keydown.enter="q ? keyword = '' : upload()">
-          <i class="fa-solid fa-photo-film"></i><strong>{{ q ? '没有匹配的物料，请调整搜索或筛选' : filter === 'all' ? '上传这个智能体的宣传物料' : `还没有${FILTERS.find(f => f.id === filter).label}` }}</strong><small>支持 PPT（pptx/ppt）、视频（mp4/mov/webm）、Word（docx/doc），也可放 PDF</small>
+        <div v-if="!visibleItems.length" class="drop-empty" role="button" tabindex="0" @click="q ? keyword = '' : isAll ? null : upload()" @keydown.enter="q ? keyword = '' : isAll ? null : upload()">
+          <i class="fa-solid fa-photo-film"></i><strong>{{ q ? '没有匹配的物料，请调整搜索或筛选' : isAll ? '还没有物料，先在左侧选择智能体再上传' : filter === 'all' ? '上传这个智能体的宣传物料' : `还没有${FILTERS.find(f => f.id === filter).label}` }}</strong><small>支持 PPT（pptx/ppt）、视频（mp4/mov/webm）、Word（docx/doc），也可放 PDF</small>
         </div>
         <div v-else class="grid">
           <article v-for="item in visibleItems" :key="item.id" class="card" :class="kindOf(item)">
@@ -80,6 +91,7 @@
                 <span class="hover-tip">{{ kindOf(item) === 'video' ? '播放' : kindOf(item) === 'ppt' ? '预览 · 可放映' : '在线预览' }}</span>
               </span>
               <span class="card-title">{{ baseName(item) }}</span>
+              <span v-if="isAll && agentOf(item) && !baseName(item).startsWith(agentOf(item).title)" class="card-agent" :title="agentOf(item)?.title"><i class="fa-solid fa-robot"></i>{{ agentOf(item)?.title }}</span>
             </button>
             <footer class="card-foot">
               <span class="card-meta">{{ (item.ext || '').toUpperCase() }} · {{ size(item.size) }}</span>
@@ -158,8 +170,13 @@ function coverItem(id) { return [...itemsOf(id)].sort((a, b) => COVER_ORDER.inde
 function coverOf(id) { const item = coverItem(id); return item && thumbs.value[item.id]; }
 const baseName = item => item.ext && item.title.toLowerCase().endsWith('.' + String(item.ext).toLowerCase()) ? item.title.slice(0, -item.ext.length - 1) : item.title;
 const live = computed(() => entries.value.filter(e => e.spaceId === SPACE && !e.deletedAt));
+const oldLibraryCount = computed(() => entries.value.filter(e => e.spaceId !== SPACE && !e.deletedAt && e.kind !== 'folder').length);
 const agents = computed(() => live.value.filter(e => e.kind === 'folder' && !e.parentId).sort((a, b) => a.title.localeCompare(b.title, 'zh')));
 const currentAgent = computed(() => agents.value.find(a => a.id === agentId.value));
+// 「全部物料」：所有智能体的物料放在一起看（按类型、名称排序），各智能体文件夹照旧
+const ALL = '__all__';
+const isAll = computed(() => agentId.value === ALL);
+const agentOf = item => agents.value.find(a => itemsOf(a.id).some(i => i.id === item.id));
 // 生命周期：已下线的智能体单独放在侧栏底部，默认收起
 const STATUS_TEXT = { pending: '待推广', active: '推广中', expiring: '即将到期', sold: '已购买', offline: '推广结束' };
 const currentDate = ref(today());
@@ -177,6 +194,7 @@ const agentGroups = computed(() => {
 const kindOf = item => Object.keys(KIND).find(k => KIND[k].includes(String(item.ext || '').toLowerCase())) || 'other';
 // 智能体文件夹下所有层级的文件都算它的物料
 function itemsOf(id) {
+  if (id === ALL) return agents.value.flatMap(a => itemsOf(a.id));
   const ids = new Set([id]); let size = 0;
   while (size !== ids.size) { size = ids.size; live.value.filter(e => e.kind === 'folder' && ids.has(e.parentId)).forEach(e => ids.add(e.id)); }
   return live.value.filter(e => e.kind !== 'folder' && ids.has(e.parentId));
@@ -186,10 +204,10 @@ function summary(id) { const c = counts(id); return c.total ? [c.ppt && `PPT ${c
 const q = computed(() => keyword.value.trim().toLowerCase());
 const visibleAgents = computed(() => q.value ? agents.value.filter(a => a.title.toLowerCase().includes(q.value) || itemsOf(a.id).some(i => i.title.toLowerCase().includes(q.value))) : agents.value);
 watch(visibleAgents, list => {
-  if (!list.some(agent => agent.id === agentId.value)) selectAgent(list[0]?.id || '');
+  if (!isAll.value && !list.some(agent => agent.id === agentId.value)) selectAgent(list[0]?.id || '');
   if (q.value && list.some(agent => life(agent).status === 'offline')) showOffline.value = true;
 });
-const visibleItems = computed(() => itemsOf(agentId.value).filter(i => filter.value === 'all' || kindOf(i) === filter.value).filter(i => !q.value || i.title.toLowerCase().includes(q.value) || currentAgent.value?.title.toLowerCase().includes(q.value)).sort(byKindThenName));
+const visibleItems = computed(() => itemsOf(agentId.value).filter(i => filter.value === 'all' || kindOf(i) === filter.value).filter(i => !q.value || i.title.toLowerCase().includes(q.value) || (isAll.value ? agentOf(i)?.title : currentAgent.value?.title)?.toLowerCase().includes(q.value)).sort(byKindThenName));
 const size = v => !v ? '—' : v > 1048576 ? `${(v / 1048576).toFixed(1)} MB` : `${Math.ceil(v / 1024)} KB`;
 const date = v => v ? new Date(v).toLocaleDateString('zh-CN') : '';
 async function call(promise) { const r = await promise; if (!r?.success) throw new Error(r?.error || '操作失败'); return r; }
@@ -213,7 +231,7 @@ function openFromQuery() {
   previewing.value = item;
 }
 async function refresh() {
-  try { const data = await call(api.list()); entries.value = data.entries || []; if (!currentAgent.value) agentId.value = agents.value[0]?.id || ''; openFromQuery(); }
+  try { const data = await call(api.list()); entries.value = data.entries || []; if (!currentAgent.value && !isAll.value) agentId.value = agents.value.length ? ALL : ''; openFromQuery(); }
   catch (e) { error.value = window.api?.library ? e.message : '请在 FDE 桌面窗口中使用宣传物料。'; }
   finally { loading.value = false; }
 }
@@ -255,7 +273,7 @@ async function submitName() {
   } catch (e) { MessagePlugin.error(e.message); } finally { busy.value = false; }
 }
 async function upload() {
-  if (!agentId.value || busy.value) return;
+  if (!currentAgent.value || busy.value) return;
   busy.value = true;
   try { const r = await call(api.upload({ spaceId: SPACE, parentId: agentId.value, filters: UPLOAD_FILTERS, dialogTitle: `上传「${currentAgent.value.title}」的宣传物料` })); if (!r.canceled) { await refresh(); MessagePlugin.success(`已上传 ${r.entries.length} 份物料`); } }
   catch (e) { error.value = e.message; } finally { busy.value = false; }
@@ -359,6 +377,10 @@ watch(() => [visibleItems.value.map(i => i.id).join(), agents.value.map(a => a.i
 .card:hover .play{transform:scale(1.08);background:rgba(41,101,233,.9)}
 .hover-tip{position:absolute;inset:auto 0 0;padding:18px 12px 9px;font-size:12px;color:#fff;background:linear-gradient(transparent,rgba(10,20,40,.6));opacity:0;transition:opacity .2s}
 .card:hover .hover-tip{opacity:1}
+.card-agent{display:flex;align-items:center;gap:5px;padding:4px 14px 0;font-size:11.5px;color:#7a8aa3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.card-agent i{font-size:10px;color:#9fb0c8}
+.agent-all{display:flex;align-items:center;gap:11px;width:100%;padding:8px;border:0;border-radius:10px;background:transparent;text-align:left;cursor:pointer;margin-bottom:6px;border-bottom:1px solid #eef2f7}
+.agent-all:hover{background:#f3f6fb}.agent-all.on{background:#eaf1ff}
+.agent-all .agent-cover{background:#eaf1ff;color:#2563eb}.agent-all.on .agent-cover{box-shadow:0 0 0 2px #2965e9}
 .card-title{padding:12px 14px 0;font-size:14px;font-weight:500;line-height:1.5;color:#1f2a3d;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card-foot{display:flex;align-items:center;gap:0;margin-top:auto;padding:4px 6px 8px 14px}
 .card-meta{flex:1;min-width:0;font-size:11px;color:#97a3b6;font-variant-numeric:tabular-nums;letter-spacing:.02em}
