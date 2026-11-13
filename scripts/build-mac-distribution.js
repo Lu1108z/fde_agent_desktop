@@ -20,6 +20,7 @@ async function main() {
   if(fs.readFileSync(path.join(keys,'aes.key')).length !== 32) throw Error('Invalid license verification material.');
   execFileSync('npm',['run','sync:agent-platform','--','--if-changed'],{cwd:root,stdio:'inherit'});
   execFileSync('npm',['run','build:renderer'],{cwd:root,stdio:'inherit'});
+  execFileSync('npm',['run','build:check-ffmpeg'],{cwd:root,stdio:'inherit'});
   const config = {...pkg.build,
     directories:{...pkg.build.directories,output},
     electronDist:path.resolve(path.dirname(require('electron')), '../../..'),
@@ -34,6 +35,7 @@ async function main() {
       {from:path.join(root,'fde-handbook'),to:'fde-handbook',filter:['**/*','!**/.DS_Store']},
       {from:keys,to:'license-keys',filter:['aes.key','public_key.pem']},
       {from:engine,to:'hermes-acp'},
+      {from:path.join(root,'node_modules','ffmpeg-static'),to:'ffmpeg',filter:['ffmpeg','ffmpeg.LICENSE']},
     ],
     mac:{...pkg.build.mac,icon:path.join(root,'src/image/icon.icns'),identity:null,minimumSystemVersion:'12.0'},
   };

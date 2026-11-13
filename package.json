@@ -13,8 +13,8 @@
     "build:renderer": "vite build --config vite.config.js",
     "build:check-license-keys": "node scripts/check-license-keys.js",
     "build:check-engine": "node scripts/check-engine.js",
-    "build:win": "npm run sync:agent-platform -- --if-changed && npm run build:renderer && npm run build:check-license-keys && npm run build:check-engine && electron-builder --win portable",
-    "build:mac": "npm run sync:agent-platform -- --if-changed && npm run build:renderer && npm run build:check-engine && electron-builder --mac dmg",
+    "build:win": "npm run sync:agent-platform -- --if-changed && npm run build:renderer && npm run build:check-license-keys && npm run build:check-engine && npm run build:check-ffmpeg && electron-builder --win portable",
+    "build:mac": "npm run sync:agent-platform -- --if-changed && npm run build:renderer && npm run build:check-engine && npm run build:check-ffmpeg && electron-builder --mac dmg",
     "build:hermes": "node scripts/build-hermes.js",
     "build:full": "npm run build:hermes && npm run build:win",
     "build:mac-full": "npm run build:hermes && npm run build:mac",
@@ -24,7 +24,8 @@
     "android:apk": "npm run build:renderer && npx cap sync android && cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleDebug && cd .. && mkdir -p dist && cp android/app/build/outputs/apk/debug/app-debug.apk 'dist/FDE产设大师-android-debug.apk' && echo '✓ APK -> dist/FDE产设大师-android-debug.apk'",
     "android:apk:release": "npm run build:renderer && npx cap sync android && cd android && JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleRelease && cd .. && mkdir -p dist && cp android/app/build/outputs/apk/release/app-release.apk 'dist/FDE产设大师-android-release.apk' && echo '✓ APK -> dist/FDE产设大师-android-release.apk'",
     "build:mac:trial": "node scripts/build-mac-distribution.js",
-    "sync:agent-platform": "node scripts/sync-agent-platform.js"
+    "sync:agent-platform": "node scripts/sync-agent-platform.js",
+    "build:check-ffmpeg": "node scripts/check-ffmpeg.js"
   },
   "keywords": [
     "ai",
@@ -44,6 +45,7 @@
     "cross-env": "^10.1.0",
     "electron": "^41.1.1",
     "electron-builder": "^25.1.8",
+    "ffmpeg-static": "^5.2.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.3",
@@ -87,6 +89,15 @@
         "filter": [
           "**/*",
           "!**/.DS_Store"
+        ]
+      },
+      {
+        "from": "node_modules/ffmpeg-static",
+        "to": "ffmpeg",
+        "filter": [
+          "ffmpeg",
+          "ffmpeg.exe",
+          "ffmpeg.LICENSE"
         ]
       },
       {

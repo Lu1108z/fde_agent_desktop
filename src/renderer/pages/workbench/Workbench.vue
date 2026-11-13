@@ -288,7 +288,8 @@ onBeforeUnmount(() => { disposed = true; });
 const recentActivities = computed(() => {
   const recordedProjects = new Set(activities.value.map(entry => entry.slug).filter(Boolean));
   const projectUpdates = projects.value.filter(project => !recordedProjects.has(project.slug)).map(project => ({id:`project:${project.slug}`, kind:'project', slug:project.slug, title:project.name, projectName:project.name, action:project.updatedAt ? '更新了项目' : '创建了项目', updatedAt:project.updatedAt || project.createdAt}));
-  return [...activities.value, ...projectUpdates].filter(entry => entry.updatedAt && dismissedActivities.value[entry.id] !== entry.updatedAt).sort((a,b) => b.updatedAt.localeCompare(a.updatedAt));
+  // 本地资料库只剩宣传物料页面，其他空间的文件动态点了打不开，不再显示
+  return [...activities.value, ...projectUpdates].filter(entry => (entry.kind !== 'library-file' || entry.spaceId === 'promo') && entry.updatedAt && dismissedActivities.value[entry.id] !== entry.updatedAt).sort((a,b) => b.updatedAt.localeCompare(a.updatedAt));
 });
 function formatActivityTime(value) {
   const date = new Date(value);
@@ -301,7 +302,8 @@ async function refreshActivities() {
 }
 function leaveStage() { activeStage.value = null; activityFile.value = ''; refreshActivities(); }
 function openActivity(entry) {
-  if (entry.kind === 'library-file') { router.push({path:'/library',query:{space:entry.spaceId,file:entry.file}}); return; }
+  // 资料库动态：只有宣传物料还有本地页面，直接打开到那份文件
+  if (entry.kind === 'library-file') { router.push({path:'/library/promo',query:{file:entry.file}}); return; }
   if (entry.kind === 'handbook-file') {
     activityFile.value = entry.file;
     activeStage.value = stages.value.find(stage => stage.dir === entry.stage) || null;

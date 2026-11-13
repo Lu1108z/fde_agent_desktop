@@ -61,3 +61,7 @@ __pycache__/
 .med-knowledge-cache/
 # 临床知识包构建缓存，产物在 clinical-knowledge/
 .clinical-knowledge-cache/
+
+# 内置知识包产物（构建脚本生成，体积大）
+/med-knowledge/
+/clinical-knowledge/

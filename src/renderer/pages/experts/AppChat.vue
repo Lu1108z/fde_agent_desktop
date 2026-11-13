@@ -161,6 +161,7 @@ import ModelSelector from '@/components/agent/ModelSelector.vue';
 import AppAvatar from '@/components/apps/AppAvatar.vue';
 import { loadPublishedAiApps, buildAiAppOpeningPrompt, AI_APP_REPLY_STYLE } from '@/data/ai-apps';
 import { finalizeResponseSummary, publicToolStep, plainMessage } from '@/data/response-summary.mjs';
+import { MessagePlugin } from 'tdesign-vue-next';
 
 const props = defineProps({ appId: { type: String, required: true } });
 
@@ -376,7 +377,10 @@ function finish() {
   finalizeResponseSummary(last);
   if (last.content && currentSlug.value) {
     window.api.hermes.saveMessage(currentSlug.value, plainMessage({ role: 'assistant', content: last.content, thinkingSummary: last.thinkingSummary, thinkingSteps: last.thinkingSteps.filter((s) => s.kind === 'public-progress'), ...(last.knowledgeSources?.length || last.knowledgeCodes?.length ? { knowledgeSources: last.knowledgeSources, knowledgeCodes: last.knowledgeCodes, knowledgeMode: last.knowledgeMode } : {}), tab: 'requirement', timestamp: new Date().toISOString() }))
-      .then(loadSessions).catch((e) => console.error('Save reply failed:', e));
+      .then((r) => {
+        if (r?.archived?.length && currentMeta.value?.linkedProject) MessagePlugin.success(`已把 ${r.archived.length} 个成果文件归档到项目「专家交付」`);
+        return loadSessions();
+      }).catch((e) => console.error('Save reply failed:', e));
   }
 }
 

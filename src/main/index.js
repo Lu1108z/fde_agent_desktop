@@ -174,6 +174,7 @@ require('./geelib-online').registerGeelibOnline({
 });
 const HANDBOOK_DIR = path.join(PRODUCT_LOBSTER_HOME, 'fde-handbook');
 const SKILLS_DIR = path.join(PRODUCT_LOBSTER_HOME, 'skills');
+const docPython = require('./doc-python').createDocPython({ home: PRODUCT_LOBSTER_HOME });
 const { registerProjectCovers, readImageGeneratorConfig } = require('./project-cover');
 registerProjectCovers({
   ipcMain, root: PROJECTS_DIR, getWindow: () => mainWindow, readProject: readProjectMeta,
@@ -992,8 +993,18 @@ function resolveGitBashPath() {
   return '';
 }
 
+// 内置 ffmpeg（宣传视频专家剪辑/合成用）：打包版在 resources/ffmpeg，开发版用 node_modules/ffmpeg-static。
+function resolveFfmpegDir() {
+  const exe = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
+  const dirs = app.isPackaged
+    ? [path.join(process.resourcesPath, 'ffmpeg')]
+    : [path.resolve(__dirname, '..', '..', 'node_modules', 'ffmpeg-static')];
+  return dirs.find((d) => fs.existsSync(path.join(d, exe))) || '';
+}
+
 function startHermes() {
   const command = resolveHermesAcpCommand();
+  const ffmpegDir = resolveFfmpegDir();
   console.log(`[main] Starting hermes-acp: ${command}`);
 
   // 用局部 proc 持有本次 spawn 的子进程；exit/error 回调里以 `hermesProcess === proc`
@@ -1008,7 +1019,8 @@ function startHermes() {
       HERMES_HOME: PRODUCT_LOBSTER_HOME,
       PYTHONUTF8: '1',
       PYTHONIOENCODING: 'utf-8',
-      PATH: engineArgs.length ? `${path.dirname(command)};${process.env.PATH || ''}` : process.env.PATH,
+      PATH: [engineArgs.length ? path.dirname(command) : '', ffmpegDir, process.env.PATH || ''].filter(Boolean).join(path.delimiter),
+      FFMPEG_PATH: ffmpegDir ? path.join(ffmpegDir, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg') : '',
       // 防止系统 Anthropic 环境变量干扰 hermes provider 选择
       ANTHROPIC_API_KEY: '',
       ANTHROPIC_AUTH_TOKEN: '',
@@ -3828,6 +3840,11 @@ ipcMain.handle('hermes:delete-project', async (_event, slug) => {
 ipcMain.handle('hermes:save-message', async (_event, { slug, message }) => {
   try {
     appendMessage(slug, message);
+    if (message?.role === 'assistant') {
+      let archived = [];
+      try { archived = archiveExpertOutputs(slug, message.content); } catch (e) { console.warn('[ai-apps] 成果归档失败:', e.message); }
+      return { success: true, archived };
+    }
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
@@ -5532,6 +5549,8 @@ app.whenReady().then(async () => {
 
   // Start hermes-acp
   startHermes();
+  // 文档类专家的 Python 依赖：后台预装，不阻塞启动
+  setTimeout(() => { docPython.ensure(); }, 3000);
 
   // Create window (hidden)
   const win = createWindow();
@@ -5753,6 +5772,47 @@ function linkedProjectSection(app, info) {
   return lines;
 }
 
+// 成果归档兜底：专家回复结束后，把「回复里提到的成果文件」和「本轮在专家工作目录新生成的
+// 文档/视频」复制到关联项目的 deliverables/<专家id>/。不依赖 AI 一定按 CLAUDE.md 存对位置。
+const { mentionedFilePaths, archiveFiles } = require('./expert-archive');
+function archiveExpertOutputs(slug, replyText) {
+  const meta = readProjectMeta(slug);
+  if (!meta?.aiApp?.id || !meta.linkedProject) return [];
+  const target = readProjectMeta(meta.linkedProject);
+  if (!target || target.projectType === 'ai-app') return [];
+  const lastUser = readMessages(slug, 50).filter((m) => m.role === 'user').at(-1);
+  const archived = archiveFiles({
+    replyText,
+    sessionDir: resolveProjectPath(slug),
+    projectRoot: resolveProjectPath(meta.linkedProject),
+    outSubdir: path.join(EXPERT_OUTPUT_DIR, meta.aiApp.id),
+    sinceMs: (Date.parse(lastUser?.timestamp) || Date.now() - 2 * 3600 * 1000) - 5000,
+  });
+  if (archived.length) console.log(`[ai-apps] 已归档 ${archived.length} 个专家成果到 ${meta.linkedProject}:`, archived.join(', '));
+  return archived;
+}
+
+// 随包提供的运行工具（ffmpeg、文档类 Python 依赖），写进专家 CLAUDE.md，避免 AI 现场下载安装。
+const DOC_PYTHON_SKILLS = new Set(['product-whitepaper', 'product-introduction', 'operation-manual', 'ppt-template']);
+function runtimeToolsSection(a) {
+  const skills = (Array.isArray(a.skills) ? a.skills : []).map((s) => (typeof s === 'string' ? s : s?.name || s?.id));
+  const out = [];
+  if (skills.includes('product-demo-film')) {
+    const dir = resolveFfmpegDir();
+    if (dir) out.push(`- **FFmpeg 已内置**：\`${path.join(dir, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg')}\`（也已加入 PATH，直接用 \`ffmpeg\` 即可）。不要再下载或安装 FFmpeg。`);
+  }
+  if (skills.some((s) => DOC_PYTHON_SKILLS.has(s))) {
+    const ready = docPython.readyInfo();
+    if (ready) {
+      const env = process.platform === 'win32' ? `set PYTHONPATH=${ready.site} && ` : `PYTHONPATH="${ready.site}" `;
+      out.push(`- **文档生成 Python 环境已就绪**（已装 python-docx、lxml、Pillow、python-pptx）。技能里的 \`<python>\` 一律用：\`${env}"${ready.python}"\`。不要再 pip install 这些依赖，也不要改系统 Python。`);
+    } else {
+      out.push('- 文档生成依赖（python-docx 等）正在后台准备或准备失败；如脚本报缺依赖，按技能说明在工作目录建虚拟环境安装 requirements.txt，不要改系统 Python。');
+    }
+  }
+  return out.length ? ['## 运行环境', '', ...out, ''] : [];
+}
+
 function buildAiAppClaudeMd(app, memory, knowledgeFiles, linkedProject) {
   const a = app || {};
   const name = a.name || 'AI 应用专家';
@@ -5794,6 +5854,8 @@ function buildAiAppClaudeMd(app, memory, knowledgeFiles, linkedProject) {
     }
     lines.push('');
   }
+
+  lines.push(...runtimeToolsSection(a));
 
   if (a.knowledge === 'med') {
     lines.push('## 内置知识库');

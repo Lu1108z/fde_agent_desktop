@@ -119,6 +119,7 @@
 </template>
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next';
 import LibraryDocument from './LibraryDocument.vue';
 import { lifecycleStatus, addMonths, today, DEFAULT_MONTHS } from '../../data/agent-lifecycle.mjs';
@@ -186,8 +187,20 @@ const visibleItems = computed(() => itemsOf(agentId.value).filter(i => filter.va
 const size = v => !v ? '—' : v > 1048576 ? `${(v / 1048576).toFixed(1)} MB` : `${Math.ceil(v / 1024)} KB`;
 const date = v => v ? new Date(v).toLocaleDateString('zh-CN') : '';
 async function call(promise) { const r = await promise; if (!r?.success) throw new Error(r?.error || '操作失败'); return r; }
+const route = useRoute(), router = useRouter();
+// 从工作台动态进来：?file=<id> 定位到所属智能体并直接预览这份物料
+function openFromQuery() {
+  const id = route.query.file ? String(route.query.file) : '';
+  if (!id) return;
+  router.replace({ path: route.path });
+  const item = live.value.find(e => e.id === id && e.kind !== 'folder');
+  if (!item) { MessagePlugin.warning('这份物料已被删除或移动'); return; }
+  const top = agents.value.find(a => itemsOf(a.id).some(i => i.id === id));
+  if (top) agentId.value = top.id;
+  previewing.value = item;
+}
 async function refresh() {
-  try { const data = await call(api.list()); entries.value = data.entries || []; if (!currentAgent.value) agentId.value = agents.value[0]?.id || ''; }
+  try { const data = await call(api.list()); entries.value = data.entries || []; if (!currentAgent.value) agentId.value = agents.value[0]?.id || ''; openFromQuery(); }
   catch (e) { error.value = window.api?.library ? e.message : '请在 FDE 桌面窗口中使用宣传物料。'; }
   finally { loading.value = false; }
 }
