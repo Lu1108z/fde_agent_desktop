@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>异常预警 - 云州一院运营决策智能体</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/cdn.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="js/charts.js"></script>
+<style>
+:root{
+  --primary: 214 95% 44%;
+  --background: 0 0% 100%;
+  --foreground: 218 45% 14%;
+  --muted-foreground: 215 18% 45%;
+  --border: 213 32% 88%;
+  --success: 160 84% 33%;
+  --warning: 32 88% 40%;
+  --danger:  352 68% 48%;
+  --info:    214 15% 50%;
+  --card-bg: linear-gradient(110deg,
+      color-mix(in srgb, hsl(var(--primary)) 8%, hsl(var(--background))) 0%,
+      hsl(var(--background)) 58%,
+      color-mix(in srgb, hsl(var(--primary)) 3%, hsl(var(--background))) 100%);
+  --chrome-bg: color-mix(in srgb, hsl(var(--background)) 80%, hsl(var(--primary)) 6%);
+  --shadow-card: 0 4px 14px hsl(var(--primary) / 7%);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --background: 214 40% 11%;  --foreground: 210 40% 94%;
+    --muted-foreground: 213 22% 68%;  --border: 213 28% 26%;  --success: 158 60% 45%;
+    --card-bg: linear-gradient(110deg,
+        color-mix(in srgb, hsl(var(--primary)) 16%, hsl(var(--background))) 0%,
+        hsl(var(--background)) 58%,
+        color-mix(in srgb, hsl(var(--primary)) 8%, hsl(var(--background))) 100%);
+    --chrome-bg: color-mix(in srgb, hsl(var(--background)) 74%, hsl(var(--primary)) 8%);
+    --shadow-card: 0 4px 14px hsl(0 0% 0% / 25%);
+  }
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+body { font-family:'PingFang SC',-apple-system,sans-serif; margin:0; color:hsl(var(--foreground));
+  background: linear-gradient(100deg, hsl(var(--primary) / 12%) 0%, hsl(var(--primary) / 4%) 38%, transparent 62%, hsl(var(--primary) / 4%) 100%) fixed hsl(var(--background)); }
+.num{font-variant-numeric:tabular-nums}
+.t-strong{color:hsl(var(--foreground))} .t-sub{color:hsl(var(--muted-foreground))} .t-pri{color:hsl(var(--primary))} .t-ok{color:hsl(var(--success))}
+.bb{box-shadow:inset 0 -1px 0 hsl(var(--border) / 70%)}
+.card{background:var(--card-bg);border:1px solid hsl(var(--border));border-radius:12px;box-shadow:var(--shadow-card)}
+.msc::-webkit-scrollbar{width:6px} .msc::-webkit-scrollbar-thumb{background:hsl(var(--border));border-radius:3px}
+.top-nav { background:var(--chrome-bg); backdrop-filter:blur(14px) saturate(1.35); height:48px; display:flex; align-items:center; padding:0 16px; flex-shrink:0; position:sticky; top:0; z-index:30; box-shadow:inset 0 -1px 0 hsl(var(--border) / 70%); }
+.top-nav .logo { display:flex; align-items:center; gap:8px; margin-right:32px; font-size:16px; font-weight:600; color:hsl(var(--foreground)); white-space:nowrap; }
+.top-nav .logo img { width:24px; height:24px; border-radius:6px; }
+.top-nav-item { color:hsl(var(--muted-foreground)); font-size:14px; padding:0 16px; height:48px; display:flex; align-items:center; gap:6px; white-space:nowrap; text-decoration:none; border-bottom:2px solid transparent; transition:color .2s; }
+.top-nav-item:hover { color:hsl(var(--primary)); }
+.top-nav-item.active { color:hsl(var(--primary)); font-weight:500; border-bottom-color:hsl(var(--primary)); }
+.sub-nav { width:180px; padding:16px 8px; flex-shrink:0; background:var(--chrome-bg); backdrop-filter:blur(12px) saturate(1.3); box-shadow:inset -1px 0 0 hsl(var(--border) / 70%); display:flex; flex-direction:column; gap:2px; overflow-y:auto; }
+.sub-nav-item { padding:8px 12px; font-size:14px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:8px; color:hsl(var(--muted-foreground)); transition:background .15s; white-space:nowrap; }
+.sub-nav-item:hover { background:hsl(var(--primary) / 6%); color:hsl(var(--primary)); }
+.sub-nav-item.active { background:hsl(var(--primary) / 10%); color:hsl(var(--primary)); font-weight:500; }
+.btn-pri { height:32px; padding:0 16px; border:0; border-radius:8px; cursor:pointer; font-size:14px; font-weight:500; color:#fff; background:linear-gradient(135deg, color-mix(in srgb, hsl(var(--primary)) 88%, black), hsl(var(--primary))); box-shadow:0 5px 12px hsl(var(--primary) / 18%); display:inline-flex; align-items:center; gap:6px; }
+.btn-ghost { height:32px; padding:0 14px; border:1px solid hsl(var(--border)); border-radius:8px; cursor:pointer; font-size:14px; color:hsl(var(--muted-foreground)); background:hsl(var(--background)); display:inline-flex; align-items:center; gap:6px; }
+.btn-pri:disabled,.btn-ghost:disabled{opacity:.55;cursor:not-allowed}
+.field { height:32px; padding:0 12px; border:1px solid hsl(var(--border)); border-radius:6px; background:hsl(var(--background)); font-size:14px; color:hsl(var(--foreground)); outline:none; }
+.field:focus { border-color:hsl(var(--primary)); }
+.pgn { min-width:32px; height:32px; padding:0 8px; border-radius:6px; border:1px solid hsl(var(--border)); background:hsl(var(--background)); color:hsl(var(--muted-foreground)); font-size:14px; cursor:pointer; }
+.pgn:hover:not(:disabled) { color:hsl(var(--primary)); border-color:hsl(var(--primary) / 50%); }
+.pgn.cur { background:hsl(var(--primary)); color:#fff; border-color:hsl(var(--primary)); }
+.pgn:disabled { opacity:.4; cursor:not-allowed; }
+.tag { display:inline-block; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:600; white-space:nowrap; }
+.tag.success { color:hsl(var(--success)); background:color-mix(in srgb, hsl(var(--success)) 12%, hsl(var(--background))); }
+.tag.primary { color:hsl(var(--primary)); background:hsl(var(--primary) / 10%); }
+.tag.warning { color:hsl(var(--warning)); background:color-mix(in srgb, hsl(var(--warning)) 14%, hsl(var(--background))); }
+.tag.danger { color:hsl(var(--danger)); background:color-mix(in srgb, hsl(var(--danger)) 10%, hsl(var(--background))); }
+.tag.info { color:hsl(var(--info)); background:color-mix(in srgb, hsl(var(--info)) 12%, hsl(var(--background))); }
+[x-cloak]{display:none!important}
+table.table{width:100%;border-collapse:collapse;font-size:14px}
+table.table thead tr{background:hsl(var(--primary) / 4%)}
+table.table th{padding:12px 16px;font-size:12px;font-weight:600;color:hsl(var(--muted-foreground));text-align:left;white-space:nowrap}
+table.table td{padding:12px 16px;font-size:14px;color:hsl(var(--foreground));font-variant-numeric:tabular-nums;border-top:1px solid hsl(var(--border) / 70%)}
+table.table tbody tr{cursor:pointer}
+table.table tbody tr:hover td{background:hsl(var(--primary) / 4%)}
+table.table tr:last-child td{border-bottom:none}
+.action-link{color:hsl(var(--primary));font-size:14px;cursor:pointer;margin-right:16px}
+.action-link--danger{color:hsl(var(--danger))}
+.kpi{cursor:pointer;transition:transform .18s,box-shadow .18s,border-color .18s}
+.kpi:hover{transform:translateY(-2px);border-color:hsl(var(--primary) / 45%)}
+.shift{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;user-select:none;border:1px solid transparent}
+.shift.A{color:hsl(var(--primary));background:hsl(var(--primary) / 12%)}
+.shift.P{color:hsl(var(--warning));background:color-mix(in srgb, hsl(var(--warning)) 14%, hsl(var(--background)))}
+.shift.N{color:hsl(var(--danger));background:color-mix(in srgb, hsl(var(--danger)) 10%, hsl(var(--background)))}
+.shift.X{color:hsl(var(--muted-foreground));background:hsl(var(--border) / 40%)}
+.shift.conflict{outline:2px solid hsl(var(--danger) / 60%)}
+</style>
+
+</head>
+<body x-data="pageApp()" x-init="init()">
+<nav class="top-nav">
+  <div class="logo"><img src="image/icon.png" alt="" onerror="botFallback(this)">云州市第一人民医院 · 运营决策智能体</div>
+  <a href="index.html" class="top-nav-item"><i class="fa fa-gauge-high"></i>运营驾驶舱</a>
+  <a href="report.html" class="top-nav-item"><i class="fa fa-file-lines"></i>运营月报</a>
+  <a href="alerts.html" class="top-nav-item active"><i class="fa fa-bell"></i>异常预警</a>
+  <a href="ask.html" class="top-nav-item"><i class="fa fa-comments"></i>问数</a>
+  <a href="drg.html" class="top-nav-item"><i class="fa fa-layer-group"></i>DRG 病组</a>
+  <a href="admin.html" class="top-nav-item"><i class="fa fa-user-shield"></i>权限与审计</a>
+  <a href="agent-tools.html" class="top-nav-item"><i class="fa fa-toolbox"></i>智能体工具</a>
+  <div class="ml-auto flex items-center gap-4 text-[14px]" style="color:hsl(var(--muted-foreground))">
+    <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full" style="background:hsl(var(--success))"></span>智能体在线</span>
+    <span class="flex items-center gap-1.5"><i class="fa fa-user-circle"></i>运营管理部 王琳</span>
+  </div>
+</nav>
+<main class="px-6 py-4 space-y-4" style="min-height:calc(100vh - 48px)">
+<section class="card px-4 py-2.5 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <img src="image/bot.png" class="w-9 h-9 rounded-lg object-cover" onerror="botFallback(this)">
+    <div><div class="text-[14px] font-semibold">指标异常预警</div><div class="text-[12px] mt-0.5" style="color:hsl(var(--primary))">每日 07:00 扫描 · 只推真异常 · 每条附原因与证据</div></div>
+  </div>
+  <div class="text-[12px]" style="color:hsl(var(--muted-foreground))">口径表 v1.0 · 数据截至 2026-05-31 · 模拟测试数据</div>
+</section>
+<div class="grid grid-cols-4 gap-3">
+  <template x-for="c in cards" :key="c.k"><div class="card p-3"><div class="text-[12px]" style="color:hsl(var(--muted-foreground))" x-text="c.k"></div><div class="mt-1"><span class="text-[20px] font-semibold num" x-text="c.v"></span> <span class="text-[12px]" x-text="c.u"></span></div><div class="text-[12px]" style="color:hsl(var(--muted-foreground))" x-text="c.s"></div></div></template>
+</div>
+<div class="card p-4">
+  <div class="flex gap-2 mb-3"><input class="field w-64" placeholder="搜索科室或指标" x-model="q" @input="pg=1"><select class="field" x-model="st" @change="pg=1"><option value="">全部状态</option><option>待确认</option><option>已确认</option><option>误报</option></select></div>
+  <table class="table"><thead><tr><th>编号</th><th>科室</th><th>指标</th><th>现值</th><th>偏离</th><th>状态</th><th>操作</th></tr></thead><tbody>
+    <template x-for="a in pageRows()" :key="a.id"><tr @click="open(a)"><td x-text="a.id"></td><td x-text="a.dept"></td><td x-text="a.metric"></td><td x-text="a.value"></td><td x-text="a.dev"></td>
+      <td><span class="tag" :class="a.status==='已确认'?'success':a.status==='误报'?'info':'warning'" x-text="a.status"></span></td>
+      <td @click.stop><a class="action-link" @click="set(a,'已确认')">确认</a><a class="action-link action-link--danger" @click="set(a,'误报')">误报</a></td></tr></template>
+  </tbody></table>
+  <div class="flex items-center justify-between mt-3 text-[12px]" style="color:hsl(var(--muted-foreground))"><span x-text="'共 '+list().length+' 条 · 本月推送 37 条，展示近 2 周'"></span>
+    <div class="flex gap-1"><template x-for="n in pages()" :key="n"><button class="pgn" :class="n===pg?'cur':''" @click="pg=n" x-text="n"></button></template></div></div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+  <div class="card p-4"><h2 class="text-[16px] font-semibold mb-2">异常分布（按指标）</h2><div id="chartAlertMix" style="height:200px"></div></div>
+  <div class="card p-4"><h2 class="text-[16px] font-semibold mb-2">近 6 周真实异常占比</h2><div id="chartAlertRate" style="height:200px"></div></div>
+</div>
+</main>
+
+<div x-show="drawerOpen" x-transition.opacity class="fixed inset-0 z-50" x-cloak>
+  <div class="absolute inset-0" style="background:hsl(0 0% 0% / 40%)" @click="drawerOpen=false"></div>
+  <aside class="absolute right-0 top-0 bottom-0 w-[480px] max-w-[94vw] overflow-y-auto" style="background:hsl(var(--background));box-shadow:-6px 0 24px hsl(0 0% 0% / 12%)">
+    <header class="h-12 px-5 flex items-center sticky top-0" style="background:hsl(var(--background));box-shadow:inset 0 -1px 0 hsl(var(--border) / 70%)">
+      <span class="text-[14px] font-semibold" x-text="drawerTitle"></span>
+      <button class="ml-auto w-7 h-7 rounded flex items-center justify-center text-[12px]" style="color:hsl(var(--muted-foreground))" @click="drawerOpen=false"><i class="fa fa-times"></i></button>
+    </header>
+    <div class="p-5 space-y-4 text-[14px] leading-relaxed" x-html="drawerContent"></div>
+  </aside>
+</div>
+<div class="fixed top-14 right-5 z-[9999] space-y-2">
+  <template x-for="t in toasts" :key="t.id">
+    <div class="px-4 py-2.5 rounded-lg text-white text-[14px]" :style="'background:hsl(var(--'+(t.type==='success'?'success':t.type==='warn'?'warning':'primary')+'))'" x-text="t.message"></div>
+  </template>
+</div>
+<script>
+function baseApp(){
+  return {
+    drawerOpen:false, drawerTitle:'', drawerContent:'', toasts:[], _tid:0,
+    toast(message,type='info'){ const id=++this._tid; this.toasts.push({id,message,type}); setTimeout(()=>{this.toasts=this.toasts.filter(x=>x.id!==id);},2500); },
+    openDrawer(title,html){ this.drawerTitle=title; this.drawerContent=html; this.drawerOpen=true; },
+    async load(name,fallback){ try{ const r=await fetch('data/'+name+'.json'); if(!r.ok) throw 0; return await r.json(); }catch(e){ return fallback; } }
+  };
+}
+</script>
+<script>
+
+function pageApp(){ return Object.assign(baseApp(),{
+  rows:[], q:'', st:'', pg:1, size:8,
+  cards:[{k:'本月推送',v:'37',u:'条',s:'较上月 -9 条'},{k:'待确认',v:'4',u:'条',s:'超 24 小时 0 条'},{k:'真实异常占比',v:'84.1',u:'%',s:'验收线 ≥80%'},{k:'误报降权规则',v:'3',u:'条',s:'R-03 / R-07 / R-11'}],
+  async init(){ this.rows=(await this.load('alerts',[])).concat(await this.load('alerts_more',[])); this.$nextTick(()=>this.charts()); },
+  pages(){ return Array.from({length:Math.max(1,Math.ceil(this.list().length/this.size))},(_,i)=>i+1); },
+  pageRows(){ return this.list().slice((this.pg-1)*this.size,this.pg*this.size); },
+  charts(){ if(!window.echarts) return; const mix={}; this.rows.forEach(a=>mix[a.metric]=(mix[a.metric]||0)+1);
+    echarts.init(document.getElementById('chartAlertMix')).setOption({tooltip:TC_ECHARTS.tooltip({trigger:'item'}),grid:TC_ECHARTS.grid(),xAxis:Object.assign({type:'category',data:Object.keys(mix)},TC_ECHARTS.axis({axisLabel:{interval:0,fontSize:12}})),yAxis:Object.assign({type:'value',minInterval:1},TC_ECHARTS.axis()),series:[{type:'bar',barWidth:20,itemStyle:{color:TC_COLORS.primary,borderRadius:[4,4,0,0]},data:Object.values(mix)}]});
+    echarts.init(document.getElementById('chartAlertRate')).setOption({tooltip:TC_ECHARTS.tooltip(),grid:TC_ECHARTS.grid(),xAxis:Object.assign({type:'category',data:['W17','W18','W19','W20','W21','W22']},TC_ECHARTS.axis()),yAxis:Object.assign({type:'value',min:60,max:100},TC_ECHARTS.axis()),series:[{type:'line',smooth:true,symbolSize:6,itemStyle:{color:TC_COLORS.primary},areaStyle:{opacity:.12},data:[71.4,74.2,78.9,81.5,83.0,84.1],markLine:{symbol:'none',lineStyle:{type:'dashed',color:'#f59e0b'},data:[{yAxis:80,name:'验收线'}]}}]}); },
+  list(){ return this.rows.filter(a=>(!this.st||a.status===this.st)&&(!this.q||(a.dept+a.metric).includes(this.q))); },
+  open(a){ this.openDrawer(a.id+' '+a.dept,'<p><b>'+a.metric+'：</b>'+a.value+'（'+a.dev+'）</p><p class="mt-2"><b>为什么：</b>'+a.reason+'</p><p class="mt-2"><b>证据：</b>'+a.evidence+'</p>'); },
+  set(a,s){ a.status=s; this.toast(a.id+' 已标记为'+s+(s==='误报'?'，阈值规则将降权':''),'success'); }
+});}
+
+</script>
+<!--
+============================================================================
+ 智能体 LOOP 抽屉组件（loop-tray）— 全站任何动作按钮的统一入口
+============================================================================
+ 替代悬浮球。任何动作按钮（扫描/执行/生成/一键跟进/派发…）点击后统一滑出
+ 这个抽屉，按 LOOP 流式打印智能体干活：
+   ① 感知(扫哪些数据) → ② 判断(怎么研判) → ③ 调工具(query_agent 入参/返回) → ④ 产出(结论)
+ 每步动作名逐字打字、打完展开输入输出与工具调用、序号圆点变绿打勾。
+
+ 集成：整段粘到 </body> 前。独立 Alpine x-data="loopTray()"，不干扰 pageApp()。
+ 触发：任何按钮 onclick 调 window.fireLoop(配置)。例：
+   fireLoop({title:'扫描全部代理商', engine:'数据采集智能体',
+     steps:[{phase:'感知',act:'连接数据源',in:'HIS/CRM',out:'4源接通',tool:'query_agent(scope=all)',ret:'42家',note:'…'},…],
+     result:'<b>扫描完成，识别8个风险点</b>', confirm:'查看要紧事'})
+============================================================================
+-->
+<style>
+  :root{
+    --primary: 214 95% 44%;
+    --background: 0 0% 100%;
+    --foreground: 218 45% 14%;
+    --muted-foreground: 215 18% 45%;
+    --border: 213 32% 88%;
+    --success: 160 84% 33%;
+    --info: 214 15% 50%;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --background: 214 40% 11%;
+      --foreground: 210 40% 94%;
+      --muted-foreground: 213 22% 68%;
+      --border: 213 28% 26%;
+    }
+  }
+  .lt-mask { position:fixed; inset:0; z-index:9998; background:hsl(0 0% 0% / 40%); }
+  .lt-wrap { position:fixed; right:0; top:0; bottom:0; z-index:9999; width:520px; max-width:94vw; background:hsl(var(--background)); box-shadow:-6px 0 24px hsl(0 0% 0% / 12%); display:flex; flex-direction:column; }
+  .lt-head { height:52px; padding:0 18px; display:flex; align-items:center; gap:10px; box-shadow:inset 0 -1px 0 hsl(var(--border) / 70%); flex-shrink:0; }
+  .lt-body { flex:1; overflow-y:auto; padding:16px; }
+  .lt-body::-webkit-scrollbar { width:6px; } .lt-body::-webkit-scrollbar-thumb { background:hsl(var(--border)); border-radius:3px; }
+  .lt-cursor::after { content:'▋'; animation:lt-blink 1s step-end infinite; color:hsl(var(--primary)); margin-left:1px; }
+  @keyframes lt-blink { 50%{opacity:0;} }
+  .lt-tool { background:hsl(var(--primary) / 90%); color:hsl(0 0% 100%); border-radius:6px; padding:6px 9px; font-size:12px; font-family:ui-monospace,monospace; margin-top:8px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
+</style>
+
+<div x-data="loopTray()" x-init="init()">
+  <template x-if="open">
+    <div>
+      <div class="lt-mask" @click="open=false"></div>
+      <aside class="lt-wrap" x-transition:enter="transition transform duration-300" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0">
+        <div class="lt-head">
+          <span class="w-9 h-9 rounded-lg flex items-center justify-center text-white flex-shrink-0" style="background:linear-gradient(135deg,hsl(var(--primary) / 78%),hsl(var(--primary)));"><i class="fa fa-robot"></i></span>
+          <div class="flex-1 min-w-0">
+            <div class="text-[14px] font-semibold" style="color:hsl(var(--foreground))" x-text="cfg.title"></div>
+            <div class="text-[11.5px] flex items-center gap-1" :style="playing ? 'color:hsl(var(--primary))' : 'color:hsl(var(--success))'"><span class="w-1.5 h-1.5 rounded-full" :style="playing ? 'background:hsl(var(--primary))' : 'background:hsl(var(--success))'"></span><span x-text="cfg.engine"></span> · <span x-text="playing?'执行中':'已完成'"></span></div>
+          </div>
+          <button class="w-7 h-7 rounded flex items-center justify-center text-[12px]" style="color:hsl(var(--muted-foreground))" @click="open=false"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="lt-body" x-ref="body">
+          <div class="text-[12px] font-medium flex items-center gap-1.5 mb-3" style="color:hsl(var(--primary))">
+            <i class="fa fa-diagram-project"></i>智能体正按 LOOP 干活：感知 → 判断 → 调工具 → 产出
+          </div>
+          <div class="relative pl-6">
+            <div class="absolute left-[9px] top-1 bottom-1 w-px" style="background:hsl(var(--border))"></div>
+            <template x-for="(s,si) in cfg.steps" :key="cfg._id+'-'+si">
+              <div class="relative mb-3.5" x-show="si <= curIdx" x-transition:enter="transition duration-300" x-transition:enter-start="opacity-0 translate-y-1" x-transition:enter-end="opacity-100 translate-y-0">
+                <div class="absolute -left-6 top-0 w-[19px] h-[19px] rounded-full text-white text-[11px] flex items-center justify-center font-semibold" :style="si < done ? 'background:hsl(var(--success))' : 'background:hsl(var(--primary))'">
+                  <i class="fa fa-check" x-show="si < done"></i><span x-show="si >= done" x-text="si+1"></span>
+                </div>
+                <div class="rounded-lg border px-3.5 py-2.5 transition-colors" style="border-color:hsl(var(--border));background:transparent" :style="si===curIdx && si>=done ? 'border-color:hsl(var(--primary) / 40%);background:hsl(var(--primary) / 4%)' : 'border-color:hsl(var(--border));background:transparent'">
+                  <div class="flex items-center gap-1.5 mb-1"><span class="text-[12px] px-1.5 py-0.5 rounded" style="background:hsl(var(--primary) / 10%);color:hsl(var(--primary))" x-text="s.phase || (['感知','判断','调工具','产出'][si] || '执行')"></span></div>
+                  <div class="text-[14px] font-medium" style="color:hsl(var(--foreground))"><span x-text="si===curIdx ? typing : s.act"></span><span x-show="si===curIdx && si>=done" class="lt-cursor"></span></div>
+                  <div x-show="si < done" x-transition:enter="transition duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                    <div x-show="s.in || s.out" class="flex items-center gap-1.5 text-[12px] flex-wrap mt-1.5">
+                      <span x-show="s.in" class="px-2 py-0.5 rounded text-[12px]" style="background:hsl(var(--primary) / 5%);color:hsl(var(--muted-foreground))"><i class="fa fa-arrow-right-to-bracket mr-1" style="color:hsl(var(--primary))"></i><span x-text="s.in"></span></span>
+                      <i x-show="s.in && s.out" class="fa fa-angle-right" style="color:hsl(var(--muted-foreground))"></i>
+                      <span x-show="s.out" class="px-2 py-0.5 rounded font-medium" style="background:hsl(var(--primary) / 10%);color:hsl(var(--primary))"><i class="fa fa-arrow-right-from-bracket mr-1"></i><span x-text="s.out"></span></span>
+                    </div>
+                    <div x-show="s.tool" class="lt-tool"><i class="fa fa-screwdriver-wrench text-[11px]"></i><code x-text="s.tool"></code><i class="fa fa-angle-right text-white/50"></i><span class="text-white/90" x-text="s.ret"></span></div>
+                    <div x-show="s.note" class="text-[12px] mt-1.5 leading-relaxed" style="color:hsl(var(--muted-foreground))" x-text="s.note"></div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div x-show="!playing && cfg.result" x-transition class="mt-2 rounded-lg px-4 py-3" style="background:hsl(var(--primary) / 8%);border:1px solid hsl(var(--primary) / 30%)">
+            <div class="text-[12px] font-medium mb-1" style="color:hsl(var(--primary))"><i class="fa fa-circle-check mr-1"></i>产出结论</div>
+            <div class="text-[14px] leading-relaxed" style="color:hsl(var(--foreground))" x-html="cfg.result"></div>
+          </div>
+        </div>
+        <div class="p-4 flex-shrink-0" style="box-shadow:inset 0 1px 0 hsl(var(--border) / 70%)">
+          <div class="flex gap-3">
+            <button class="flex-1 py-2.5 rounded-lg text-sm font-medium" style="border:1px solid hsl(var(--border));color:hsl(var(--muted-foreground));background:hsl(var(--background))" @click="open=false"><i class="fa fa-times mr-1.5 text-xs"></i>关闭</button>
+            <button x-show="!playing && cfg.confirm" class="flex-1 py-2.5 rounded-lg text-white text-sm font-medium" style="background:hsl(var(--primary))" @click="open=false"><i class="fa fa-check mr-1.5 text-xs"></i><span x-text="cfg.confirm"></span></button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </template>
+</div>
+
+<script>
+function loopTray() {
+  return {
+    open:false, playing:false, curIdx:-1, done:0, typing:'', seq:0,
+    cfg:{ title:'', engine:'', steps:[], result:'', confirm:'', _id:0 },
+    _sleep(ms){ return new Promise(r=>setTimeout(r,ms)); },
+    init(){ window.fireLoop = (c)=>this.fire(c); },
+    scrollB(){ this.$nextTick(()=>{ const el=this.$refs.body; if(el) el.scrollTop=el.scrollHeight; }); },
+    async fire(c){
+      this.cfg = Object.assign({title:'',engine:'智能体',steps:[],result:'',confirm:'',_id:Date.now()}, c);
+      this.cfg._id = Date.now();
+      this.open = true;
+      const mySeq = ++this.seq;
+      this.playing=true; this.curIdx=-1; this.done=0; this.typing='';
+      await this._sleep(180);
+      for(let i=0;i<this.cfg.steps.length;i++){
+        if(mySeq!==this.seq) return;
+        this.curIdx=i; this.typing='';
+        const act=this.cfg.steps[i].act;
+        for(let ci=0;ci<act.length;ci++){
+          if(mySeq!==this.seq) return;
+          this.typing=act.slice(0,ci+1);
+          this.scrollB();
+          await this._sleep(36);
+        }
+        await this._sleep(200);
+        this.done=i+1;
+        this.scrollB();
+        await this._sleep(400);
+      }
+      if(mySeq===this.seq){ this.playing=false; this.scrollB(); }
+    },
+  };
+}
+</script>
+
+<!--
+  ═══════════════════════════════════════════════════════════════
+  原型批注组件 annotator —— 评审时给"跟客户需求不一致的地方"打标签
+  用法：把这整段（CSS + HTML + JS）粘贴到任意原型页面 </body> 前即可。
+  纯原生 JS，不依赖 Alpine，不干扰页面业务逻辑。按页面路径分别存 localStorage。
+  ═══════════════════════════════════════════════════════════════
+-->
+<style>
+  #anno-fab { position:fixed; right:20px; bottom:20px; z-index:9998; width:48px; height:48px; border-radius:50%; background:#2563eb; color:#fff; border:none; cursor:pointer; box-shadow:0 4px 12px rgba(37,99,235,.35); display:flex; align-items:center; justify-content:center; font-size:18px; transition:all .2s; }
+  #anno-fab:hover { background:#1d4ed8; }
+  #anno-fab.on { background:#dc2626; box-shadow:0 4px 12px rgba(220,38,38,.35); }
+  #anno-fab .badge { position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 4px; border-radius:9px; background:#dc2626; color:#fff; font-size:11px; line-height:18px; text-align:center; font-weight:600; }
+  body.anno-mode { cursor:crosshair; }
+  body.anno-mode #anno-fab { cursor:pointer; }
+  /* 页面上的标记点 */
+  .anno-pin { position:absolute; z-index:9990; width:22px; height:22px; border-radius:50% 50% 50% 0; transform:rotate(-45deg) translate(-50%,-50%); cursor:pointer; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.25); font-size:0; transition:opacity .2s; }
+  .anno-pin span { transform:rotate(45deg); display:block; width:100%; height:100%; }
+  body:not(.anno-mode) .anno-pin { opacity:.45; }
+  body:not(.anno-mode) .anno-pin:hover { opacity:1; }
+  .anno-t-mismatch { background:#dc2626; }
+  .anno-t-confirm  { background:#d97706; }
+  .anno-t-change   { background:#2563eb; }
+  .anno-t-idea     { background:#059669; }
+  .anno-pin.resolved { background:#94a3b8 !important; }
+  /* 落点后的输入气泡 */
+  #anno-pop { position:fixed; z-index:9999; width:280px; background:#fff; border:1px solid #e8ecf0; border-radius:12px; box-shadow:0 8px 28px rgba(0,0,0,.15); padding:12px; display:none; }
+  #anno-pop .tags { display:flex; gap:6px; margin-bottom:8px; }
+  #anno-pop .tag { flex:1; text-align:center; font-size:11px; padding:5px 0; border-radius:6px; cursor:pointer; border:1.5px solid transparent; color:#fff; opacity:.55; transition:opacity .15s; }
+  #anno-pop .tag.sel { opacity:1; border-color:#333; }
+  #anno-pop textarea { width:100%; box-sizing:border-box; height:60px; border:1px solid #e8ecf0; border-radius:8px; padding:8px; font-size:13px; resize:none; outline:none; font-family:inherit; }
+  #anno-pop textarea:focus { border-color:#2563eb; }
+  #anno-pop .btns { display:flex; gap:8px; margin-top:8px; }
+  #anno-pop button { flex:1; padding:7px 0; border-radius:7px; font-size:12.5px; cursor:pointer; border:none; }
+  #anno-pop .ok { background:#2563eb; color:#fff; }
+  #anno-pop .cancel { background:#f5f7fa; color:#475569; border:1px solid #e8ecf0; }
+  /* 右侧清单面板 */
+  #anno-panel { position:fixed; right:0; top:0; bottom:0; z-index:9997; width:340px; background:#fff; border-left:1px solid #e8ecf0; box-shadow:-4px 0 20px rgba(0,0,0,.08); transform:translateX(100%); transition:transform .25s; display:flex; flex-direction:column; }
+  #anno-panel.open { transform:translateX(0); }
+  #anno-panel header { height:52px; padding:0 16px; display:flex; align-items:center; border-bottom:1px solid #e8ecf0; flex-shrink:0; }
+  #anno-panel header .title { font-size:14px; font-weight:600; color:#1e3a8a; flex:1; }
+  #anno-panel header button { background:none; border:none; cursor:pointer; color:#999; font-size:16px; padding:4px 8px; }
+  #anno-list { flex:1; overflow-y:auto; padding:12px; }
+  #anno-list:empty::after { content:'还没有批注。开启批注模式，点页面任意位置就能打标签。'; display:block; color:#999; font-size:12.5px; text-align:center; padding:30px 12px; line-height:1.7; }
+  .anno-card { border:1px solid #e8ecf0; border-radius:10px; padding:10px; margin-bottom:8px; cursor:pointer; transition:border-color .15s; }
+  .anno-card:hover { border-color:#bfdbfe; }
+  .anno-card .head { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+  .anno-card .lbl { font-size:11px; padding:1px 7px; border-radius:4px; color:#fff; }
+  .anno-card.done { opacity:.55; }
+  .anno-card.done .txt { text-decoration:line-through; }
+  .anno-card .loc { font-size:11.5px; color:#1e40af; background:#eff6ff; border-radius:5px; padding:3px 7px; margin-bottom:5px; line-height:1.4; word-break:break-all; }
+  .anno-card .txt { font-size:13px; color:#333; line-height:1.5; word-break:break-all; }
+  .anno-card .acts { display:flex; gap:12px; margin-top:6px; font-size:11.5px; }
+  .anno-card .acts span { color:#999; cursor:pointer; }
+  .anno-card .acts span:hover { color:#2563eb; }
+  #anno-panel footer { padding:12px 16px; border-top:1px solid #e8ecf0; flex-shrink:0; display:flex; gap:8px; }
+  #anno-panel footer button { flex:1; padding:8px 0; border-radius:8px; font-size:12.5px; cursor:pointer; border:1px solid #e8ecf0; background:#fff; color:#475569; }
+  #anno-panel footer button.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
+</style>
+
+<button id="anno-fab" title="批注模式"><i class="fa fa-comment-dots"></i><span class="badge" style="display:none">0</span></button>
+
+<div id="anno-pop">
+  <div class="tags">
+    <div class="tag anno-t-mismatch" data-tag="mismatch">需求不符</div>
+    <div class="tag anno-t-confirm" data-tag="confirm">待确认</div>
+    <div class="tag anno-t-change" data-tag="change">客户要改</div>
+    <div class="tag anno-t-idea" data-tag="idea">建议</div>
+  </div>
+  <textarea placeholder="写下这里跟客户需求哪里不一致…"></textarea>
+  <div class="btns"><button class="cancel">取消</button><button class="ok">保存批注</button></div>
+</div>
+
+<aside id="anno-panel">
+  <header>
+    <span class="title">批注清单 <span id="anno-count" style="color:#999;font-weight:400"></span></span>
+    <button id="anno-close"><i class="fa fa-times"></i></button>
+  </header>
+  <div id="anno-list"></div>
+  <footer>
+    <button id="anno-export" class="primary"><i class="fa fa-file-export"></i> 导出清单</button>
+    <button id="anno-clear"><i class="fa fa-trash"></i> 清空</button>
+  </footer>
+</aside>
+
+<script>
+(function(){
+  const TAGS = {
+    mismatch: {name:'需求不符', cls:'anno-t-mismatch', color:'#dc2626'},
+    confirm:  {name:'待确认',   cls:'anno-t-confirm',  color:'#d97706'},
+    change:   {name:'客户要改', cls:'anno-t-change',   color:'#2563eb'},
+    idea:     {name:'建议',     cls:'anno-t-idea',     color:'#059669'},
+  };
+  const KEY = 'anno::' + location.pathname.split('/').pop();  // 按页面存
+  let annos = JSON.parse(localStorage.getItem(KEY) || '[]');
+  let mode = false, pending = null, curTag = 'mismatch';
+
+  const fab = document.getElementById('anno-fab');
+  const badge = fab.querySelector('.badge');
+  const pop = document.getElementById('anno-pop');
+  const popTa = pop.querySelector('textarea');
+  const panel = document.getElementById('anno-panel');
+  const list = document.getElementById('anno-list');
+
+  function save(){ localStorage.setItem(KEY, JSON.stringify(annos)); render(); }
+  function uid(){ return 'a' + Date.now() + Math.floor(performance.now()); }
+
+  // 渲染页面标记点 + 右侧清单 + 徽标
+  function render(){
+    document.querySelectorAll('.anno-pin').forEach(e=>e.remove());
+    annos.forEach(a=>{
+      const pin = document.createElement('div');
+      pin.className = 'anno-pin ' + TAGS[a.tag].cls + (a.done?' resolved':'');
+      pin.style.left = a.x + 'px'; pin.style.top = a.y + 'px';
+      pin.title = TAGS[a.tag].name + '：' + a.text;
+      pin.onclick = (e)=>{ e.stopPropagation(); panel.classList.add('open'); const c=document.getElementById('card-'+a.id); if(c) c.scrollIntoView({block:'center'}); };
+      document.body.appendChild(pin);
+    });
+    const n = annos.filter(a=>!a.done).length;
+    badge.style.display = annos.length ? 'block' : 'none';
+    badge.textContent = annos.length;
+    document.getElementById('anno-count').textContent = annos.length ? `共 ${annos.length} 条 · 待处理 ${n}` : '';
+    list.innerHTML = annos.map(a=>`
+      <div class="anno-card ${a.done?'done':''}" id="card-${a.id}">
+        <div class="head"><span class="lbl" style="background:${TAGS[a.tag].color}">${TAGS[a.tag].name}</span></div>
+        ${a.target&&a.target.type ? `<div class="loc">📍 ${(a.target.type+(a.target.label?'「'+a.target.label+'」':'')+(a.target.context?' · '+a.target.context:'')).replace(/</g,'&lt;')}</div>` : ''}
+        <div class="txt">${a.text.replace(/</g,'&lt;')}</div>
+        <div class="acts">
+          <span data-act="done" data-id="${a.id}">${a.done?'↩ 重开':'✓ 已解决'}</span>
+          <span data-act="del" data-id="${a.id}">✕ 删除</span>
+        </div>
+      </div>`).join('');
+  }
+
+  // 抓取被点元素的定位描述——让批注能喂给大模型精确改
+  function describeTarget(el){
+    if(!el || el===document.body) return {type:'页面', label:'', context:'', selector:''};
+    // 1. 元素类型 + 自身文字
+    const tag = el.tagName.toLowerCase();
+    let type = '元素', self = (el.innerText||el.textContent||'').trim().replace(/\s+/g,' ').slice(0,30);
+    if(tag==='button' || el.getAttribute('role')==='button' || el.closest('button')){ type='按钮'; const b=el.closest('button')||el; self=(b.innerText||'').trim().replace(/\s+/g,' ').slice(0,30); }
+    else if(tag==='a'){ type='链接'; }
+    else if(tag==='input'||tag==='textarea'){ type='输入框'; self = el.placeholder||el.value||''; }
+    else if(/^h[1-6]$/.test(tag)){ type='标题'; }
+    else if(tag==='img'){ type='图片'; self = el.alt||'图片'; }
+    else if(tag==='i'||el.querySelector('img,i.fa')){ type='图标'; }
+    // 2. 往上找区块上下文（卡片/section 里最近的一个标题性文字）
+    let context = '';
+    let p = el;
+    for(let i=0;i<6 && p;i++){
+      p = p.parentElement; if(!p) break;
+      // 找这个容器里第一个"像标题"的文字
+      const h = p.querySelector('h1,h2,h3,h4,.text-\\[15px\\],[class*="font-semibold"],[class*="font-bold"]');
+      if(h){ const t=(h.innerText||'').trim().replace(/\s+/g,' ').slice(0,24); if(t && t!==self){ context=t; break; } }
+    }
+    // 3. 生成一个粗略选择器（class 首个 + 文字）便于人工复核
+    let selector = tag;
+    if(el.id) selector += '#'+el.id;
+    else if(el.className && typeof el.className==='string'){ const c=el.className.split(' ').filter(x=>x&&!x.startsWith('anno')).slice(0,2).join('.'); if(c) selector += '.'+c; }
+    return { type, label: self, context, selector };
+  }
+
+  // 落点：批注模式下点页面
+  document.addEventListener('click', (e)=>{
+    if(!mode) return;
+    if(e.target.closest('#anno-fab,#anno-pop,#anno-panel,.anno-pin')) return;
+    pending = { x: e.pageX, y: e.pageY, target: describeTarget(e.target) };
+    curTag = 'mismatch';
+    popTa.value = '';
+    pop.querySelectorAll('.tag').forEach(t=>t.classList.toggle('sel', t.dataset.tag==='mismatch'));
+    pop.style.left = Math.min(e.clientX, window.innerWidth-296) + 'px';
+    pop.style.top = Math.min(e.clientY, window.innerHeight-200) + 'px';
+    pop.style.display = 'block';
+    popTa.focus();
+  });
+
+  pop.querySelectorAll('.tag').forEach(t=>t.onclick=()=>{ curTag=t.dataset.tag; pop.querySelectorAll('.tag').forEach(x=>x.classList.toggle('sel',x===t)); });
+  pop.querySelector('.cancel').onclick = ()=>{ pop.style.display='none'; pending=null; };
+  pop.querySelector('.ok').onclick = ()=>{
+    const text = popTa.value.trim(); if(!text||!pending) return;
+    annos.push({ id:uid(), x:pending.x, y:pending.y, target:pending.target, tag:curTag, text, done:false });
+    pop.style.display='none'; pending=null; save(); panel.classList.add('open');
+  };
+
+  // 清单操作（事件委托）
+  list.onclick = (e)=>{
+    const s = e.target.closest('[data-act]'); if(!s) return;
+    const id = s.dataset.id, a = annos.find(x=>x.id===id); if(!a) return;
+    if(s.dataset.act==='done') a.done = !a.done;
+    if(s.dataset.act==='del') annos = annos.filter(x=>x.id!==id);
+    save();
+  };
+
+  // FAB 切换批注模式
+  fab.onclick = ()=>{
+    mode = !mode;
+    document.body.classList.toggle('anno-mode', mode);
+    fab.classList.toggle('on', mode);
+    fab.querySelector('i').className = mode ? 'fa fa-xmark' : 'fa fa-comment-dots';
+    if(mode) panel.classList.add('open'); else pop.style.display='none';
+  };
+  document.getElementById('anno-close').onclick = ()=>panel.classList.remove('open');
+
+  // 导出 Markdown（面向大模型：带元素定位，能直接照着改）
+  document.getElementById('anno-export').onclick = ()=>{
+    if(!annos.length){ alert('还没有批注'); return; }
+    const page = document.title || location.pathname;
+    const file = location.pathname.split('/').pop();
+    let md = `# 原型修改需求清单\n\n`;
+    md += `> 页面：${page}（文件 \`${file}\`）\n`;
+    md += `> 导出时间：${new Date().toLocaleString('zh-CN')}\n`;
+    md += `> 说明：以下是评审时标注的、与客户需求不一致的地方。每条含【定位】（改哪个元素、在哪个区块）和【要求】（改成什么），可直接据此修改原型。\n\n`;
+    const LBL = {mismatch:'需求不符（必改）', confirm:'待确认', change:'客户要改', idea:'建议优化'};
+    Object.keys(TAGS).forEach(k=>{
+      const items = annos.filter(a=>a.tag===k);
+      if(!items.length) return;
+      md += `## ${LBL[k]}（${items.length} 条）\n\n`;
+      items.forEach((a,i)=>{
+        const t = a.target || {};
+        const loc = t.type
+          ? `${t.type}${t.label?`「${t.label}」`:''}${t.context?`（位于：${t.context}）`:''}`
+          : '（未记录定位）';
+        md += `${i+1}. **定位**：${loc}\n`;
+        md += `   **要求**：${a.text}${a.done?' _（已解决）_':''}\n`;
+        if(t.selector) md += `   **参考选择器**：\`${t.selector}\`\n`;
+        md += '\n';
+      });
+    });
+    const blob = new Blob([md], {type:'text/markdown'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = `原型修改清单-${file}-${Date.now()}.md`; link.click();
+    URL.revokeObjectURL(url);
+  };
+  document.getElementById('anno-clear').onclick = ()=>{ if(confirm('确定清空本页全部批注？')){ annos=[]; save(); } };
+
+  render();
+})();
+</script>
+
+</body>
+</html>

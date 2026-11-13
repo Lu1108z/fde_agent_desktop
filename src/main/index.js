@@ -5563,8 +5563,34 @@ function whenReadyToShow(win, timeoutMs = 8000) {
   });
 }
 
+// 示例项目：安装包自带一个走完五个阶段的完整案例，首次启动复制到项目列表。
+// 每个示例只装一次（记在 sample-projects.json）：用户删掉后不会再出现，也不覆盖用户改过的内容。
+function installSampleProjects() {
+  try {
+    const src = app.isPackaged ? path.join(process.resourcesPath, 'sample-projects') : path.join(__dirname, '..', '..', 'sample-projects');
+    if (!fs.existsSync(src)) return;
+    const recordFile = path.join(PRODUCT_LOBSTER_HOME, 'sample-projects.json');
+    let installed = [];
+    try { installed = JSON.parse(fs.readFileSync(recordFile, 'utf-8')).installed || []; } catch { /* 首次 */ }
+    let changed = false;
+    for (const e of fs.readdirSync(src, { withFileTypes: true })) {
+      if (!e.isDirectory() || installed.includes(e.name)) continue;
+      const target = path.join(PROJECTS_DIR, e.name);
+      if (!fs.existsSync(target)) {
+        fs.cpSync(path.join(src, e.name), target, { recursive: true });
+        const meta = readProjectMeta(e.name);
+        if (meta) { const now = new Date().toISOString(); meta.updatedAt = now; meta.isSample = true; writeProjectMeta(e.name, meta); }
+        console.log(`[main] 已安装示例项目 ${e.name}`);
+      }
+      installed.push(e.name); changed = true;
+    }
+    if (changed) fs.writeFileSync(recordFile, JSON.stringify({ installed }, null, 2));
+  } catch (err) { console.warn('[main] 示例项目安装失败:', err.message); }
+}
+
 app.whenReady().then(async () => {
   ensureDirs();
+  installSampleProjects();
   enforceFixedModels();
   buildAppMenu();
   registerWindowControls();

@@ -41,6 +41,7 @@ async function main() {
       {from:path.join(root,'med-knowledge'),to:'med-knowledge'},
       {from:path.join(root,'clinical-knowledge'),to:'clinical-knowledge'},
       {from:path.join(root,'med-ai-demo'),to:'med-ai-demo',filter:['**/*','!**/.DS_Store']},
+      {from:path.join(root,'sample-projects'),to:'sample-projects',filter:['**/*','!**/.DS_Store']},
       {from:keys,to:'license-keys',filter:['aes.key','public_key.pem']},
       {from:engine,to:'hermes-acp'},
       {from:path.join(root,'node_modules','ffmpeg-static'),to:'ffmpeg',filter:['ffmpeg','ffmpeg.LICENSE']},

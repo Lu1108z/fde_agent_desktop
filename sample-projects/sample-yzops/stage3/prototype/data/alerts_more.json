@@ -1,0 +1,79 @@
+[
+ {
+  "id": "AL-0528-06",
+  "dept": "普通外科",
+  "metric": "平均住院日",
+  "value": "7.9 天",
+  "dev": "环比 +0.7 天",
+  "level": "warning",
+  "status": "已确认",
+  "reason": "术前等待检查平均 2.1 天，超声预约排队",
+  "evidence": "D-01 床位日报 + 检查预约记录"
+ },
+ {
+  "id": "AL-0527-07",
+  "dept": "泌尿外科",
+  "metric": "耗占比",
+  "value": "34.2%",
+  "dev": "环比 +2.6pp",
+  "level": "warning",
+  "status": "待确认",
+  "reason": "输尿管软镜耗材单次使用量上升",
+  "evidence": "D-02 费用明细：软镜耗材 5 月 46 例"
+ },
+ {
+  "id": "AL-0526-08",
+  "dept": "妇产科",
+  "metric": "出院人次",
+  "value": "612 人次",
+  "dev": "环比 -9.8%",
+  "level": "warning",
+  "status": "误报",
+  "reason": "季节性波动，与去年同期持平",
+  "evidence": "科主任 2026-05-27 反馈"
+ },
+ {
+  "id": "AL-0525-09",
+  "dept": "消化内科",
+  "metric": "次均住院费用",
+  "value": "16,980 元",
+  "dev": "环比 +7.3%",
+  "level": "warning",
+  "status": "已确认",
+  "reason": "ESD 手术量增加 18 例",
+  "evidence": "D-02 费用明细"
+ },
+ {
+  "id": "AL-0524-10",
+  "dept": "康复医学科",
+  "metric": "床位使用率",
+  "value": "108.0%",
+  "dev": "超阈值 100%",
+  "level": "danger",
+  "status": "已确认",
+  "reason": "神经内科转入患者积压，加床 9 张",
+  "evidence": "D-01 床位日报"
+ },
+ {
+  "id": "AL-0523-11",
+  "dept": "眼科",
+  "metric": "平均住院日",
+  "value": "2.8 天",
+  "dev": "环比 -0.6 天",
+  "level": "success",
+  "status": "已确认",
+  "reason": "日间手术占比提升至 64%",
+  "evidence": "D-01 床位日报"
+ },
+ {
+  "id": "AL-0522-12",
+  "dept": "内分泌科",
+  "metric": "药占比",
+  "value": "35.1%",
+  "dev": "环比 +1.9pp",
+  "level": "warning",
+  "status": "待确认",
+  "reason": "GLP-1 类药物使用量增加",
+  "evidence": "D-02 费用明细"
+ }
+]

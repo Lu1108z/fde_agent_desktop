@@ -1,0 +1,155 @@
+{
+  "name": "【示例】云州一院运营决策智能体",
+  "slug": "sample-yzops",
+  "sessionId": null,
+  "requirement": "云州市第一人民医院运营管理部希望建设运营决策智能体：统一口径月报、指标异常研判、自然语言问数、DRG 病组分析。（完整五阶段示例项目，数据均为模拟，可随时删除）",
+  "createdAt": "2026-06-01T08:00:00.000Z",
+  "updatedAt": "2026-11-13T02:50:47.724Z",
+  "phase": "iterating",
+  "projectType": "fde-project",
+  "stage": 5,
+  "stageStatus": {
+    "1": "done",
+    "2": "done",
+    "3": "done",
+    "4": "done",
+    "5": "done"
+  },
+  "outputs": {
+    "hasSpec": false,
+    "hasPrototype": true,
+    "prototypeFileCount": 23,
+    "deliverables": [
+      {
+        "stage": 1,
+        "base": "business-flow",
+        "file": "stage1/business-flow.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 1,
+        "base": "data-flow",
+        "file": "stage1/data-flow.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 1,
+        "base": "data-requirements",
+        "file": "stage1/data-requirements.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 1,
+        "base": "interview-outline",
+        "file": "stage1/interview-outline.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 1,
+        "base": "research-brief",
+        "file": "stage1/research-brief.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 2,
+        "base": "ai-capability",
+        "file": "stage2/ai-capability.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 2,
+        "base": "contact-form",
+        "file": "stage2/contact-form.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 2,
+        "base": "demo-review-R-01",
+        "file": "stage2/demo-review-R-01.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 3,
+        "base": "agent-design",
+        "file": "stage3/agent-design.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 3,
+        "base": "data-metric",
+        "file": "stage3/data-metric.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 3,
+        "base": "final-req",
+        "file": "stage3/final-req.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 3,
+        "base": "impl-plan",
+        "file": "stage3/impl-plan.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 3,
+        "base": "prd",
+        "file": "stage3/prd.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 3,
+        "base": "prototype-final",
+        "file": "stage3/prototype-final.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 4,
+        "base": "demo-review",
+        "file": "stage4/demo-review.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 4,
+        "base": "deploy-doc",
+        "file": "stage4/deploy-doc.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 4,
+        "base": "progress",
+        "file": "stage4/progress.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 5,
+        "base": "delivery-sign",
+        "file": "stage5/delivery-sign.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 5,
+        "base": "feedback-tracker",
+        "file": "stage5/feedback-tracker.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 5,
+        "base": "iteration",
+        "file": "stage5/iteration.md",
+        "ext": ".md"
+      },
+      {
+        "stage": 5,
+        "base": "usage-watch",
+        "file": "stage5/usage-watch.md",
+        "ext": ".md"
+      }
+    ],
+    "derivedStage": 5
+  },
+  "messageCount": 0,
+  "workflowMode": "product-flow-v1",
+  "isSample": true
+}

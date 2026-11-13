@@ -1,0 +1,83 @@
+[
+ {
+  "code": "M-01",
+  "label": "门急诊人次",
+  "value": "22.6",
+  "unit": "万",
+  "yoy": "+4.8%",
+  "tone": "success",
+  "detail": "口径：挂号成功且未退号的门急诊人次（含急诊留观）。来源：CDR 挂号表。"
+ },
+ {
+  "code": "M-02",
+  "label": "出院人次",
+  "value": "8,216",
+  "unit": "人次",
+  "yoy": "+3.1%",
+  "tone": "success",
+  "detail": "口径：出院日期在统计月内的出院人次，不含转科。来源：CDR 出院记录。"
+ },
+ {
+  "code": "M-03",
+  "label": "床位使用率",
+  "value": "94.6",
+  "unit": "%",
+  "yoy": "-1.2pp",
+  "tone": "muted-foreground",
+  "detail": "口径：实际占用总床日 ÷ 实际开放总床日（不含加床，院长办公会 2026-06-24 审定）。"
+ },
+ {
+  "code": "M-04",
+  "label": "平均住院日",
+  "value": "7.3",
+  "unit": "天",
+  "yoy": "-0.2",
+  "tone": "success",
+  "detail": "口径：出院者占用总床日 ÷ 出院人次。"
+ },
+ {
+  "code": "M-05",
+  "label": "次均住院费用",
+  "value": "19,860",
+  "unit": "元",
+  "yoy": "+2.4%",
+  "tone": "warning",
+  "detail": "口径：出院患者住院总费用 ÷ 出院人次。来源：CDR 费用明细。"
+ },
+ {
+  "code": "M-06",
+  "label": "药占比",
+  "value": "26.3",
+  "unit": "%",
+  "yoy": "-0.8pp",
+  "tone": "success",
+  "detail": "口径：药品收入（不含中药饮片，国考口径）÷ 医疗收入。"
+ },
+ {
+  "code": "M-07",
+  "label": "耗占比",
+  "value": "21.7",
+  "unit": "%",
+  "yoy": "+0.6pp",
+  "tone": "warning",
+  "detail": "口径：卫生材料收入 ÷ 医疗收入。"
+ },
+ {
+  "code": "M-08",
+  "label": "CMI",
+  "value": "1.07",
+  "unit": "",
+  "yoy": "+0.01",
+  "tone": "success",
+  "detail": "口径：DRG 入组病例权重之和 ÷ 入组例数。来源：病案系统入组明细。"
+ },
+ {
+  "code": "M-09",
+  "label": "DRG 结余",
+  "value": "-168",
+  "unit": "万元",
+  "yoy": "亏损收窄 21%",
+  "tone": "warning",
+  "detail": "口径：DRG 支付标准合计 - 实际费用合计（入组病例）。"
+ }
+]

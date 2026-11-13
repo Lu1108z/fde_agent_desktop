@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "customer": {
+    "name": "云州市第一人民医院",
+    "industry": "医疗",
+    "direction": "运营管理",
+    "contacts": "刘振华副院长、陈立文主任、赵敏副处长、孙浩主任、钱永安主任"
+  },
+  "goal": {
+    "focus": "了解业务与准备客户访谈",
+    "text": "把全院运营指标合成一套口径，月报 2 个工作日内出初稿，异常当周发现，院领导问数当天可答。",
+    "counterpart": "运营管理部 陈立文",
+    "plannedAt": "2026-06-03"
+  },
+  "facts": {
+    "known": [],
+    "possible": [],
+    "unconfirmed": []
+  },
+  "dimensions": {
+    "scenario": {
+      "status": "complete",
+      "summary": "月度运营分析、科室指标盯防、DRG 病组分析、院领导问数",
+      "notes": "",
+      "sources": [
+        "knowledge/02-需求说明-运营管理部.md"
+      ]
+    },
+    "roles": {
+      "status": "complete",
+      "summary": "院领导、运营管理部、财务处、DRG 办、信息中心、临床科主任",
+      "notes": "",
+      "sources": [
+        "knowledge/01-医院概况.md"
+      ]
+    },
+    "process": {
+      "status": "complete",
+      "summary": "导表 → 核对口径 → Excel 汇总 → 撰写 → 人工找异常",
+      "notes": "",
+      "sources": [
+        "knowledge/02-需求说明-运营管理部.md"
+      ]
+    },
+    "data": {
+      "status": "partial",
+      "summary": "CDR 已建；HRP、病案未接入；口径表待审定",
+      "notes": "",
+      "sources": [
+        "knowledge/01-医院概况.md",
+        "knowledge/03-访谈记录-财务处与医务处.md"
+      ]
+    },
+    "pain": {
+      "status": "complete",
+      "summary": "口径三套、月报占满人力、异常滞后、DRG 覆盖不足、问数慢",
+      "notes": "",
+      "sources": [
+        "knowledge/02-需求说明-运营管理部.md"
+      ]
+    },
+    "value": {
+      "status": "complete",
+      "summary": "月报初稿自动生成、异常研判、自然语言问数、DRG 按月全量",
+      "notes": "",
+      "sources": [
+        "knowledge/02-需求说明-运营管理部.md"
+      ]
+    }
+  },
+  "customDimensions": [],
+  "hiddenDimensions": [],
+  "modules": {
+    "industry": {
+      "notes": ""
+    },
+    "background": {
+      "notes": ""
+    },
+    "communication": {
+      "notes": ""
+    }
+  },
+  "openQuestions": [
+    {
+      "id": "q1",
+      "question": "Q-01 口径表审定与冻结",
+      "dimension": "process",
+      "owner": "运营管理部",
+      "source": "模拟测试数据",
+      "status": "resolved",
+      "at": "2026-06-02T08:00:00.000Z"
+    },
+    {
+      "id": "q2",
+      "question": "Q-02 HRP 只读视图开放范围",
+      "dimension": "data",
+      "owner": "信息中心",
+      "source": "模拟测试数据",
+      "status": "resolved",
+      "at": "2026-06-02T08:00:00.000Z"
+    },
+    {
+      "id": "q3",
+      "question": "Q-03 DRG 导出字段含支付标准",
+      "dimension": "data",
+      "owner": "DRG 办",
+      "source": "模拟测试数据",
+      "status": "resolved",
+      "at": "2026-06-02T08:00:00.000Z"
+    },
+    {
+      "id": "q4",
+      "question": "Q-04 CDR 费用明细覆盖范围",
+      "dimension": "data",
+      "owner": "信息中心",
+      "source": "模拟测试数据",
+      "status": "resolved",
+      "at": "2026-06-02T08:00:00.000Z"
+    },
+    {
+      "id": "q5",
+      "question": "Q-05 院领导问数习惯",
+      "dimension": "scenario",
+      "owner": "院办",
+      "source": "模拟测试数据",
+      "status": "resolved",
+      "at": "2026-06-02T08:00:00.000Z"
+    },
+    {
+      "id": "q6",
+      "question": "Q-06 异常整改跟踪闭环",
+      "dimension": "process",
+      "owner": "运营管理部",
+      "source": "模拟测试数据",
+      "status": "resolved",
+      "at": "2026-06-02T08:00:00.000Z"
+    }
+  ],
+  "requirements": [],
+  "decisions": [
+    {
+      "at": "2026-06-02T10:00:00.000Z",
+      "by": "吴航",
+      "decision": "阶段一完成，可以携带待确认问题进入阶段二",
+      "evidence": ".fde-flow/stage1-handoff.md"
+    }
+  ],
+  "deliverables": {
+    "stage1/business-flow.md": {
+      "versions": [
+        {
+          "version": 1,
+          "at": "2026-06-01T08:00:00.000Z",
+          "status": "confirmed",
+          "source": "manual",
+          "signature": "91c8a55b",
+          "sources": [
+            "knowledge/01-医院概况.md",
+            "knowledge/02-需求说明-运营管理部.md",
+            "knowledge/03-访谈记录-财务处与医务处.md",
+            "knowledge/04-运营月报样例-2026年4月.csv",
+            "knowledge/05-DRG亏损病组样例-2026Q1.csv"
+          ],
+          "summary": "模拟测试数据（人工按规范编写）",
+          "snapshot": true,
+          "confirmedAt": "2026-06-02T09:00:00.000Z"
+        }
+      ]
+    },
+    "stage1/data-flow.md": {
+      "versions": [
+        {
+          "version": 1,
+          "at": "2026-06-01T08:00:00.000Z",
+          "status": "confirmed",
+          "source": "manual",
+          "signature": "56108b50",
+          "sources": [
+            "knowledge/01-医院概况.md",
+            "knowledge/02-需求说明-运营管理部.md",
+            "knowledge/03-访谈记录-财务处与医务处.md",
+            "knowledge/04-运营月报样例-2026年4月.csv",
+            "knowledge/05-DRG亏损病组样例-2026Q1.csv"
+          ],
+          "summary": "模拟测试数据（人工按规范编写）",
+          "snapshot": true,
+          "confirmedAt": "2026-06-02T09:00:00.000Z"
+        }
+      ]
+    },
+    "stage1/data-requirements.md": {
+      "versions": [
+        {
+          "version": 1,
+          "at": "2026-06-01T08:00:00.000Z",
+          "status": "confirmed",
+          "source": "manual",
+          "signature": "953d9ed7",
+          "sources": [
+            "knowledge/01-医院概况.md",
+            "knowledge/02-需求说明-运营管理部.md",
+            "knowledge/03-访谈记录-财务处与医务处.md",
+            "knowledge/04-运营月报样例-2026年4月.csv",
+            "knowledge/05-DRG亏损病组样例-2026Q1.csv"
+          ],
+          "summary": "模拟测试数据（人工按规范编写）",
+          "snapshot": true,
+          "confirmedAt": "2026-06-02T09:00:00.000Z"
+        }
+      ]
+    },
+    "stage1/interview-outline.md": {
+      "versions": [
+        {
+          "version": 1,
+          "at": "2026-06-01T08:00:00.000Z",
+          "status": "confirmed",
+          "source": "manual",
+          "signature": "66e16eef",
+          "sources": [
+            "knowledge/01-医院概况.md",
+            "knowledge/02-需求说明-运营管理部.md",
+            "knowledge/03-访谈记录-财务处与医务处.md",
+            "knowledge/04-运营月报样例-2026年4月.csv",
+            "knowledge/05-DRG亏损病组样例-2026Q1.csv"
+          ],
+          "summary": "模拟测试数据（人工按规范编写）",
+          "snapshot": true,
+          "confirmedAt": "2026-06-02T09:00:00.000Z"
+        }
+      ]
+    },
+    "stage1/research-brief.md": {
+      "versions": [
+        {
+          "version": 1,
+          "at": "2026-06-01T08:00:00.000Z",
+          "status": "confirmed",
+          "source": "manual",
+          "signature": "a66c8235",
+          "sources": [
+            "knowledge/01-医院概况.md",
+            "knowledge/02-需求说明-运营管理部.md",
+            "knowledge/03-访谈记录-财务处与医务处.md",
+            "knowledge/04-运营月报样例-2026年4月.csv",
+            "knowledge/05-DRG亏损病组样例-2026Q1.csv"
+          ],
+          "summary": "模拟测试数据（人工按规范编写）",
+          "snapshot": true,
+          "confirmedAt": "2026-06-02T09:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "stage1": {
+    "completion": {
+      "by": "吴航",
+      "at": "2026-06-02T10:00:00.000Z",
+      "mode": "with-questions",
+      "signature": "aa429652"
+    }
+  }
+}

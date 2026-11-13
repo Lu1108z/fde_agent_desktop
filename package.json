@@ -84,6 +84,14 @@
         "to": "clinical-knowledge"
       },
       {
+        "from": "sample-projects",
+        "to": "sample-projects",
+        "filter": [
+          "**/*",
+          "!**/.DS_Store"
+        ]
+      },
+      {
         "from": "med-ai-demo",
         "to": "med-ai-demo",
         "filter": [

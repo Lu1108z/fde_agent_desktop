@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "round": 1,
+  "tasks": {
+    "1:prepare": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-06-02T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          ".fde-flow/preparation.md": "18f6ebc1"
+        }
+      }
+    },
+    "2:contact": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-06-18T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "stage2/contact-form.md": "519c46d9"
+        }
+      }
+    },
+    "2:capabilities": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-06-18T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "stage2/ai-capability.md": "566438da"
+        }
+      }
+    },
+    "2:prototype": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-06-18T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "prototype/index.html": "809295bc"
+        }
+      }
+    },
+    "2:feedback": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-06-18T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          ".fde-flow/feedback.md": "cf53ba65"
+        }
+      },
+      "notes": "床位使用率不含加床；问数对临床科主任关闭；DRG 主诊医师维度列入后续迭代；五个模块方向认可。",
+      "confirmedBy": "陈立文（运营管理部主任）",
+      "evidence": "stage2/demo-review-R-01.md"
+    },
+    "3:scope": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-07-12T10:00:00.000Z",
+        "by": "刘振华、陈立文、赵敏、钱永安",
+        "evidence": "stage3/evidence/final-req-signoff.md",
+        "signatures": {
+          "stage3/final-req.md": "30eec8bd"
+        }
+      }
+    },
+    "3:design": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-07-12T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "stage3/data-metric.md": "68b8ed9b",
+          "stage3/agent-design.md": "6301494f",
+          "stage3/impl-plan.md": "d22e200f"
+        }
+      }
+    },
+    "3:final": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-07-12T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "stage3/prd.md": "877c42e6",
+          "stage3/prototype-final.md": "1270ac49",
+          "stage3/prototype/index.html": "809295bc"
+        }
+      }
+    },
+    "3:handoff": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-07-12T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          ".fde-flow/handoff.md": "c2f287b7"
+        }
+      }
+    },
+    "4:schedule": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-09-18T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "stage4/progress.md": "114f06e0"
+        }
+      }
+    },
+    "4:demo": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-09-18T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "stage4/demo-review.md": "7d218d8d"
+        }
+      }
+    },
+    "4:launch": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-09-18T10:00:00.000Z",
+        "by": "陈立文、钱永安",
+        "evidence": "stage4/deploy-doc.md 上线过关清单（模拟）",
+        "signatures": {
+          "stage4/deploy-doc.md": "e3b61df8"
+        }
+      }
+    },
+    "5:tracker": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-10-30T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "stage5/feedback-tracker.md": "9ea53e26"
+        }
+      }
+    },
+    "5:iteration": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-10-30T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "stage5/iteration.md": "52e502d2"
+        }
+      }
+    },
+    "5:usage": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-10-30T10:00:00.000Z",
+        "by": "吴航（FDE 项目经理，模拟）",
+        "evidence": "",
+        "signatures": {
+          "stage5/usage-watch.md": "fae48945"
+        }
+      }
+    },
+    "5:signoff": {
+      "status": "confirmed",
+      "jobs": {},
+      "notice": "",
+      "confirmation": {
+        "at": "2026-10-30T10:00:00.000Z",
+        "by": "刘振华、陈立文",
+        "evidence": "stage5/evidence/delivery-signoff.md",
+        "signatures": {
+          "stage5/delivery-sign.md": "6ec676f0"
+        }
+      }
+    }
+  },
+  "history": [],
+  "handoff": {
+    "status": "done",
+    "at": "2026-07-03T10:00:00.000Z"
+  }
+}
