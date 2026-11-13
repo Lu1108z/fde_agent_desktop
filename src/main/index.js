@@ -203,8 +203,15 @@ const CODE_WORKSPACES_JSON = path.join(PRODUCT_LOBSTER_HOME, 'code-workspaces.js
 // 排障用：主进程 console.log 只进用户自己开的终端，我这边读不到；
 // 关键动作额外落一份到这个文件，方便直接读日志定位，不用让用户贴终端输出。
 const CODE_DEBUG_LOG = path.join(PRODUCT_LOBSTER_HOME, 'code-debug.log');
+// 每条流式 chunk 都会记一行，不限制会无限增长：超过 5MB 轮转成 .1（只留一份旧的）。
+let codeDebugWrites = 0;
 function codeDebugLog(line) {
-  try { fs.appendFileSync(CODE_DEBUG_LOG, `[${new Date().toISOString()}] ${line}\n`); } catch (_) {}
+  try {
+    if (codeDebugWrites++ % 500 === 0 && fs.existsSync(CODE_DEBUG_LOG) && fs.statSync(CODE_DEBUG_LOG).size > 5 * 1024 * 1024) {
+      fs.renameSync(CODE_DEBUG_LOG, `${CODE_DEBUG_LOG}.1`);
+    }
+    fs.appendFileSync(CODE_DEBUG_LOG, `[${new Date().toISOString()}] ${line}\n`);
+  } catch (_) {}
 }
 
 // --- config.yaml model persistence -----------------------------------------
@@ -1002,6 +1009,28 @@ function resolveFfmpegDir() {
   return dirs.find((d) => fs.existsSync(path.join(d, exe))) || '';
 }
 
+// 引擎把模型接口报错原样作为回复文本（如「HTTP 401: 余额不足」），用户看不懂也不知道怎么办。
+// 只改整条回复就是一句 HTTP 报错的情况，正常回复里提到 HTTP 不受影响。
+function engineErrorText(raw) {
+  const m = /^\s*HTTP (\d{3}):\s*([\s\S]{0,300})$/.exec(String(raw || ''));
+  if (!m) return '';
+  const code = Number(m[1]), msg = m[2].trim();
+  if (/余额|balance|quota|insufficient/i.test(msg)) return `模型账户余额不足，AI 暂时无法回复。请联系管理员充值，或在「设置」里换一个有额度的 API Key。（${code}: ${msg}）`;
+  if (code === 401 || code === 403) return `模型 API Key 无效或没有权限。请到「设置」里检查 API Key。（${code}: ${msg}）`;
+  if (code === 429) return `模型调用太频繁或超出限额，请稍等一会儿再发。（${code}: ${msg}）`;
+  if (code === 404) return `当前模型不可用，请在输入框上方换一个模型再试。（${code}: ${msg}）`;
+  if (code >= 500) return `模型服务暂时出错，请稍后重试。（${code}: ${msg}）`;
+  return '';
+}
+function friendlyEngineError(params) {
+  const upd = params && (params.update || params);
+  if (!upd || upd.type !== 'agent_message_chunk') return;
+  const c = upd.content || upd.data;
+  if (c && typeof c.text === 'string') { const t = engineErrorText(c.text); if (t) c.text = t; }
+  else if (typeof c === 'string') { const t = engineErrorText(c); if (t) { if (upd.content) upd.content = t; else upd.data = t; } }
+  else if (Array.isArray(c) && c.length === 1 && c[0] && typeof c[0].text === 'string') { const t = engineErrorText(c[0].text); if (t) c[0].text = t; }
+}
+
 function startHermes() {
   const command = resolveHermesAcpCommand();
   const ffmpegDir = resolveFfmpegDir();
@@ -1062,6 +1091,7 @@ function startHermes() {
 
   // Forward server notifications to renderer (include method name and sessionId for routing)
   acp.onNotification((notification) => {
+    friendlyEngineError(notification.params);
     if (mainWindow && !mainWindow.isDestroyed()) {
       const params = notification.params || {};
       const sessionId = params.sessionId || params.session_id || '';
@@ -3842,7 +3872,7 @@ ipcMain.handle('hermes:save-message', async (_event, { slug, message }) => {
     appendMessage(slug, message);
     if (message?.role === 'assistant') {
       let archived = [];
-      try { archived = archiveExpertOutputs(slug, message.content); } catch (e) { console.warn('[ai-apps] 成果归档失败:', e.message); }
+      try { archived = await archiveExpertOutputs(slug, message.content); } catch (e) { console.warn('[ai-apps] 成果归档失败:', e.message); }
       return { success: true, archived };
     }
     return { success: true };
@@ -5775,13 +5805,13 @@ function linkedProjectSection(app, info) {
 // 成果归档兜底：专家回复结束后，把「回复里提到的成果文件」和「本轮在专家工作目录新生成的
 // 文档/视频」复制到关联项目的 deliverables/<专家id>/。不依赖 AI 一定按 CLAUDE.md 存对位置。
 const { mentionedFilePaths, archiveFiles } = require('./expert-archive');
-function archiveExpertOutputs(slug, replyText) {
+async function archiveExpertOutputs(slug, replyText) {
   const meta = readProjectMeta(slug);
   if (!meta?.aiApp?.id || !meta.linkedProject) return [];
   const target = readProjectMeta(meta.linkedProject);
   if (!target || target.projectType === 'ai-app') return [];
   const lastUser = readMessages(slug, 50).filter((m) => m.role === 'user').at(-1);
-  const archived = archiveFiles({
+  const archived = await archiveFiles({
     replyText,
     sessionDir: resolveProjectPath(slug),
     projectRoot: resolveProjectPath(meta.linkedProject),
@@ -5804,8 +5834,9 @@ function runtimeToolsSection(a) {
   if (skills.some((s) => DOC_PYTHON_SKILLS.has(s))) {
     const ready = docPython.readyInfo();
     if (ready) {
-      const env = process.platform === 'win32' ? `set PYTHONPATH=${ready.site} && ` : `PYTHONPATH="${ready.site}" `;
-      out.push(`- **文档生成 Python 环境已就绪**（已装 python-docx、lxml、Pillow、python-pptx）。技能里的 \`<python>\` 一律用：\`${env}"${ready.python}"\`。不要再 pip install 这些依赖，也不要改系统 Python。`);
+      // 工具命令在 bash 里执行（Windows 上是 Git Bash），统一用 bash 写法；路径换成正斜杠，Python 在 Windows 上也认
+      const slash = (p) => String(p).replace(/\\/g, '/');
+      out.push(`- **文档生成 Python 环境已就绪**（已装 python-docx、lxml、Pillow、python-pptx）。技能里的 \`<python>\` 一律用：\`PYTHONPATH="${slash(ready.site)}" "${slash(ready.python)}"\`（整段原样放在命令最前面）。不要再 pip install 这些依赖，也不要改系统 Python。`);
     } else {
       out.push('- 文档生成依赖（python-docx 等）正在后台准备或准备失败；如脚本报缺依赖，按技能说明在工作目录建虚拟环境安装 requirements.txt，不要改系统 Python。');
     }

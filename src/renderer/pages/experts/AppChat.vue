@@ -417,7 +417,7 @@ function onSessionUpdate(data) {
 }
 
 // 切换到别的应用：回到该应用首页
-watch(() => props.appId, () => { newChat(); taskKeyword.value = ''; detailOpen.value = false; });
+watch(() => props.appId, () => { newChat(); linkedProject.value = ''; taskKeyword.value = ''; detailOpen.value = false; });
 
 onMounted(async () => {
   landingObserver = new ResizeObserver(([entry]) => {

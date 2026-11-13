@@ -8,7 +8,8 @@ const path = require('path');
 const MENTIONED_EXT = /\.(docx?|pptx?|xlsx?|pdf|mp4|mov|webm|png|jpe?g|webp|svg|gif|html?|zip)$/i;
 const SCANNED_EXT = /\.(docx?|pptx?|xlsx?|pdf|mp4|mov|webm)$/i;
 const MAX_BYTES = 1024 * 1024 * 1024;
-const SKIP_DIRS = new Set(['node_modules', '.git', '.venv', 'venv', '__pycache__', 'site-packages', 'tmp', 'temp', '.cache']);
+// knowledge/ 是专家知识库（每次加载会话都会重新复制一遍，mtime 是新的），不是成果
+const SKIP_DIRS = new Set(['knowledge', 'node_modules', '.git', '.venv', 'venv', '__pycache__', 'site-packages', 'tmp', 'temp', '.cache']);
 // 安装包资源 / 知识包 / 依赖目录里的文件是模板或素材，不是成果
 const RESOURCE_DIR = /[\\/](skills|config-templates|med-knowledge|clinical-knowledge|doc-python|fde-handbook|med-ai-demo)[\\/]/;
 
@@ -45,8 +46,10 @@ function recentWorkFiles(dir, sinceMs, depth = 0, out = []) {
 const realOrSelf = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
 const inside = (child, parent) => child === parent || child.startsWith(parent + path.sep);
 
-// 返回归档后的相对路径（相对 projectRoot）
-function archiveFiles({ replyText, sessionDir, projectRoot, outSubdir, sinceMs }) {
+// 返回归档后的相对路径（相对 projectRoot）。
+// 回复里提到的文件只有「本轮新生成/修改的」才算成果——用户自己的参考资料（如 ~/Downloads/合同.pdf）
+// 是旧文件，不会被当成成果搬进项目。
+async function archiveFiles({ replyText, sessionDir, projectRoot, outSubdir, sinceMs }) {
   const outDir = path.join(projectRoot, outSubdir);
   const deliverRoot = realOrSelf(path.join(projectRoot, path.dirname(outSubdir)));
   const realProject = realOrSelf(projectRoot);
@@ -56,8 +59,9 @@ function archiveFiles({ replyText, sessionDir, projectRoot, outSubdir, sinceMs }
   for (const src of candidates) {
     try {
       const st = fs.statSync(src);
-      if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES) continue;
+      if (!st.isFile() || st.size === 0 || st.size > MAX_BYTES || st.mtimeMs < sinceMs) continue;
       const real = realOrSelf(src);
+      if (inside(real, path.join(realSession, 'knowledge'))) continue;
       if (inside(real, deliverRoot)) continue; // 已经在成果目录
       if (inside(real, realProject)) continue; // 项目自身文件（stage*/prototype/knowledge）不搬
       if (!inside(real, realSession) && RESOURCE_DIR.test(real)) continue;
@@ -70,7 +74,7 @@ function archiveFiles({ replyText, sessionDir, projectRoot, outSubdir, sinceMs }
         dest = path.join(outDir, `${stem}-${n++}${ext}`);
       }
       if (dup) continue;
-      fs.copyFileSync(src, dest);
+      await fs.promises.copyFile(src, dest); // 视频可能很大，异步复制不卡主进程
       archived.push(path.relative(projectRoot, dest).split(path.sep).join('/'));
     } catch { /* 不存在或无权限，忽略 */ }
   }

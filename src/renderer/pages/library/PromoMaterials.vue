@@ -193,8 +193,15 @@ function openFromQuery() {
   const id = route.query.file ? String(route.query.file) : '';
   if (!id) return;
   router.replace({ path: route.path });
-  const item = live.value.find(e => e.id === id && e.kind !== 'folder');
-  if (!item) { MessagePlugin.warning('这份物料已被删除或移动'); return; }
+  const hit = live.value.find(e => e.id === id);
+  if (!hit) { MessagePlugin.warning('这份物料已被删除或移动'); return; }
+  // 动态里也有智能体/文件夹的操作（新建、改名、生命周期），点开就定位到所在智能体
+  if (hit.kind === 'folder') {
+    let cur = hit; while (cur?.parentId) cur = live.value.find(e => e.id === cur.parentId);
+    if (cur && agents.value.some(a => a.id === cur.id)) agentId.value = cur.id;
+    previewing.value = null; return;
+  }
+  const item = hit;
   const top = agents.value.find(a => itemsOf(a.id).some(i => i.id === id));
   if (top) agentId.value = top.id;
   previewing.value = item;
