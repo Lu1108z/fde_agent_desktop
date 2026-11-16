@@ -8,8 +8,8 @@
 
 model:
   provider: custom
-  default: deepseek/deepseek-v4.1-flash
-  base_url: https://api.360.cn/v1
+  default: deepseek/deepseek-v4-flash
+  base_url: https://llm.mss.360.net/v1
   # DeepSeek v4 系列真实上下文窗口是 1M。引擎 catalog 只精确认得 `deepseek-v4-flash`
   # (不带 .1),名字带 .1 时会退回通用兜底 `deepseek`=128k,白白砍掉 87% 窗口 ——
   # 长任务(原型生成)跑过 128k 就被压缩截断、"越到后面越忘前面"。这里显式钉死为 1M。
@@ -22,13 +22,13 @@ model:
 auxiliary:
   vision:
     provider: custom
-    model: anthropic/claude-sonnet-5
+    model: anthropic/claude-opus-5
     timeout: 120
     download_timeout: 60
 
 custom_providers:
   - name: "360ai"
-    base_url: https://api.360.cn/v1
+    base_url: https://llm.mss.360.net/v1
     # key_env: 兜底 —— 即便向导没能改写下面的 api_key,也会从 .env 的 OPENAI_API_KEY 读。
     key_env: OPENAI_API_KEY
     api_key: your-api-key-here

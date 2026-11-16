@@ -17,7 +17,7 @@
           <div class="flex flex-wrap items-center gap-x-6 gap-y-2 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-[13px] text-slate-600">
             <span><span class="text-slate-400 mr-1.5">网关</span>{{ FIXED_GATEWAY_NAME }}</span>
             <span><span class="text-slate-400 mr-1.5">可用模型</span>{{ FIXED_MODEL_LABELS.join('、') }}</span>
-            <span class="text-[12px] text-slate-400"><i class="fa-solid fa-lock mr-1 text-[10px]"></i>由管理员统一设置，聊天时可在两者之间切换</span>
+            <span class="text-[12px] text-slate-400"><i class="fa-solid fa-lock mr-1 text-[10px]"></i>由管理员统一设置，聊天时可在这几个模型之间切换</span>
           </div>
 
           <div>
@@ -26,7 +26,7 @@
               <input
                 :type="showApiKey ? 'text' : 'password'"
                 v-model="form.apiKey"
-                placeholder="请输入 360 API Key"
+                placeholder="请输入对话网关 API Key"
                 class="w-full px-3.5 py-2 pr-10 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all font-mono"
               />
               <button
@@ -64,6 +64,25 @@
             <span v-else-if="saveStatus === 'error'" class="text-xs text-danger-deep font-medium">
               <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ saveMsg || '保存失败' }}
             </span>
+          </div>
+
+          <!-- 对话网关没有检索 / 语音能力，这两项走 api.360.cn，用单独的 Key（主进程 AUX_GATEWAY_URL） -->
+          <div class="pt-4 border-t border-slate-100">
+            <label class="block text-sm font-medium text-slate-700 mb-1">检索与语音 Key <span class="text-xs font-normal text-slate-400">（选填）</span></label>
+            <p class="text-xs text-slate-400 mb-2">用于知识库语义检索、语音播报和语音识别（api.360.cn）。不填时知识库改用关键词检索，语音功能不可用。</p>
+            <div class="flex flex-wrap items-center gap-3">
+              <input
+                :type="showAuxKey ? 'text' : 'password'"
+                v-model="auxKey"
+                placeholder="请输入 api.360.cn 的 API Key"
+                class="flex-1 min-w-[240px] px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all font-mono"
+              />
+              <button @click="showAuxKey = !showAuxKey" class="text-slate-400 hover:text-slate-600"><i :class="showAuxKey ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'" class="text-sm"></i></button>
+              <button @click="saveAuxKey" :disabled="auxSaving" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 text-sm transition-colors">
+                <i class="fa-solid mr-1.5 text-xs" :class="auxSaving ? 'fa-spinner fa-spin' : 'fa-check'"></i>保存
+              </button>
+              <span v-if="auxMsg" class="text-xs" :class="auxOk ? 'text-blue-600' : 'text-danger-deep'">{{ auxMsg }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -219,6 +238,22 @@ async function saveAndActivate() {
 }
 
 const showApiKey = ref(false);
+
+// 检索与语音 Key：单独存在 .env 的 AUX_API_KEY，即时生效，不用重启引擎
+const auxKey = ref('');
+const showAuxKey = ref(false);
+const auxSaving = ref(false);
+const auxMsg = ref('');
+const auxOk = ref(true);
+async function saveAuxKey() {
+  auxSaving.value = true; auxMsg.value = '';
+  try {
+    const r = await window.api.env.saveAuxKey(auxKey.value.trim());
+    if (!r || !r.success) throw new Error((r && r.error) || '保存失败');
+    auxOk.value = true; auxMsg.value = auxKey.value.trim() ? '已保存' : '已清除';
+  } catch (e) { auxOk.value = false; auxMsg.value = e.message; }
+  finally { auxSaving.value = false; setTimeout(() => { auxMsg.value = ''; }, 4000); }
+}
 const hermesHome = ref('~/.product-lobster');
 const projectCount = ref(0);
 const appVersion = ref('3.3.8');
@@ -240,6 +275,10 @@ onMounted(async () => {
       const projects = await window.api.hermes.listProjects({ kind: 'project' });
       projectCount.value = projects ? projects.length : 0;
     } catch (e) {}
+  }
+
+  if (window.api && window.api.env && window.api.env.getAuxKey) {
+    try { const r = await window.api.env.getAuxKey(); if (r && r.success) auxKey.value = r.apiKey || ''; } catch (e) {}
   }
 
   if (window.api && window.api.gateway) {

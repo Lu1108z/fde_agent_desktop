@@ -129,6 +129,8 @@ const validInvokeChannels = new Set([
   // 环境自检 + 连通性
   'env:check',
   'env:test-connection',
+  'env:get-aux-key',
+  'env:save-aux-key',
   // 授权
   'license:status',
   'license:machine-sn',
@@ -478,6 +480,8 @@ contextBridge.exposeInMainWorld('api', {
   env: {
     check() { return invoke('env:check'); },
     testConnection(params) { return invoke('env:test-connection', params); },
+    getAuxKey() { return invoke('env:get-aux-key'); },
+    saveAuxKey(apiKey) { return invoke('env:save-aux-key', { apiKey }); },
   },
 
   // 网关档案:多组网关配置并存 + 一键拉取上游模型列表

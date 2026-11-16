@@ -267,7 +267,7 @@ function writeConfigModel(modelId) {
         /^([ \t]+)default:[ \t]*.+$/m,
         (_full, indent) => `${indent}default: ${modelId}`
       );
-      // 上下文窗口跟着模型走（DeepSeek / Claude 1M，GPT-6 Sol 小一些）；写大了长任务会超窗报错
+      // 上下文窗口跟着模型走（DeepSeek / Claude 1M，GPT-5.6 Sol 小一些）；写大了长任务会超窗报错
       const ctx = (typeof FIXED_MODELS !== 'undefined' ? FIXED_MODELS : []).find((m) => m.id === modelId)?.contextLength;
       if (ctx) content = content.replace(/^([ \t]+)context_length:[ \t]*\d+[ \t]*$/m, (_full, indent) => `${indent}context_length: ${ctx}`);
     } else {
@@ -523,21 +523,31 @@ function buildGatewayHeaders(apiKey, authMode = 'bearer', extraHeaders = {}, api
 const GATEWAY_PROFILES_PATH = path.join(PRODUCT_LOBSTER_HOME, 'gateway-profiles.json');
 
 // --- 固定模型 -----------------------------------------------------------------
-// 管理员统一定好网关和模型，使用的人不能改：网关固定 360，下拉框只有这几个模型，
+// 管理员统一定好网关和模型，使用的人不能改：对话网关固定 llm.mss.360.net（知识库检索 / 语音仍走 api.360.cn，见 AUX_GATEWAY），下拉框只有这几个模型，
 // 设置页 / 首启向导只填 API Key。每次启动都把 config.yaml 收敛回这份清单，
 // 用户手改 config.yaml 或旧版本留下的其它模型都会被纠正。
-const FIXED_GATEWAY = { name: '360 网关', baseUrl: 'https://api.360.cn/v1', apiMode: 'chat_completions', authMode: 'bearer', stripVendorPrefix: false };
+const FIXED_GATEWAY = { name: '360 网关', baseUrl: 'https://llm.mss.360.net/v1', apiMode: 'chat_completions', authMode: 'bearer', stripVendorPrefix: false };
 const FIXED_MODELS = [
+  { id: 'deepseek/deepseek-v4-flash', label: 'DeepSeek V4 Flash', contextLength: 1000000 },
   { id: 'deepseek/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash', contextLength: 1000000 },
-  { id: 'anthropic/claude-opus-5-5', label: 'Claude Opus 5.5', contextLength: 1000000 },
-  { id: 'openai/gpt-6-sol', label: 'GPT-6 Sol', contextLength: 400000 },
+  { id: 'anthropic/claude-opus-5', label: 'Claude Opus 5', contextLength: 1000000 },
+  { id: 'openai/gpt-5.6-sol', label: 'GPT-5.6 Sol', contextLength: 400000 },
 ];
-// 360 网关上的 gpt-6-sol 在 /chat/completions 里「带工具 + 默认推理」会直接 400
+// 360 网关上的 gpt-6-sol / gpt-5.6-sol 在 /chat/completions 里「带工具 + 默认推理」会直接 400
 // （Function tools with reasoning_effort are not supported），必须显式 reasoning_effort: none。
 // DeepSeek / Claude 收到这个参数也正常，所以统一写进 custom_providers 的 extra_body，每轮请求都带。
 const FIXED_EXTRA_BODY_BLOCK = 'extra_body:\n  reasoning_effort: "none"';
 const FIXED_MODEL_IDS = FIXED_MODELS.map((m) => m.id);
 const isFixedModel = (id) => FIXED_MODEL_IDS.includes(stripModelPrefix(id));
+// 对话网关（llm.mss.360.net）没有 embedding 模型和语音接口，知识库检索 / 语音播报 / 语音识别
+// 仍走 api.360.cn，用单独的 Key（.env 的 AUX_API_KEY，设置页「检索与语音 Key」）。
+// 没填时知识库自动退回关键词检索，语音功能提示去设置页填 Key。
+const AUX_GATEWAY_URL = 'https://api.360.cn/v1';
+function readAuxConfig() {
+  let apiKey = '';
+  try { const m = fs.readFileSync(ENV_FILE_PATH, 'utf-8').match(/^AUX_API_KEY=(.*)$/m); if (m) apiKey = m[1].trim(); } catch (_) { /* 还没有 .env */ }
+  return { apiKey, baseUrl: AUX_GATEWAY_URL };
+}
 
 function readGatewayProfiles() {
   try {
@@ -4259,11 +4269,11 @@ ipcMain.handle('hermes:prompt', async (_event, { slug, text, attachments, channe
   }
 });
 
-require('./coach-speech').registerCoachSpeech({ ipcMain, app, getConfig: parseEnvConfig });
+require('./coach-speech').registerCoachSpeech({ ipcMain, app, getConfig: readAuxConfig });
 
 // 「医疗行业专家」知识包（scripts/build-med-knowledge.cjs 生成），开发时读仓库内 med-knowledge/，打包后读 Resources/med-knowledge
 const MED_KNOWLEDGE_DIR = app.isPackaged ? path.join(process.resourcesPath, 'med-knowledge') : path.join(__dirname, '..', '..', 'med-knowledge');
-const medKnowledge = require('./med-knowledge').createMedKnowledge({ dir: MED_KNOWLEDGE_DIR, getConfig: parseEnvConfig });
+const medKnowledge = require('./med-knowledge').createMedKnowledge({ dir: MED_KNOWLEDGE_DIR, getConfig: readAuxConfig });
 // 专家详情页展示的内置知识库目录：只读 manifest，不加载正文和向量
 ipcMain.handle('med:knowledge-catalog', async () => {
   try {
@@ -4278,7 +4288,7 @@ ipcMain.handle('med:knowledge', async (_event, { query, history = [] } = {}) => 
 
 // 「临床医学知识专家」知识包（scripts/build-clinical-knowledge.cjs 生成）：疾病百科 + 卫健委临床路径，内部学习用
 const CLINICAL_KNOWLEDGE_DIR = app.isPackaged ? path.join(process.resourcesPath, 'clinical-knowledge') : path.join(__dirname, '..', '..', 'clinical-knowledge');
-const clinicalKnowledge = require('./med-knowledge').createMedKnowledge({ dir: CLINICAL_KNOWLEDGE_DIR, getConfig: parseEnvConfig,
+const clinicalKnowledge = require('./med-knowledge').createMedKnowledge({ dir: CLINICAL_KNOWLEDGE_DIR, getConfig: readAuxConfig,
   label: '临床医学知识专家', synonyms: require('./med-knowledge').CLINICAL_SYNONYMS, codes: false });
 ipcMain.handle('clinical:knowledge-catalog', async () => {
   try {
@@ -4298,9 +4308,9 @@ ipcMain.handle('hermes:transcribe', async (_event, { audioBase64, mimeType } = {
   if (!audioBase64 || typeof audioBase64 !== 'string') {
     return { success: false, error: '没有可识别的音频' };
   }
-  const { apiKey, baseUrl } = parseEnvConfig();
+  const { apiKey, baseUrl } = readAuxConfig();
   if (!apiKey) {
-    return { success: false, error: '未配置 API Key，无法进行语音识别' };
+    return { success: false, error: '语音识别需要「检索与语音 Key」，请到设置页填写' };
   }
   const https = require('https');
   const http = require('http');
@@ -4707,9 +4717,10 @@ ipcMain.handle('env:test-connection', async (_event, params) => {
   const r = await postChatCompletion({
     apiKey, baseUrl, model,
     messages: [{ role: 'user', content: 'ping' }],
-    // GPT-6 Sol 这类推理模型 max_tokens 太小会 400（来不及给出回答），给足 32；8 秒对它也偏紧
-    maxTokens: apiMode === 'codex_responses' ? 16 : 32,
-    timeoutMs: 15000,
+    // 推理模型 max_tokens 太小会 400（来不及给出回答）：Claude Opus 5 先出思考块，32 个 token 全耗在思考上，
+    // 网关报「response contained only thinking blocks」。给足 512；Opus 5 首包偏慢，超时放宽到 30 秒。
+    maxTokens: apiMode === 'codex_responses' ? 16 : 512,
+    timeoutMs: 30000,
     apiMode, authMode, extraHeaders,
   });
   if (r.ok) return { ok: true, latencyMs: r.latencyMs };
@@ -4846,6 +4857,12 @@ ipcMain.handle('gateway:delete-profile', async (_event, { id } = {}) => {
 
 // 把某组档案写进 config.yaml 并重启引擎生效。
 // 复用 applyProfileToEngine —— 与 hermes:set-model 共用同一套「重启 + 清 sessionId」流程。
+ipcMain.handle('env:get-aux-key', async () => ({ success: true, apiKey: readAuxConfig().apiKey }));
+ipcMain.handle('env:save-aux-key', async (_event, { apiKey } = {}) => {
+  try { upsertEnvVars({ AUX_API_KEY: String(apiKey || '').trim() || null }); return { success: true }; }
+  catch (e) { return { success: false, error: e.message }; }
+});
+
 ipcMain.handle('gateway:activate-profile', async (_event, { id } = {}) => {
   try {
     const store = readGatewayProfiles();

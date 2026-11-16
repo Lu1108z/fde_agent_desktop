@@ -32,7 +32,7 @@ function requestBytes(url, { body, key, signal, limit = 4 * 1024 * 1024, redirec
 
 async function synthesizeCoachSpeech({ text, config, signal, request = requestBytes }) {
   if (typeof text !== 'string' || !text.trim() || text.length > 400) throw Error('请使用较短的语音句子');
-  if (!config?.apiKey) throw Error('请先在设置中配置 360 API Key');
+  if (!config?.apiKey) throw Error('语音播报需要「检索与语音 Key」，请到设置页填写');
   const endpoint = `${(config.baseUrl || 'https://api.360.cn/v1').replace(/\/+$/, '')}/audios/generations`;
   const body = JSON.stringify({ model: MODEL, extra_body: {
     text: text.trim(), stream: false, output_format: 'hex', language_boost: 'Chinese',

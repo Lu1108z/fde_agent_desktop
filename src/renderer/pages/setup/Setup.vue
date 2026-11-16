@@ -174,7 +174,7 @@
           <!-- 步骤3:填 API Key。网关和模型由管理员固定（主进程 FIXED_GATEWAY / FIXED_MODELS） -->
           <div v-else-if="step === 2">
             <h1 class="text-xl font-bold text-slate-800 mb-1">配置 API Key</h1>
-            <p class="text-[13px] text-slate-500 mb-5">填入 360 API Key 即可。网关和模型已由管理员统一设置。</p>
+            <p class="text-[13px] text-slate-500 mb-5">填入对话网关的 API Key 即可。网关和模型已由管理员统一设置；知识库检索与语音的 Key 可稍后在设置页填写。</p>
 
             <div class="mb-4 p-3 rounded-xl bg-slate-50 border border-slate-200 text-[12.5px] text-slate-600 space-y-1">
               <div><span class="text-slate-400 mr-2">网关</span>{{ FIXED_GATEWAY.name }}</div>
@@ -185,7 +185,7 @@
             <input
               v-model="apiKey"
               type="password"
-              placeholder="请输入 360 API Key"
+              placeholder="请输入 API Key"
               class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 mb-4"
               @keyup.enter="saveAndFinish"
             />

@@ -14,11 +14,11 @@ const { reconcileCompletion } = require('../src/main/project-completion');
 const { createMaterialLibrary } = require('../src/main/material-library');
 const gate = require('../src/main/product-flow-gate');
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'fde-experience-fix-'));
-test('前后端固定清单只提供 Opus 5.5 和 DS 4.1 Flash', () => {
+test('前后端固定清单只提供 DS V4 / V4.1 Flash、Opus 5 和 GPT-5.6 Sol', () => {
   const server=fs.readFileSync(new URL('../src/main/index.js',import.meta.url),'utf8');
   const renderer=fs.readFileSync(new URL('../src/renderer/constants/models.js',import.meta.url),'utf8');
   const ids=source=>[...source.match(/(?:export )?const FIXED_MODELS = \[([\s\S]*?)\];/)[1].matchAll(/id:\s*'([^']+)'/g)].map(m=>m[1]).sort();
-  const expected=['anthropic/claude-opus-5-5','deepseek/deepseek-v4.1-flash','openai/gpt-6-sol'];
+  const expected=['anthropic/claude-opus-5','deepseek/deepseek-v4-flash','deepseek/deepseek-v4.1-flash','openai/gpt-5.6-sol'];
   assert.deepEqual(ids(server),expected);assert.deepEqual(ids(renderer),expected);
   const handlers={};
   const start=server.indexOf("ipcMain.handle('hermes:set-model'"),end=server.indexOf("ipcMain.handle('hermes:set-config-model'",start);
