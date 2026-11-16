@@ -16,6 +16,7 @@
     "build:win": "npm run sync:agent-platform -- --if-changed && npm run export:promo-materials && npm run build:renderer && npm run build:check-license-keys && npm run build:check-engine && npm run build:check-ffmpeg && electron-builder --win portable",
     "build:mac": "npm run sync:agent-platform -- --if-changed && npm run export:promo-materials && npm run build:renderer && npm run build:check-engine && npm run build:check-ffmpeg && electron-builder --mac dmg",
     "export:promo-materials": "node scripts/export-promo-materials.js",
+    "build:win:portable": "node scripts/build-windows-portable.js",
     "build:hermes": "node scripts/build-hermes.js",
     "build:full": "npm run build:hermes && npm run build:win",
     "build:mac-full": "npm run build:hermes && npm run build:mac",
