@@ -33,13 +33,13 @@
           <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
         </button>
       </div>
-      <span class="titlebar-caption">FDE 产品设计</span>
+      <span class="titlebar-caption">FDE 产设大师</span>
     </header>
 
     <header class="app-header">
       <RouterLink to="/" class="header-brand" aria-label="返回工作台">
         <img src="../../assets/logo.png" alt="" class="header-logo" />
-        <span>FDE 产品设计</span>
+        <span>FDE 产设大师</span>
       </RouterLink>
 
       <nav ref="navElement" class="header-nav" aria-label="主要导航" @keydown.esc.stop.prevent="closeNav">
