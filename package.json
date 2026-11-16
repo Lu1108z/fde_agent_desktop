@@ -13,8 +13,9 @@
     "build:renderer": "vite build --config vite.config.js",
     "build:check-license-keys": "node scripts/check-license-keys.js",
     "build:check-engine": "node scripts/check-engine.js",
-    "build:win": "npm run sync:agent-platform -- --if-changed && npm run build:renderer && npm run build:check-license-keys && npm run build:check-engine && npm run build:check-ffmpeg && electron-builder --win portable",
-    "build:mac": "npm run sync:agent-platform -- --if-changed && npm run build:renderer && npm run build:check-engine && npm run build:check-ffmpeg && electron-builder --mac dmg",
+    "build:win": "npm run sync:agent-platform -- --if-changed && npm run export:promo-materials && npm run build:renderer && npm run build:check-license-keys && npm run build:check-engine && npm run build:check-ffmpeg && electron-builder --win portable",
+    "build:mac": "npm run sync:agent-platform -- --if-changed && npm run export:promo-materials && npm run build:renderer && npm run build:check-engine && npm run build:check-ffmpeg && electron-builder --mac dmg",
+    "export:promo-materials": "node scripts/export-promo-materials.js",
     "build:hermes": "node scripts/build-hermes.js",
     "build:full": "npm run build:hermes && npm run build:win",
     "build:mac-full": "npm run build:hermes && npm run build:mac",
@@ -90,6 +91,10 @@
           "**/*",
           "!**/.DS_Store"
         ]
+      },
+      {
+        "from": "promo-materials",
+        "to": "promo-materials"
       },
       {
         "from": "med-ai-demo",

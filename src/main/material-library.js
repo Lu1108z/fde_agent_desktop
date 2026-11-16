@@ -152,4 +152,29 @@ function createMaterialLibrary(root, onChange = () => {}) {
   return {state,createSpace,renameSpace,trashSpace,restoreSpace,create,upload,read,write,rename,move,trash,restore,locate,history,restoreRevision,backup,restoreBackup,associate,setLifecycle,linked,passages,search};
 }
 function escape(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-module.exports={createMaterialLibrary};
+// 安装包自带的宣传物料（scripts/export-promo-materials.js 导出）首次启动导入用户资料库。
+// 每条只导入一次（记在 recordFile）：用户删掉后不会再出现；本机已有同 id 的条目不覆盖。
+function importBundledPromo(root,bundleDir,recordFile){
+  const bundleIndex=path.join(bundleDir,'index.json');
+  if(!fs.existsSync(bundleIndex))return 0;
+  const bundle=JSON.parse(fs.readFileSync(bundleIndex,'utf8'));
+  let installed=[];try{installed=JSON.parse(fs.readFileSync(recordFile,'utf8')).installed||[];}catch{/* 首次 */}
+  const pending=(bundle.entries||[]).filter(e=>validId(e.id)&&!installed.includes(e.id));
+  if(!pending.length)return 0;
+  const db=createMaterialLibrary(root).state();
+  const known=new Set(db.entries.map(e=>e.id));
+  fs.mkdirSync(path.join(root,'files'),{recursive:true});
+  const files=fs.readdirSync(path.join(bundleDir,'files'));
+  let added=0;
+  for(const e of pending){
+    if(!known.has(e.id)&&(!e.parentId||known.has(e.parentId))){
+      for(const name of files.filter(n=>n.startsWith(e.id+'.')))fs.copyFileSync(path.join(bundleDir,'files',name),path.join(root,'files',name));
+      db.entries.push({...e,spaceId:'promo',bundled:true});known.add(e.id);added++;
+    }
+    installed.push(e.id);
+  }
+  const tmp=path.join(root,'index.json.tmp');fs.writeFileSync(tmp,JSON.stringify(db,null,2));fs.renameSync(tmp,path.join(root,'index.json'));
+  fs.mkdirSync(path.dirname(recordFile),{recursive:true});fs.writeFileSync(recordFile,JSON.stringify({installed},null,2));
+  return added;
+}
+module.exports={createMaterialLibrary,importBundledPromo};

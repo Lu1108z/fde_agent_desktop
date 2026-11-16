@@ -65,3 +65,6 @@ __pycache__/
 # 内置知识包产物（构建脚本生成，体积大）
 /med-knowledge/
 /clinical-knowledge/
+
+# 安装包自带的宣传物料：由 npm run export:promo-materials 从本机资料库导出，体积大不入库
+/promo-materials/

@@ -23,6 +23,7 @@ async function main() {
   }
   if(fs.readFileSync(path.join(keys,'aes.key')).length !== 32) throw Error('Invalid license verification material.');
   execFileSync('npm',['run','sync:agent-platform','--','--if-changed'],{cwd:root,stdio:'inherit'});
+  execFileSync('npm',['run','export:promo-materials'],{cwd:root,stdio:'inherit'});
   execFileSync('npm',['run','build:renderer'],{cwd:root,stdio:'inherit'});
   if(!fs.existsSync(path.join(root,'med-ai-demo','index.html'))) throw Error('Missing agent platform: med-ai-demo/index.html（运行 npm run sync:agent-platform）');
   execFileSync('npm',['run','build:check-ffmpeg'],{cwd:root,stdio:'inherit'});
@@ -40,6 +41,7 @@ async function main() {
       {from:path.join(root,'fde-handbook'),to:'fde-handbook',filter:['**/*','!**/.DS_Store']},
       {from:path.join(root,'med-knowledge'),to:'med-knowledge'},
       {from:path.join(root,'clinical-knowledge'),to:'clinical-knowledge'},
+      ...(fs.existsSync(path.join(root,'promo-materials','index.json'))?[{from:path.join(root,'promo-materials'),to:'promo-materials'}]:[]),
       {from:path.join(root,'med-ai-demo'),to:'med-ai-demo',filter:['**/*','!**/.DS_Store']},
       {from:path.join(root,'sample-projects'),to:'sample-projects',filter:['**/*','!**/.DS_Store']},
       {from:keys,to:'license-keys',filter:['aes.key','public_key.pem']},

@@ -2152,6 +2152,7 @@ ipcMain.handle('activity:list', async () => {
 // 智能体平台（med-ai-demo 静态站点），开发时读仓库内 med-ai-demo/，打包后读 Resources/med-ai-demo
 const agentPlatform=require('./agent-platform').createAgentPlatform([process.env.FDE_AGENT_PLATFORM_DIR,app.isPackaged?path.join(process.resourcesPath,'med-ai-demo'):null,path.join(__dirname,'..','..','med-ai-demo')]);
 ipcMain.handle('agent-platform:url',async(_event,{page}={})=>{try{return {success:true,url:await agentPlatform.url(page)};}catch(e){return {success:false,error:e.message};}});
+try{const added=require('./material-library').importBundledPromo(path.join(PRODUCT_LOBSTER_HOME,'material-library'),app.isPackaged?path.join(process.resourcesPath,'promo-materials'):path.join(__dirname,'..','..','promo-materials'),path.join(PRODUCT_LOBSTER_HOME,'promo-materials.json'));if(added)console.log(`[main] 已导入自带宣传物料 ${added} 项`);}catch(e){console.warn('[main] 自带宣传物料导入失败:',e.message);}
 require('./material-library-ipc').registerMaterialLibrary({ipcMain,dialog,shell,root:path.join(PRODUCT_LOBSTER_HOME,'material-library'),getWindow:()=>mainWindow,recordActivity,registerMediaUrl:readyMediaUrl});
 
 const { createHandbookEditor } = require('./handbook-edits');
