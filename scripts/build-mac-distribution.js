@@ -27,6 +27,11 @@ async function main() {
   execFileSync('npm',['run','build:renderer'],{cwd:root,stdio:'inherit'});
   if(!fs.existsSync(path.join(root,'med-ai-demo','index.html'))) throw Error('Missing agent platform: med-ai-demo/index.html（运行 npm run sync:agent-platform）');
   execFileSync('npm',['run','build:check-ffmpeg'],{cwd:root,stdio:'inherit'});
+  const ideDir=path.join(root,'build','ide-resources');
+  const ideResources=[['code-server','code-server'],['language-pack-zh-hans.vsix','language-pack-zh-hans.vsix'],['extensions','extensions']]
+    .filter(([f])=>fs.existsSync(path.join(ideDir,f))).map(([f,to])=>({from:path.join(ideDir,f),to}));
+  if(ideResources.length<3) console.warn('[build-mac] 缺少 IDE 资源（先跑 node scripts/fetch-ide-server.js --platform=macos-arm64 --package），包内将不带 IDE，首次打开需联网下载');
+  else execFileSync('node',[path.join(__dirname,'check-ide-resources.js'),'--platform=macos-arm64'],{cwd:root,stdio:'inherit'});
   const config = {...pkg.build,
     directories:{...pkg.build.directories,output},
     electronDist:path.resolve(path.dirname(require('electron')), '../../..'),
@@ -47,6 +52,8 @@ async function main() {
       {from:keys,to:'license-keys',filter:['aes.key','public_key.pem']},
       {from:engine,to:'hermes-acp'},
       {from:path.join(root,'node_modules','ffmpeg-static'),to:'ffmpeg',filter:['ffmpeg','ffmpeg.LICENSE']},
+      // AI 代码 IDE：随包带 code-server 运行时、中文语言包、Claude Code 扩展，新电脑首次打开不用联网下载
+      ...ideResources,
     ],
     mac:{...pkg.build.mac,icon:path.join(root,'src/image/icon.icns'),identity:null,minimumSystemVersion:'12.0'},
   };
