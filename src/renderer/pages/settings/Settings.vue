@@ -324,6 +324,8 @@ const claudeStatus = ref(null);
 const claudeBusy = ref(false);
 const claudeError = ref('');
 const claudeEnabled = computed(() => !!(claudeStatus.value && claudeStatus.value.enabled));
+// 当前生效的网关档案 id：固定网关版没有多档案切换界面，只在载入时从档案列表读一次，用来触发 Claude 状态刷新。
+const activeId = ref('');
 
 function claudeModeLabel(mode) {
   if (mode === 'chat_completions') return 'OpenAI（chat/completions）';
@@ -397,7 +399,7 @@ onMounted(async () => {
     try {
       const r = await window.api.gateway.listProfiles();
       const active = r && r.success && ((r.profiles || []).find((p) => p.id === r.activeId) || (r.profiles || [])[0]);
-      if (active) { profileId.value = active.id; form.value.apiKey = active.apiKey || ''; }
+      if (active) { profileId.value = active.id; activeId.value = active.id; form.value.apiKey = active.apiKey || ''; }
     } catch (e) {
       console.error('listProfiles failed:', e);
     }

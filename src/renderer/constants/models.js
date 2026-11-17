@@ -14,7 +14,6 @@ export const FIXED_GATEWAY = { name: '360 网关', baseUrl: 'https://llm.mss.360
 export const FIXED_MODELS = [
   { id: 'deepseek/deepseek-v4-flash', label: 'DeepSeek V4 Flash' },
   { id: 'deepseek/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash' },
-  { id: 'anthropic/claude-opus-5', label: 'Claude Opus 5' },
   { id: 'openai/gpt-5.6-sol', label: 'GPT-5.6 Sol' },
 ];
 

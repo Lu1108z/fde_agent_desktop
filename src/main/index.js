@@ -536,7 +536,6 @@ const FIXED_GATEWAY = { name: '360 网关', baseUrl: 'https://llm.mss.360.net/v1
 const FIXED_MODELS = [
   { id: 'deepseek/deepseek-v4-flash', label: 'DeepSeek V4 Flash', contextLength: 1000000 },
   { id: 'deepseek/deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash', contextLength: 1000000 },
-  { id: 'anthropic/claude-opus-5', label: 'Claude Opus 5', contextLength: 1000000 },
   { id: 'openai/gpt-5.6-sol', label: 'GPT-5.6 Sol', contextLength: 400000 },
 ];
 // 360 网关上的 gpt-6-sol / gpt-5.6-sol 在 /chat/completions 里「带工具 + 默认推理」会直接 400
@@ -3665,7 +3664,7 @@ ipcMain.handle('code:prompt', async (_event, { id, conversationId, text, attachm
   } catch (err) {
     codeDebugLog(`code:prompt FAILED: ${err && err.stack || err}`);
     throw new Error(`Prompt failed: ${err.message}`);
-  } finally { cancelledKnowledgeRequests.delete(`${slug}:${requestId}`); }
+  }
 });
 
 // ---- 代码工作区「多会话」IPC -------------------------------------------------
@@ -4725,8 +4724,8 @@ ipcMain.handle('env:test-connection', async (_event, params) => {
   const r = await postChatCompletion({
     apiKey, baseUrl, model,
     messages: [{ role: 'user', content: 'ping' }],
-    // 推理模型 max_tokens 太小会 400（来不及给出回答）：Claude Opus 5 先出思考块，32 个 token 全耗在思考上，
-    // 网关报「response contained only thinking blocks」。给足 512；Opus 5 首包偏慢，超时放宽到 30 秒。
+    // 推理模型 max_tokens 太小会 400（来不及给出回答）：先出思考块，32 个 token 全耗在思考上，
+    // 网关报「response contained only thinking blocks」。给足 512，超时放宽到 30 秒。
     maxTokens: apiMode === 'codex_responses' ? 16 : 512,
     timeoutMs: 30000,
     apiMode, authMode, extraHeaders,
