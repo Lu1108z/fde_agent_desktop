@@ -444,7 +444,8 @@ const treeTruncated = ref(false);
 const collapsedDirs = ref(new Set());
 const showTree = ref(true);
 const showPreview = ref(true);
-const showChat = ref(readFlag(STORAGE_AI, true));
+// AI coding 面板默认收起（IDE 里已有 Claude Code），用户手动展开后会记住。
+const showChat = ref(readFlag(STORAGE_AI, false));
 const terminalOpen = ref(false);
 const terminalH = ref(240);
 const terminalShell = ref('cmd');
@@ -499,7 +500,7 @@ const runEntryMenuAction = async (id) => {
 const resetWorkspaceLayout = () => {
   showTree.value = true;
   showPreview.value = true;
-  showChat.value = true;
+  showChat.value = false;
   sidebarW.value = 0;
   previewW.value = 0;
   terminalH.value = 240;
