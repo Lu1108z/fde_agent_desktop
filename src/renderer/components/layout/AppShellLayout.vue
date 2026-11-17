@@ -148,7 +148,7 @@ const primaryNav = [
   ] },
   { to: '/chat', label: 'AI 助手', icon: 'fa-solid fa-comments', match: (p) => p === '/chat' || p.startsWith('/code') || p.startsWith('/apps') || p === '/experts', children: [
     { to: '/chat', label: 'AI 智能对话', icon: 'fa-solid fa-comments', match: (p) => p === '/chat' },
-    { to: '/code', label: 'AI 代码模式', icon: 'fa-solid fa-code', match: (p) => p.startsWith('/code') },
+    { to: '/code', label: 'AI 代码 IDE', icon: 'fa-solid fa-code', match: (p) => p.startsWith('/code') },
     { to: '/apps', label: 'AI 应用广场', icon: 'fa-solid fa-store', match: (p) => p.startsWith('/apps') || p === '/experts' },
   ] },
   { to: '/library/team', label: '资源', icon: 'fa-solid fa-book-open', match: (p) => p.startsWith('/library') || p === '/knowledge' || p === '/skills', children: [

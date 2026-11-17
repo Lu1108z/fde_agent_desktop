@@ -25,6 +25,12 @@ function getPty() {
   return pty;
 }
 const AcpClient = require('./acp-client.js');
+const ideRuntime = require('./ide');
+
+// 在创建任何窗口之前注册：所有 <webview>（本地 VS Code IDE）只能访问回环地址。
+ideRuntime.hardenWebviews();
+// IDE 把平台网关配置搬给 Claude 插件时，协议判断与设置页/写 config 保持同一套规则。
+ideRuntime.setGatewayModeResolver(normalizeGatewayMode);
 const { conversationSummary } = require('./conversation-summary.js');
 const { createProjectSessions } = require('./project-session.js');
 const licenseVerifier = require('./license/verifier.js');
@@ -1745,6 +1751,8 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false,
+      // AI 代码模式内嵌本地 VS Code IDE（code-server / serve-web）走 <webview>。
+      webviewTag: true,
     },
   };
   if (isMac) {
@@ -5624,6 +5632,7 @@ app.whenReady().then(async () => {
   enforceFixedModels();
   buildAppMenu();
   registerWindowControls();
+  ideRuntime.registerIdeIpc();
   startPrototypeServer();
 
   // 心跳:已在线激活过的设备启动即恢复上报;离线导入授权(无 device_id)不参与。
@@ -6407,7 +6416,17 @@ ipcMain.handle('ai-apps:knowledge-open', async (_event, { id } = {}) => {
   }
 });
 
-app.on('will-quit', () => { stopHermes(); for (const terminal of codeTerminals.values()) { try { terminal.pty.kill(); } catch (_) {} } codeTerminals.clear(); });
+app.on('will-quit', () => { stopHermes(); ideRuntime.shutdownIde(); for (const terminal of codeTerminals.values()) { try { terminal.pty.kill(); } catch (_) {} } codeTerminals.clear(); });
+app.on('quit', () => { ideRuntime.shutdownIde(); });
+// 被系统/终端信号结束（退出登录、kill、CI 清理）时，Electron 不保证触发 will-quit；
+// 这里兜底清理 IDE 子进程组，避免 code-server 变成孤儿继续监听端口。
+for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+  process.on(signal, () => {
+    try { ideRuntime.shutdownIde(); } catch (_) { /* ignore */ }
+    app.quit();
+  });
+}
+process.on('exit', () => { try { ideRuntime.shutdownIde(); } catch (_) { /* ignore */ } });
 // isQuitting 必须在窗口 close 事件之前置位，否则 macOS 上的「关闭=隐藏」
 // 会把 Cmd+Q 触发的销毁也拦掉，应用退不掉。
-app.on('before-quit', () => { isQuitting = true; stopHermes(); });
+app.on('before-quit', () => { isQuitting = true; stopHermes(); ideRuntime.shutdownIde(); });

@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# 本地缓存的 IDE 运行时（code-server 安装包/解压目录，可重建）
+.cache/
+
 # Build output
 dist/
 build/

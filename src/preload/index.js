@@ -52,6 +52,15 @@ const validInvokeChannels = new Set([
   'code:terminal-resize',
   'code:terminal-kill',
   'code:terminal-cd',
+  // 内置 VS Code IDE（code-server / 本机 serve-web）
+  'ide:status',
+  'ide:ensure',
+  'ide:restart',
+  'ide:stop',
+  'ide:cancel-download',
+  'ide:recover',
+  'ide:claude-config',
+  'ide:apply-claude-config',
   'hermes:list-projects',
   'hermes:create-project',
   'hermes:load-project',
@@ -185,6 +194,7 @@ const validOnChannels = new Set([
   'hermes:permission-request',
   'code:terminal-data',
   'code:terminal-exit',
+  'ide:status',
   'skills:import-progress',
   'license:heartbeat-expired',
 ]);
@@ -431,6 +441,19 @@ contextBridge.exposeInMainWorld('api', {
       onData(handler) { return on('code:terminal-data', handler); },
       onExit(handler) { return on('code:terminal-exit', handler); },
     },
+  },
+
+  // 内置 VS Code IDE（code-server / 本机 VS Code serve-web）
+  ide: {
+    status() { return invoke('ide:status'); },
+    ensure(workspacePath, backend) { return invoke('ide:ensure', { workspacePath, backend }); },
+    restart(workspacePath, backend) { return invoke('ide:restart', { workspacePath, backend }); },
+    stop() { return invoke('ide:stop'); },
+    cancelDownload() { return invoke('ide:cancel-download'); },
+    recover() { return invoke('ide:recover'); },
+    claudeConfig() { return invoke('ide:claude-config'); },
+    applyClaudeConfig(enabled) { return invoke('ide:apply-claude-config', { enabled }); },
+    onStatus(handler) { return on('ide:status', handler); },
   },
 
   // File system
