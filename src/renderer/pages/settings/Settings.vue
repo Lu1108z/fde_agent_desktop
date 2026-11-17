@@ -242,7 +242,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { FIXED_GATEWAY, FIXED_MODELS } from '../../constants/models.js';
 import { useTheme } from '../../composables/useTheme.js';
 import { useFixedKeyTest } from '../../composables/useFixedKeyTest.js';
