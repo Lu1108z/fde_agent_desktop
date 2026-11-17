@@ -193,7 +193,15 @@ async function main() {
     const dest = path.join(ROOT, 'build', 'ide-resources', 'code-server');
     fs.rmSync(dest, { recursive: true, force: true });
     fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.cpSync(target, dest, { recursive: true });
+    // 不能直接 fs.cpSync：它会把 node_modules/.bin 里的相对软链接改写成指向缓存目录的绝对路径，
+    // 打进 .app 后目标不存在，codesign --verify 报 "invalid destination for symbolic link in bundle"。
+    // ditto（macOS）/ cp -a（其他）原样保留软链接。
+    const copied = process.platform === 'darwin'
+      ? spawnSync('ditto', [target, dest])
+      : spawnSync('cp', ['-a', target + path.sep + '.', dest]);
+    if (copied.status !== 0) {
+      fs.cpSync(target, dest, { recursive: true, verbatimSymlinks: true });
+    }
     // 记录这批资源的平台：build/ide-resources 是单一路径，交叉打包时容易被上一次覆盖。
     // check-ide-resources.js 读它校验，避免把 Windows 运行时塞进 mac 包。
     fs.writeFileSync(
